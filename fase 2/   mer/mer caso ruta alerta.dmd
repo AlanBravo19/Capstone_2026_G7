@@ -1,0 +1,13 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<OSDM_Design class="oracle.dbtools.crest.model.design.Design" name="mer caso ruta alerta" id="F151B9C4-E897-B8E4-920F-C56857A7A031" version="3.5">
+<createdBy>alanb</createdBy>
+<createdTime>2026-09-24 18:27:16 UTC</createdTime>
+<ownerDesignName>mer caso ruta alerta</ownerDesignName>
+<capitalNames>false</capitalNames>
+<designId>F151B9C4-E897-B8E4-920F-C56857A7A031</designId>
+<usedDesignStorageDescriptors>
+<designDescr class="oracle.dbtools.crest.model.design.Design$DesignStorageDesc" id="0ED8D296-B9FF-6DA1-318A-62925B18065F">
+<designStoragePath>C:\RutaAlerta_MER_DDL</designStoragePath>
+</designDescr>
+</usedDesignStorageDescriptors>
+</OSDM_Design>
