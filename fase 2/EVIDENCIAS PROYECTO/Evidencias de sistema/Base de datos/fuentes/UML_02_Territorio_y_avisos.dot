@@ -1,0 +1,25 @@
+digraph G {
+graph [rankdir=LR, bgcolor=white, pad=0.35, nodesep=0.38,ranksep=1.25, splines=polyline, outputorder=edgesfirst, fontname="Times New Roman",fontsize=20,labelloc=t,label="RutaAlerta · Territorio y avisos"];
+node [fontname="Times New Roman",fontsize=13];
+edge [fontname="Times New Roman",fontsize=11,arrowsize=0.8];
+actor0 [shape=box,label="«actor»\nCiudadano\nPrimario"];
+actor6 [shape=box,label="«actor»\nProveedor de mapas y rutas\nSecundario externo"];
+actor7 [shape=box,label="«actor»\nProveedor de notificaciones\nSecundario externo"];
+subgraph cluster_system { label="RutaAlerta — límite del sistema"; color=black; penwidth=2;
+subgraph cluster_02_Territorio_y_avisos {label="Territorio y avisos"; color="#bbbbbb"; style=rounded;
+CU08 [shape=ellipse,label="CU08\nConsultar antecedentes\nterritoriales"];
+CU09 [shape=ellipse,label="CU09\nComparar alternativas de ruta"];
+CU10 [shape=ellipse,label="CU10\nIniciar trayecto con avisos"];
+CU25 [shape=ellipse,label="CU25\nRecibir aviso territorial"];
+}
+}
+actor0 -> CU08 [dir=none,color="#666666"];
+actor0 -> CU09 [dir=none,color="#666666"];
+actor0 -> CU10 [dir=none,color="#666666"];
+actor0 -> CU25 [dir=none,color="#666666"];
+CU08 -> actor6 [dir=none,color="#666666"];
+CU09 -> actor6 [dir=none,color="#666666"];
+CU25 -> actor7 [dir=none,color="#666666"];
+CU09 -> CU08 [style=dashed,arrowhead=open,label="«include»",penwidth=1.4];
+CU25 -> CU10 [style=dashed,arrowhead=open,label="«extend»\n[proximidad y aviso habilitado]",penwidth=1.4];
+}

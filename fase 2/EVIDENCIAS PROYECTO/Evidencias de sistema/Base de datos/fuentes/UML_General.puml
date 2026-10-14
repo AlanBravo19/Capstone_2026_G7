@@ -1,0 +1,96 @@
+@startuml
+left to right direction
+skinparam monochrome true
+skinparam packageStyle rectangle
+title RutaAlerta — casos de uso general
+actor "Ciudadano\n(Primario)" as actor0
+actor "Contacto de confianza\n(Primario)" as actor1
+actor "Operador\n(Primario)" as actor2
+actor "Supervisor\n(Primario)" as actor3
+actor "Administrador\n(Primario)" as actor4
+actor "Evaluador\n(Primario)" as actor5
+actor "Proveedor de mapas y rutas\n(Secundario externo)" as actor6
+actor "Proveedor de notificaciones\n(Secundario externo)" as actor7
+actor "Almacenamiento privado de archivos\n(Secundario externo)" as actor8
+actor "Sistema de video autorizado\n(Secundario externo)" as actor9
+rectangle "RutaAlerta" {
+usecase "CU01 Administrar cuenta" as CU01
+usecase "CU02 Registrar vehículo" as CU02
+usecase "CU03 Reportar incidente" as CU03
+usecase "CU04 Aportar evidencia" as CU04
+usecase "CU05 Comunicar avistamiento" as CU05
+usecase "CU06 Consultar seguimiento y orientación" as CU06
+usecase "CU07 Autorizar contacto de confianza" as CU07
+usecase "CU08 Consultar antecedentes territoriales" as CU08
+usecase "CU09 Comparar alternativas de ruta" as CU09
+usecase "CU10 Iniciar trayecto con avisos" as CU10
+usecase "CU11 Consultar solicitudes ciudadanas" as CU11
+usecase "CU12 Configurar avisos y privacidad" as CU12
+usecase "CU13 Consultar casos y alertas" as CU13
+usecase "CU14 Revisar aportes y duplicados" as CU14
+usecase "CU15 Asignar caso" as CU15
+usecase "CU16 Registrar gestión y cierre" as CU16
+usecase "CU17 Publicar solicitud de colaboración" as CU17
+usecase "CU18 Consultar indicadores y exportar informe" as CU18
+usecase "CU19 Administrar usuarios y permisos" as CU19
+usecase "CU20 Gestionar fuentes históricas" as CU20
+usecase "CU21 Revisar datos territoriales" as CU21
+usecase "CU22 Mantener recursos de apoyo" as CU22
+usecase "CU23 Consultar auditoría" as CU23
+usecase "CU24 Ejecutar escenarios de evaluación" as CU24
+usecase "CU25 Recibir aviso territorial" as CU25
+usecase "CU26 Administrar cámaras autorizadas" as CU26
+usecase "CU27 Consultar video autorizado" as CU27
+usecase "CU28 Explorar recorridos posibles" as CU28
+usecase "CU29 Comparar candidatos visuales" as CU29
+usecase "CU30 Consultar copiloto del caso" as CU30
+usecase "CU31 Revisar recomendaciones de búsqueda" as CU31
+}
+actor0 -- CU01
+actor0 -- CU02
+actor0 -- CU03
+actor0 -- CU04
+actor0 -- CU05
+actor0 -- CU06
+actor1 -- CU06
+actor0 -- CU07
+actor0 -- CU08
+actor0 -- CU09
+actor0 -- CU10
+actor0 -- CU11
+actor0 -- CU12
+actor2 -- CU13
+actor2 -- CU14
+actor3 -- CU15
+actor2 -- CU16
+actor2 -- CU17
+actor2 -- CU18
+actor4 -- CU19
+actor4 -- CU20
+actor4 -- CU21
+actor4 -- CU22
+actor4 -- CU23
+actor5 -- CU24
+actor0 -- CU25
+actor4 -- CU26
+actor2 -- CU27
+actor2 -- CU28
+actor2 -- CU29
+actor2 -- CU30
+actor2 -- CU31
+actor6 -- CU08
+actor6 -- CU09
+actor6 -- CU28
+actor7 -- CU06
+actor7 -- CU25
+actor8 -- CU02
+actor8 -- CU04
+actor8 -- CU27
+actor8 -- CU29
+actor9 -- CU27
+actor2 <|-- actor3
+CU09 ..> CU08 : <<include>>
+CU04 ..> CU03 : <<extend>>\n[adjunta evidencia]
+CU04 ..> CU05 : <<extend>>\n[adjunta evidencia]
+CU25 ..> CU10 : <<extend>>\n[proximidad y aviso habilitado]
+@enduml

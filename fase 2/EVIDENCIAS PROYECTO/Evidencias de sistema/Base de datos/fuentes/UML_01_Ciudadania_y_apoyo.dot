@@ -1,0 +1,37 @@
+digraph G {
+graph [rankdir=LR, bgcolor=white, pad=0.35, nodesep=0.38,ranksep=1.25, splines=polyline, outputorder=edgesfirst, fontname="Times New Roman",fontsize=20,labelloc=t,label="RutaAlerta · Ciudadania y apoyo"];
+node [fontname="Times New Roman",fontsize=13];
+edge [fontname="Times New Roman",fontsize=11,arrowsize=0.8];
+actor0 [shape=box,label="«actor»\nCiudadano\nPrimario"];
+actor1 [shape=box,label="«actor»\nContacto de confianza\nPrimario"];
+actor7 [shape=box,label="«actor»\nProveedor de notificaciones\nSecundario externo"];
+actor8 [shape=box,label="«actor»\nAlmacenamiento privado de archivos\nSecundario externo"];
+subgraph cluster_system { label="RutaAlerta — límite del sistema"; color=black; penwidth=2;
+subgraph cluster_01_Ciudadania_y_apoyo {label="Ciudadania y apoyo"; color="#bbbbbb"; style=rounded;
+CU01 [shape=ellipse,label="CU01\nAdministrar cuenta"];
+CU02 [shape=ellipse,label="CU02\nRegistrar vehículo"];
+CU03 [shape=ellipse,label="CU03\nReportar incidente"];
+CU04 [shape=ellipse,label="CU04\nAportar evidencia"];
+CU05 [shape=ellipse,label="CU05\nComunicar avistamiento"];
+CU06 [shape=ellipse,label="CU06\nConsultar seguimiento y\norientación"];
+CU07 [shape=ellipse,label="CU07\nAutorizar contacto de\nconfianza"];
+CU11 [shape=ellipse,label="CU11\nConsultar solicitudes\nciudadanas"];
+CU12 [shape=ellipse,label="CU12\nConfigurar avisos y privacidad"];
+}
+}
+actor0 -> CU01 [dir=none,color="#666666"];
+actor0 -> CU02 [dir=none,color="#666666"];
+actor0 -> CU03 [dir=none,color="#666666"];
+actor0 -> CU04 [dir=none,color="#666666"];
+actor0 -> CU05 [dir=none,color="#666666"];
+actor0 -> CU06 [dir=none,color="#666666"];
+actor1 -> CU06 [dir=none,color="#666666"];
+actor0 -> CU07 [dir=none,color="#666666"];
+actor0 -> CU11 [dir=none,color="#666666"];
+actor0 -> CU12 [dir=none,color="#666666"];
+CU06 -> actor7 [dir=none,color="#666666"];
+CU02 -> actor8 [dir=none,color="#666666"];
+CU04 -> actor8 [dir=none,color="#666666"];
+CU04 -> CU03 [style=dashed,arrowhead=open,label="«extend»\n[adjunta evidencia]",penwidth=1.4];
+CU04 -> CU05 [style=dashed,arrowhead=open,label="«extend»\n[adjunta evidencia]",penwidth=1.4];
+}

@@ -1,0 +1,24 @@
+digraph G {
+graph [rankdir=LR, bgcolor=white, pad=0.35, nodesep=0.38,ranksep=1.25, splines=polyline, outputorder=edgesfirst, fontname="Times New Roman",fontsize=20,labelloc=t,label="RutaAlerta · Gestion institucional"];
+node [fontname="Times New Roman",fontsize=13];
+edge [fontname="Times New Roman",fontsize=11,arrowsize=0.8];
+actor2 [shape=box,label="«actor»\nOperador\nPrimario"];
+actor3 [shape=box,label="«actor»\nSupervisor\nPrimario"];
+subgraph cluster_system { label="RutaAlerta — límite del sistema"; color=black; penwidth=2;
+subgraph cluster_03_Gestion_institucional {label="Gestion institucional"; color="#bbbbbb"; style=rounded;
+CU13 [shape=ellipse,label="CU13\nConsultar casos y alertas"];
+CU14 [shape=ellipse,label="CU14\nRevisar aportes y duplicados"];
+CU15 [shape=ellipse,label="CU15\nAsignar caso"];
+CU16 [shape=ellipse,label="CU16\nRegistrar gestión y cierre"];
+CU17 [shape=ellipse,label="CU17\nPublicar solicitud de\ncolaboración"];
+CU18 [shape=ellipse,label="CU18\nConsultar indicadores y\nexportar informe"];
+}
+}
+actor2 -> CU13 [dir=none,color="#666666"];
+actor2 -> CU14 [dir=none,color="#666666"];
+actor3 -> CU15 [dir=none,color="#666666"];
+actor2 -> CU16 [dir=none,color="#666666"];
+actor2 -> CU17 [dir=none,color="#666666"];
+actor2 -> CU18 [dir=none,color="#666666"];
+actor3 -> actor2 [arrowhead=empty,label="hereda",penwidth=1.3];
+}

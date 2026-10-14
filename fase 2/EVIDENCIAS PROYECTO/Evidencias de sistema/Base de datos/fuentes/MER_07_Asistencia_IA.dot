@@ -1,0 +1,31 @@
+digraph G {
+graph [rankdir=LR, bgcolor="white", pad=0.4, nodesep=0.45, ranksep=1.5, splines=polyline, overlap=false, outputorder=edgesfirst, fontname="Times New Roman", fontsize=20, labelloc=t, label="RutaAlerta · 07 Asistencia IA\nMER conceptual · ID identificador · ? opcional · extremos min..max"];
+node [shape=plain, fontname="Times New Roman"];
+edge [fontname="Times New Roman",fontsize=10, color="#555555", arrowsize=0.6, dir=none, labeldistance=2.5];
+usuario [id="entity-usuario",label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5"><TR><TD BGCOLOR="#eeeeee"><B>usuario</B> [referencia]</TD></TR><TR><TD ALIGN="LEFT">id_usuario [ID]</TD></TR></TABLE>>];
+evidencia [id="entity-evidencia",label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5"><TR><TD BGCOLOR="#eeeeee"><B>evidencia</B> [referencia]</TD></TR><TR><TD ALIGN="LEFT">id_evidencia [ID]</TD></TR></TABLE>>];
+sesion_busqueda [id="entity-sesion_busqueda",label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5"><TR><TD BGCOLOR="#eeeeee"><B>sesion busqueda</B> [referencia]</TD></TR><TR><TD ALIGN="LEFT">id_sesion_busqueda [ID]</TD></TR></TABLE>>];
+observacion_busqueda [id="entity-observacion_busqueda",label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5"><TR><TD BGCOLOR="#eeeeee"><B>observacion busqueda</B> [referencia]</TD></TR><TR><TD ALIGN="LEFT">id_observacion_busqueda [ID]</TD></TR></TABLE>>];
+recomendacion_camara [id="entity-recomendacion_camara",label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5"><TR><TD BGCOLOR="#eeeeee"><B>recomendacion camara</B> [referencia]</TD></TR><TR><TD ALIGN="LEFT">id_recomendacion_camara [ID]</TD></TR></TABLE>>];
+version_modelo [id="entity-version_modelo",label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5"><TR><TD BGCOLOR="#dddddd"><B>version modelo</B></TD></TR><TR><TD ALIGN="LEFT">ID id version modelo</TD></TR><TR><TD ALIGN="LEFT">nombre</TD></TR><TR><TD ALIGN="LEFT">version</TD></TR><TR><TD ALIGN="LEFT">sha256</TD></TR><TR><TD ALIGN="LEFT">licencia</TD></TR><TR><TD ALIGN="LEFT">finalidad</TD></TR><TR><TD ALIGN="LEFT">limitaciones</TD></TR><TR><TD ALIGN="LEFT">referencia evaluacion ?</TD></TR><TR><TD ALIGN="LEFT">registrada en</TD></TR></TABLE>>];
+ejecucion_modelo [id="entity-ejecucion_modelo",label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5"><TR><TD BGCOLOR="#dddddd"><B>ejecucion modelo</B></TD></TR><TR><TD ALIGN="LEFT">ID id ejecucion modelo</TD></TR><TR><TD ALIGN="LEFT">parametros</TD></TR><TR><TD ALIGN="LEFT">inicio</TD></TR><TR><TD ALIGN="LEFT">fin ?</TD></TR><TR><TD ALIGN="LEFT">estado</TD></TR><TR><TD ALIGN="LEFT">costo estimado ?</TD></TR><TR><TD ALIGN="LEFT">moneda ?</TD></TR><TR><TD ALIGN="LEFT">error ?</TD></TR></TABLE>>];
+candidato_visual [id="entity-candidato_visual",label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5"><TR><TD BGCOLOR="#dddddd"><B>candidato visual</B></TD></TR><TR><TD ALIGN="LEFT">ID id candidato visual</TD></TR><TR><TD ALIGN="LEFT">rango</TD></TR><TR><TD ALIGN="LEFT">puntaje</TD></TR><TR><TD ALIGN="LEFT">factores</TD></TR><TR><TD ALIGN="LEFT">clave recorte privado ?</TD></TR><TR><TD ALIGN="LEFT">decision</TD></TR><TR><TD ALIGN="LEFT">revisado en ?</TD></TR><TR><TD ALIGN="LEFT">motivo revision ?</TD></TR></TABLE>>];
+consulta_copiloto [id="entity-consulta_copiloto",label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5"><TR><TD BGCOLOR="#dddddd"><B>consulta copiloto</B></TD></TR><TR><TD ALIGN="LEFT">ID id consulta copiloto</TD></TR><TR><TD ALIGN="LEFT">pregunta</TD></TR><TR><TD ALIGN="LEFT">estado</TD></TR><TR><TD ALIGN="LEFT">respuesta ?</TD></TR><TR><TD ALIGN="LEFT">creada en</TD></TR><TR><TD ALIGN="LEFT">respondida en ?</TD></TR></TABLE>>];
+afirmacion_copiloto [id="entity-afirmacion_copiloto",label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5"><TR><TD BGCOLOR="#dddddd"><B>afirmacion copiloto</B></TD></TR><TR><TD ALIGN="LEFT">ID id afirmacion copiloto</TD></TR><TR><TD ALIGN="LEFT">orden</TD></TR><TR><TD ALIGN="LEFT">texto</TD></TR><TR><TD ALIGN="LEFT">tipo</TD></TR><TR><TD ALIGN="LEFT">estado revision</TD></TR></TABLE>>];
+soporte_afirmacion [id="entity-soporte_afirmacion",label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5"><TR><TD BGCOLOR="#dddddd"><B>soporte afirmacion</B></TD></TR><TR><TD ALIGN="LEFT">ID id soporte afirmacion</TD></TR></TABLE>>];
+ejecucion_modelo -> sesion_busqueda [taillabel="0..*",headlabel="1",label="integra la sesión"];
+ejecucion_modelo -> version_modelo [taillabel="0..*",headlabel="1",label="usa versión"];
+ejecucion_modelo -> evidencia [taillabel="0..*",headlabel="0..1",label="evidencia referencia"];
+candidato_visual -> ejecucion_modelo [taillabel="0..*",headlabel="1",label="resulta de"];
+candidato_visual -> sesion_busqueda [taillabel="0..*",headlabel="1",label="integra la sesión"];
+candidato_visual -> evidencia [taillabel="0..*",headlabel="1",label="usa evidencia"];
+candidato_visual -> usuario [taillabel="0..*",headlabel="0..1",label="revisado por"];
+consulta_copiloto -> sesion_busqueda [taillabel="0..*",headlabel="1",label="integra la sesión"];
+consulta_copiloto -> usuario [taillabel="0..*",headlabel="1",label="corresponde a"];
+consulta_copiloto -> ejecucion_modelo [taillabel="0..*",headlabel="0..1",label="resulta de"];
+afirmacion_copiloto -> consulta_copiloto [taillabel="0..*",headlabel="1",label="integra respuesta"];
+soporte_afirmacion -> afirmacion_copiloto [taillabel="0..*",headlabel="1",label="sustenta afirmación"];
+soporte_afirmacion -> observacion_busqueda [taillabel="0..*",headlabel="0..1",label="referencia"];
+soporte_afirmacion -> candidato_visual [taillabel="0..*",headlabel="0..1",label="referencia"];
+soporte_afirmacion -> recomendacion_camara [taillabel="0..*",headlabel="0..1",label="revisa recomendación"];
+}

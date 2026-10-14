@@ -1,0 +1,25 @@
+digraph G {
+graph [rankdir=LR, bgcolor=white, pad=0.35, nodesep=0.38,ranksep=1.25, splines=polyline, outputorder=edgesfirst, fontname="Times New Roman",fontsize=20,labelloc=t,label="RutaAlerta · Administracion y evaluacion"];
+node [fontname="Times New Roman",fontsize=13];
+edge [fontname="Times New Roman",fontsize=11,arrowsize=0.8];
+actor4 [shape=box,label="«actor»\nAdministrador\nPrimario"];
+actor5 [shape=box,label="«actor»\nEvaluador\nPrimario"];
+subgraph cluster_system { label="RutaAlerta — límite del sistema"; color=black; penwidth=2;
+subgraph cluster_04_Administracion_y_evaluacion {label="Administracion y evaluacion"; color="#bbbbbb"; style=rounded;
+CU19 [shape=ellipse,label="CU19\nAdministrar usuarios y\npermisos"];
+CU20 [shape=ellipse,label="CU20\nGestionar fuentes históricas"];
+CU21 [shape=ellipse,label="CU21\nRevisar datos territoriales"];
+CU22 [shape=ellipse,label="CU22\nMantener recursos de apoyo"];
+CU23 [shape=ellipse,label="CU23\nConsultar auditoría"];
+CU24 [shape=ellipse,label="CU24\nEjecutar escenarios de\nevaluación"];
+CU26 [shape=ellipse,label="CU26\nAdministrar cámaras\nautorizadas"];
+}
+}
+actor4 -> CU19 [dir=none,color="#666666"];
+actor4 -> CU20 [dir=none,color="#666666"];
+actor4 -> CU21 [dir=none,color="#666666"];
+actor4 -> CU22 [dir=none,color="#666666"];
+actor4 -> CU23 [dir=none,color="#666666"];
+actor5 -> CU24 [dir=none,color="#666666"];
+actor4 -> CU26 [dir=none,color="#666666"];
+}

@@ -1,0 +1,52 @@
+[
+  [
+    "Ciudadano",
+    "Primario",
+    "Persona que usa la app como conductor, propietario, pasajero, testigo o afectado. No requiere vehículo propio para colaborar."
+  ],
+  [
+    "Contacto de confianza",
+    "Primario",
+    "Usuario con autorización vigente y revocable para un caso; acceso limitado a seguimiento."
+  ],
+  [
+    "Operador",
+    "Primario",
+    "Miembro institucional que consulta expedientes, revisa aportes, registra gestiones y usa asistencia."
+  ],
+  [
+    "Supervisor",
+    "Primario",
+    "Especialización de Operador; hereda sus casos de uso y puede asignar responsables."
+  ],
+  [
+    "Administrador",
+    "Primario",
+    "Gestiona cuentas, organizaciones, fuentes, recursos y cámaras. No recibe acceso irrestricto a expedientes por defecto."
+  ],
+  [
+    "Evaluador",
+    "Primario",
+    "Ejecuta escenarios controlados y registra mediciones de objetivos."
+  ],
+  [
+    "Proveedor de mapas y rutas",
+    "Secundario externo",
+    "Devuelve cartografía y recorridos. No decide qué ruta es segura."
+  ],
+  [
+    "Proveedor de notificaciones",
+    "Secundario externo",
+    "Transporta avisos habilitados; no garantiza lectura ni atención institucional."
+  ],
+  [
+    "Almacenamiento privado de archivos",
+    "Secundario externo",
+    "Conserva archivos autorizados; los metadatos y permisos están en RutaAlerta."
+  ],
+  [
+    "Sistema de video autorizado",
+    "Secundario externo",
+    "Entrega transmisión o grabación mediante un conector comprobado. No presupone convenio municipal."
+  ]
+]

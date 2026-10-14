@@ -1,0 +1,29 @@
+digraph G {
+graph [rankdir=LR, bgcolor=white, pad=0.35, nodesep=0.38,ranksep=1.25, splines=polyline, outputorder=edgesfirst, fontname="Times New Roman",fontsize=20,labelloc=t,label="RutaAlerta · Busqueda asistida"];
+node [fontname="Times New Roman",fontsize=13];
+edge [fontname="Times New Roman",fontsize=11,arrowsize=0.8];
+actor2 [shape=box,label="«actor»\nOperador\nPrimario"];
+actor3 [shape=box,label="«actor»\nSupervisor\nPrimario"];
+actor6 [shape=box,label="«actor»\nProveedor de mapas y rutas\nSecundario externo"];
+actor8 [shape=box,label="«actor»\nAlmacenamiento privado de archivos\nSecundario externo"];
+actor9 [shape=box,label="«actor»\nSistema de video autorizado\nSecundario externo"];
+subgraph cluster_system { label="RutaAlerta — límite del sistema"; color=black; penwidth=2;
+subgraph cluster_05_Busqueda_asistida {label="Busqueda asistida"; color="#bbbbbb"; style=rounded;
+CU27 [shape=ellipse,label="CU27\nConsultar video autorizado"];
+CU28 [shape=ellipse,label="CU28\nExplorar recorridos posibles"];
+CU29 [shape=ellipse,label="CU29\nComparar candidatos visuales"];
+CU30 [shape=ellipse,label="CU30\nConsultar copiloto del caso"];
+CU31 [shape=ellipse,label="CU31\nRevisar recomendaciones de\nbúsqueda"];
+}
+}
+actor2 -> CU27 [dir=none,color="#666666"];
+actor2 -> CU28 [dir=none,color="#666666"];
+actor2 -> CU29 [dir=none,color="#666666"];
+actor2 -> CU30 [dir=none,color="#666666"];
+actor2 -> CU31 [dir=none,color="#666666"];
+CU28 -> actor6 [dir=none,color="#666666"];
+CU27 -> actor8 [dir=none,color="#666666"];
+CU29 -> actor8 [dir=none,color="#666666"];
+CU27 -> actor9 [dir=none,color="#666666"];
+actor3 -> actor2 [arrowhead=empty,label="hereda",penwidth=1.3];
+}

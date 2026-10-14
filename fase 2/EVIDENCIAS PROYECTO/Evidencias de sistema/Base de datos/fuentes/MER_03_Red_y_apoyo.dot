@@ -1,0 +1,34 @@
+digraph G {
+graph [rankdir=LR, bgcolor="white", pad=0.4, nodesep=0.45, ranksep=1.5, splines=polyline, overlap=false, outputorder=edgesfirst, fontname="Times New Roman", fontsize=20, labelloc=t, label="RutaAlerta · 03 Red y apoyo\nMER conceptual · ID identificador · ? opcional · extremos min..max"];
+node [shape=plain, fontname="Times New Roman"];
+edge [fontname="Times New Roman",fontsize=10, color="#555555", arrowsize=0.6, dir=none, labeldistance=2.5];
+usuario [id="entity-usuario",label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5"><TR><TD BGCOLOR="#eeeeee"><B>usuario</B> [referencia]</TD></TR><TR><TD ALIGN="LEFT">id_usuario [ID]</TD></TR></TABLE>>];
+caso [id="entity-caso",label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5"><TR><TD BGCOLOR="#eeeeee"><B>caso</B> [referencia]</TD></TR><TR><TD ALIGN="LEFT">id_caso [ID]</TD></TR></TABLE>>];
+solicitud_colaboracion [id="entity-solicitud_colaboracion",label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5"><TR><TD BGCOLOR="#dddddd"><B>solicitud colaboracion</B></TD></TR><TR><TD ALIGN="LEFT">ID id solicitud colaboracion</TD></TR><TR><TD ALIGN="LEFT">zona publicable</TD></TR><TR><TD ALIGN="LEFT">texto aprobado</TD></TR><TR><TD ALIGN="LEFT">motivo autorizacion</TD></TR><TR><TD ALIGN="LEFT">inicio</TD></TR><TR><TD ALIGN="LEFT">vence en</TD></TR><TR><TD ALIGN="LEFT">estado</TD></TR><TR><TD ALIGN="LEFT">retirada en ?</TD></TR><TR><TD ALIGN="LEFT">motivo retiro ?</TD></TR></TABLE>>];
+avistamiento [id="entity-avistamiento",label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5"><TR><TD BGCOLOR="#dddddd"><B>avistamiento</B></TD></TR><TR><TD ALIGN="LEFT">ID id avistamiento</TD></TR><TR><TD ALIGN="LEFT">observado en</TD></TR><TR><TD ALIGN="LEFT">zona</TD></TR><TR><TD ALIGN="LEFT">direccion privada ?</TD></TR><TR><TD ALIGN="LEFT">ubicacion ?</TD></TR><TR><TD ALIGN="LEFT">precision m ?</TD></TR><TR><TD ALIGN="LEFT">descripcion</TD></TR><TR><TD ALIGN="LEFT">estado revision</TD></TR><TR><TD ALIGN="LEFT">revisado en ?</TD></TR><TR><TD ALIGN="LEFT">motivo revision ?</TD></TR><TR><TD ALIGN="LEFT">resumen para afectado ?</TD></TR><TR><TD ALIGN="LEFT">clave envio</TD></TR><TR><TD ALIGN="LEFT">recibido en</TD></TR></TABLE>>];
+revision_avistamiento [id="entity-revision_avistamiento",label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5"><TR><TD BGCOLOR="#dddddd"><B>revision avistamiento</B></TD></TR><TR><TD ALIGN="LEFT">ID id revision avistamiento</TD></TR><TR><TD ALIGN="LEFT">decision</TD></TR><TR><TD ALIGN="LEFT">motivo</TD></TR><TR><TD ALIGN="LEFT">creada en</TD></TR></TABLE>>];
+evidencia [id="entity-evidencia",label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5"><TR><TD BGCOLOR="#dddddd"><B>evidencia</B></TD></TR><TR><TD ALIGN="LEFT">ID id evidencia</TD></TR><TR><TD ALIGN="LEFT">tipo</TD></TR><TR><TD ALIGN="LEFT">origen</TD></TR><TR><TD ALIGN="LEFT">capturada en ?</TD></TR><TR><TD ALIGN="LEFT">clave objeto ?</TD></TR><TR><TD ALIGN="LEFT">mime</TD></TR><TR><TD ALIGN="LEFT">tamano bytes ?</TD></TR><TR><TD ALIGN="LEFT">sha256 ?</TD></TR><TR><TD ALIGN="LEFT">estado carga</TD></TR><TR><TD ALIGN="LEFT">estado revision</TD></TR><TR><TD ALIGN="LEFT">clave envio</TD></TR><TR><TD ALIGN="LEFT">creada en</TD></TR><TR><TD ALIGN="LEFT">recibida en ?</TD></TR><TR><TD ALIGN="LEFT">revisada en ?</TD></TR><TR><TD ALIGN="LEFT">motivo revision ?</TD></TR></TABLE>>];
+acceso_confianza [id="entity-acceso_confianza",label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5"><TR><TD BGCOLOR="#dddddd"><B>acceso confianza</B></TD></TR><TR><TD ALIGN="LEFT">ID id acceso confianza</TD></TR><TR><TD ALIGN="LEFT">alcance</TD></TR><TR><TD ALIGN="LEFT">autorizado en</TD></TR><TR><TD ALIGN="LEFT">vence en</TD></TR><TR><TD ALIGN="LEFT">revocado en ?</TD></TR></TABLE>>];
+recurso_apoyo [id="entity-recurso_apoyo",label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5"><TR><TD BGCOLOR="#dddddd"><B>recurso apoyo</B></TD></TR><TR><TD ALIGN="LEFT">ID id recurso apoyo</TD></TR><TR><TD ALIGN="LEFT">categoria</TD></TR><TR><TD ALIGN="LEFT">territorio</TD></TR><TR><TD ALIGN="LEFT">titulo</TD></TR><TR><TD ALIGN="LEFT">descripcion</TD></TR><TR><TD ALIGN="LEFT">canal</TD></TR><TR><TD ALIGN="LEFT">url oficial ?</TD></TR><TR><TD ALIGN="LEFT">verificado en</TD></TR><TR><TD ALIGN="LEFT">vence en</TD></TR><TR><TD ALIGN="LEFT">activo</TD></TR></TABLE>>];
+moderacion_usuario [id="entity-moderacion_usuario",label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5"><TR><TD BGCOLOR="#dddddd"><B>moderacion usuario</B></TD></TR><TR><TD ALIGN="LEFT">ID id moderacion usuario</TD></TR><TR><TD ALIGN="LEFT">accion</TD></TR><TR><TD ALIGN="LEFT">motivo</TD></TR><TR><TD ALIGN="LEFT">inicio</TD></TR><TR><TD ALIGN="LEFT">fin ?</TD></TR><TR><TD ALIGN="LEFT">estado reclamo</TD></TR><TR><TD ALIGN="LEFT">resolucion reclamo ?</TD></TR></TABLE>>];
+consulta_video [id="entity-consulta_video",label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5"><TR><TD BGCOLOR="#eeeeee"><B>consulta video</B> [referencia]</TD></TR><TR><TD ALIGN="LEFT">id_consulta_video [ID]</TD></TR></TABLE>>];
+solicitud_colaboracion -> caso [taillabel="0..*",headlabel="1",label="pertenece al caso"];
+solicitud_colaboracion -> usuario [taillabel="0..*",headlabel="1",label="autorizada por"];
+avistamiento -> solicitud_colaboracion [taillabel="0..*",headlabel="1",label="responde a solicitud"];
+avistamiento -> usuario [taillabel="0..*",headlabel="1",label="usuario autor"];
+avistamiento -> usuario [taillabel="0..*",headlabel="0..1",label="revisado por"];
+revision_avistamiento -> avistamiento [taillabel="0..*",headlabel="1",label="proviene de"];
+revision_avistamiento -> usuario [taillabel="0..*",headlabel="1",label="usuario revisor"];
+evidencia -> caso [taillabel="0..*",headlabel="1",label="pertenece al caso"];
+evidencia -> avistamiento [taillabel="0..*",headlabel="0..1",label="proviene de"];
+evidencia -> usuario [taillabel="0..*",headlabel="1",label="usuario autor"];
+evidencia -> consulta_video [taillabel="0..*",headlabel="0..1",label="referencia"];
+evidencia -> usuario [taillabel="0..*",headlabel="0..1",label="revisada por"];
+acceso_confianza -> caso [taillabel="0..*",headlabel="1",label="pertenece al caso"];
+acceso_confianza -> usuario [taillabel="0..*",headlabel="1",label="otorgado por"];
+acceso_confianza -> usuario [taillabel="0..*",headlabel="1",label="usuario destinatario"];
+recurso_apoyo -> usuario [taillabel="0..*",headlabel="1",label="mantenido por"];
+moderacion_usuario -> usuario [taillabel="0..*",headlabel="1",label="usuario afectado"];
+moderacion_usuario -> usuario [taillabel="0..*",headlabel="1",label="usuario revisor"];
+moderacion_usuario -> avistamiento [taillabel="0..*",headlabel="0..1",label="proviene de"];
+}

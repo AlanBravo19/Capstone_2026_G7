@@ -1,0 +1,74 @@
+{
+  "01_Identidad": [
+    "usuario",
+    "rol",
+    "usuario_rol",
+    "preferencia",
+    "consentimiento",
+    "dispositivo",
+    "token_acceso",
+    "organizacion",
+    "membresia"
+  ],
+  "02_Vehiculos_y_casos": [
+    "marca",
+    "modelo",
+    "vehiculo",
+    "foto_vehiculo",
+    "vinculo_vehiculo",
+    "caso",
+    "asignacion_caso",
+    "gestion_caso",
+    "canal_derivacion",
+    "derivacion_caso"
+  ],
+  "03_Red_y_apoyo": [
+    "solicitud_colaboracion",
+    "avistamiento",
+    "revision_avistamiento",
+    "evidencia",
+    "acceso_confianza",
+    "recurso_apoyo",
+    "moderacion_usuario"
+  ],
+  "04_Territorio_y_trayectos": [
+    "hecho_territorial",
+    "fuente_datos",
+    "lote_importacion",
+    "registro_fuente",
+    "consulta_ruta",
+    "alternativa_ruta",
+    "trayecto",
+    "aviso_territorial"
+  ],
+  "05_Notificaciones_y_evaluacion": [
+    "notificacion",
+    "entrega_notificacion",
+    "evento_salida",
+    "evento_auditoria",
+    "escenario_prueba",
+    "ejecucion_prueba",
+    "medicion"
+  ],
+  "06_Camaras_y_busqueda": [
+    "camara",
+    "sesion_busqueda",
+    "observacion_busqueda",
+    "hipotesis_ruta",
+    "recomendacion_camara",
+    "revision_recomendacion",
+    "consulta_video"
+  ],
+  "07_Asistencia_IA": [
+    "version_modelo",
+    "ejecucion_modelo",
+    "candidato_visual",
+    "consulta_copiloto",
+    "afirmacion_copiloto",
+    "soporte_afirmacion"
+  ],
+  "08_Analitica": [
+    "version_indicador",
+    "consulta_indicador"
+  ]
+}

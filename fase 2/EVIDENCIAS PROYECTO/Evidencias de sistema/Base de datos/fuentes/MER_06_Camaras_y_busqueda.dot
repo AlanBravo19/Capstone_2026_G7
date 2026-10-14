@@ -1,0 +1,36 @@
+digraph G {
+graph [rankdir=LR, bgcolor="white", pad=0.4, nodesep=0.45, ranksep=1.5, splines=polyline, overlap=false, outputorder=edgesfirst, fontname="Times New Roman", fontsize=20, labelloc=t, label="RutaAlerta · 06 Camaras y busqueda\nMER conceptual · ID identificador · ? opcional · extremos min..max"];
+node [shape=plain, fontname="Times New Roman"];
+edge [fontname="Times New Roman",fontsize=10, color="#555555", arrowsize=0.6, dir=none, labeldistance=2.5];
+usuario [id="entity-usuario",label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5"><TR><TD BGCOLOR="#eeeeee"><B>usuario</B> [referencia]</TD></TR><TR><TD ALIGN="LEFT">id_usuario [ID]</TD></TR></TABLE>>];
+organizacion [id="entity-organizacion",label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5"><TR><TD BGCOLOR="#eeeeee"><B>organizacion</B> [referencia]</TD></TR><TR><TD ALIGN="LEFT">id_organizacion [ID]</TD></TR></TABLE>>];
+caso [id="entity-caso",label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5"><TR><TD BGCOLOR="#eeeeee"><B>caso</B> [referencia]</TD></TR><TR><TD ALIGN="LEFT">id_caso [ID]</TD></TR></TABLE>>];
+avistamiento [id="entity-avistamiento",label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5"><TR><TD BGCOLOR="#eeeeee"><B>avistamiento</B> [referencia]</TD></TR><TR><TD ALIGN="LEFT">id_avistamiento [ID]</TD></TR></TABLE>>];
+evidencia [id="entity-evidencia",label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5"><TR><TD BGCOLOR="#eeeeee"><B>evidencia</B> [referencia]</TD></TR><TR><TD ALIGN="LEFT">id_evidencia [ID]</TD></TR></TABLE>>];
+camara [id="entity-camara",label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5"><TR><TD BGCOLOR="#dddddd"><B>camara</B></TD></TR><TR><TD ALIGN="LEFT">ID id camara</TD></TR><TR><TD ALIGN="LEFT">nombre</TD></TR><TR><TD ALIGN="LEFT">ubicacion</TD></TR><TR><TD ALIGN="LEFT">cobertura ?</TD></TR><TR><TD ALIGN="LEFT">orientacion grados ?</TD></TR><TR><TD ALIGN="LEFT">capacidades</TD></TR><TR><TD ALIGN="LEFT">estado</TD></TR><TR><TD ALIGN="LEFT">referencia autorizacion</TD></TR><TR><TD ALIGN="LEFT">referencia secreto ?</TD></TR><TR><TD ALIGN="LEFT">zona horaria</TD></TR><TR><TD ALIGN="LEFT">desfase reloj seg ?</TD></TR><TR><TD ALIGN="LEFT">verificada en ?</TD></TR><TR><TD ALIGN="LEFT">entorno</TD></TR></TABLE>>];
+sesion_busqueda [id="entity-sesion_busqueda",label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5"><TR><TD BGCOLOR="#dddddd"><B>sesion busqueda</B></TD></TR><TR><TD ALIGN="LEFT">ID id sesion busqueda</TD></TR><TR><TD ALIGN="LEFT">inicio</TD></TR><TR><TD ALIGN="LEFT">fin ?</TD></TR><TR><TD ALIGN="LEFT">estado</TD></TR><TR><TD ALIGN="LEFT">version mapa</TD></TR><TR><TD ALIGN="LEFT">version metodo</TD></TR><TR><TD ALIGN="LEFT">parametros</TD></TR></TABLE>>];
+observacion_busqueda [id="entity-observacion_busqueda",label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5"><TR><TD BGCOLOR="#dddddd"><B>observacion busqueda</B></TD></TR><TR><TD ALIGN="LEFT">ID id observacion busqueda</TD></TR><TR><TD ALIGN="LEFT">origen</TD></TR><TR><TD ALIGN="LEFT">observado en</TD></TR><TR><TD ALIGN="LEFT">recibido en</TD></TR><TR><TD ALIGN="LEFT">ubicacion</TD></TR><TR><TD ALIGN="LEFT">precision m</TD></TR><TR><TD ALIGN="LEFT">direccion grados ?</TD></TR><TR><TD ALIGN="LEFT">estado</TD></TR><TR><TD ALIGN="LEFT">revisado en ?</TD></TR><TR><TD ALIGN="LEFT">motivo revision ?</TD></TR></TABLE>>];
+hipotesis_ruta [id="entity-hipotesis_ruta",label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5"><TR><TD BGCOLOR="#dddddd"><B>hipotesis ruta</B></TD></TR><TR><TD ALIGN="LEFT">ID id hipotesis ruta</TD></TR><TR><TD ALIGN="LEFT">version</TD></TR><TR><TD ALIGN="LEFT">geometria</TD></TR><TR><TD ALIGN="LEFT">desde</TD></TR><TR><TD ALIGN="LEFT">hasta</TD></TR><TR><TD ALIGN="LEFT">supuestos</TD></TR><TR><TD ALIGN="LEFT">factores</TD></TR><TR><TD ALIGN="LEFT">estado</TD></TR><TR><TD ALIGN="LEFT">motivo actualizacion</TD></TR><TR><TD ALIGN="LEFT">creada en</TD></TR></TABLE>>];
+recomendacion_camara [id="entity-recomendacion_camara",label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5"><TR><TD BGCOLOR="#dddddd"><B>recomendacion camara</B></TD></TR><TR><TD ALIGN="LEFT">ID id recomendacion camara</TD></TR><TR><TD ALIGN="LEFT">desde</TD></TR><TR><TD ALIGN="LEFT">hasta</TD></TR><TR><TD ALIGN="LEFT">prioridad</TD></TR><TR><TD ALIGN="LEFT">factores</TD></TR><TR><TD ALIGN="LEFT">disponibilidad</TD></TR><TR><TD ALIGN="LEFT">generada en</TD></TR></TABLE>>];
+revision_recomendacion [id="entity-revision_recomendacion",label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5"><TR><TD BGCOLOR="#dddddd"><B>revision recomendacion</B></TD></TR><TR><TD ALIGN="LEFT">ID id revision recomendacion</TD></TR><TR><TD ALIGN="LEFT">decision</TD></TR><TR><TD ALIGN="LEFT">motivo</TD></TR><TR><TD ALIGN="LEFT">creada en</TD></TR></TABLE>>];
+consulta_video [id="entity-consulta_video",label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5"><TR><TD BGCOLOR="#dddddd"><B>consulta video</B></TD></TR><TR><TD ALIGN="LEFT">ID id consulta video</TD></TR><TR><TD ALIGN="LEFT">modalidad</TD></TR><TR><TD ALIGN="LEFT">desde</TD></TR><TR><TD ALIGN="LEFT">hasta ?</TD></TR><TR><TD ALIGN="LEFT">resultado</TD></TR><TR><TD ALIGN="LEFT">motivo</TD></TR><TR><TD ALIGN="LEFT">creada en</TD></TR></TABLE>>];
+camara -> organizacion [taillabel="0..*",headlabel="1",label="pertenece a"];
+sesion_busqueda -> caso [taillabel="0..*",headlabel="1",label="pertenece al caso"];
+sesion_busqueda -> usuario [taillabel="0..*",headlabel="1",label="creada por"];
+sesion_busqueda -> observacion_busqueda [taillabel="0..1",headlabel="0..1",label="observacion ancla"];
+observacion_busqueda -> sesion_busqueda [taillabel="0..*",headlabel="1",label="integra la sesión"];
+observacion_busqueda -> avistamiento [taillabel="0..*",headlabel="0..1",label="proviene de"];
+observacion_busqueda -> evidencia [taillabel="0..*",headlabel="0..1",label="usa evidencia"];
+observacion_busqueda -> camara [taillabel="0..*",headlabel="0..1",label="consulta cámara"];
+observacion_busqueda -> usuario [taillabel="0..*",headlabel="0..1",label="revisado por"];
+hipotesis_ruta -> sesion_busqueda [taillabel="0..*",headlabel="1",label="integra la sesión"];
+hipotesis_ruta -> observacion_busqueda [taillabel="0..*",headlabel="1",label="observacion ancla"];
+recomendacion_camara -> hipotesis_ruta [taillabel="0..*",headlabel="1",label="se basa en"];
+recomendacion_camara -> sesion_busqueda [taillabel="0..*",headlabel="1",label="integra la sesión"];
+recomendacion_camara -> camara [taillabel="0..*",headlabel="1",label="consulta cámara"];
+revision_recomendacion -> recomendacion_camara [taillabel="0..*",headlabel="1",label="revisa recomendación"];
+revision_recomendacion -> usuario [taillabel="0..*",headlabel="1",label="corresponde a"];
+consulta_video -> caso [taillabel="0..*",headlabel="1",label="pertenece al caso"];
+consulta_video -> camara [taillabel="0..*",headlabel="1",label="consulta cámara"];
+consulta_video -> usuario [taillabel="0..*",headlabel="1",label="corresponde a"];
+}

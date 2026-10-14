@@ -1,0 +1,12 @@
+digraph G {
+graph [rankdir=LR, bgcolor="white", pad=0.4, nodesep=0.45, ranksep=1.5, splines=polyline, overlap=false, outputorder=edgesfirst, fontname="Times New Roman", fontsize=20, labelloc=t, label="RutaAlerta · 08 Analitica\nMER conceptual · ID identificador · ? opcional · extremos min..max"];
+node [shape=plain, fontname="Times New Roman"];
+edge [fontname="Times New Roman",fontsize=10, color="#555555", arrowsize=0.6, dir=none, labeldistance=2.5];
+usuario [id="entity-usuario",label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5"><TR><TD BGCOLOR="#eeeeee"><B>usuario</B> [referencia]</TD></TR><TR><TD ALIGN="LEFT">id_usuario [ID]</TD></TR></TABLE>>];
+organizacion [id="entity-organizacion",label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5"><TR><TD BGCOLOR="#eeeeee"><B>organizacion</B> [referencia]</TD></TR><TR><TD ALIGN="LEFT">id_organizacion [ID]</TD></TR></TABLE>>];
+version_indicador [id="entity-version_indicador",label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5"><TR><TD BGCOLOR="#dddddd"><B>version indicador</B></TD></TR><TR><TD ALIGN="LEFT">ID id version indicador</TD></TR><TR><TD ALIGN="LEFT">codigo</TD></TR><TR><TD ALIGN="LEFT">version</TD></TR><TR><TD ALIGN="LEFT">nombre</TD></TR><TR><TD ALIGN="LEFT">definicion</TD></TR><TR><TD ALIGN="LEFT">numerador def</TD></TR><TR><TD ALIGN="LEFT">denominador def</TD></TR><TR><TD ALIGN="LEFT">unidad</TD></TR><TR><TD ALIGN="LEFT">fuentes</TD></TR><TR><TD ALIGN="LEFT">limitaciones</TD></TR><TR><TD ALIGN="LEFT">creada en</TD></TR></TABLE>>];
+consulta_indicador [id="entity-consulta_indicador",label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5"><TR><TD BGCOLOR="#dddddd"><B>consulta indicador</B></TD></TR><TR><TD ALIGN="LEFT">ID id consulta indicador</TD></TR><TR><TD ALIGN="LEFT">periodo desde</TD></TR><TR><TD ALIGN="LEFT">periodo hasta</TD></TR><TR><TD ALIGN="LEFT">corte en</TD></TR><TR><TD ALIGN="LEFT">filtros</TD></TR><TR><TD ALIGN="LEFT">numerador ?</TD></TR><TR><TD ALIGN="LEFT">denominador ?</TD></TR><TR><TD ALIGN="LEFT">resultado ?</TD></TR><TR><TD ALIGN="LEFT">entorno</TD></TR><TR><TD ALIGN="LEFT">estado</TD></TR><TR><TD ALIGN="LEFT">clave exportacion privada ?</TD></TR></TABLE>>];
+consulta_indicador -> version_indicador [taillabel="0..*",headlabel="1",label="usa definición"];
+consulta_indicador -> usuario [taillabel="0..*",headlabel="1",label="corresponde a"];
+consulta_indicador -> organizacion [taillabel="0..*",headlabel="1",label="pertenece a"];
+}
