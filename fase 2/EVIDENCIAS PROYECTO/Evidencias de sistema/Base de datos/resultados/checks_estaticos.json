@@ -1,0 +1,32 @@
+{
+ "fecha": "2026-10-14T11:05:19",
+ "CP38": {
+  "archivos_revisados": [
+   "01_Esquema_PostgreSQL_PostGIS.sql",
+   "02_Vistas_y_operaciones.sql",
+   "03_Datos_demo.sql",
+   "04_Pruebas_integridad.sql",
+   "05_Consultas_espaciales.sql",
+   "06_Catalogo_indicadores.sql",
+   "RutaAlerta_PostgreSQL_Completo.sql"
+  ],
+  "hallazgos": [],
+  "resultado": "Aprobado"
+ },
+ "CP39": {
+  "casos_uso": 31,
+  "casos_sin_objetivo": [],
+  "objetivos_cubiertos": [
+   "OE1",
+   "OE2",
+   "OE3",
+   "OE4",
+   "OE5",
+   "OE6"
+  ],
+  "tablas_en_modelo": 56,
+  "tablas_trazadas": 56,
+  "tablas_sin_traza": [],
+  "resultado": "Aprobado"
+ }
+}

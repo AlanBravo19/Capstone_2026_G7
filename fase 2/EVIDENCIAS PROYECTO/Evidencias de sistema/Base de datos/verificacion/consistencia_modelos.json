@@ -1,0 +1,9 @@
+{
+  "casos_uso": 31,
+  "objetivos": 6,
+  "tablas": 56,
+  "columnas": 549,
+  "claves_foraneas": 110,
+  "tablas_sin_trazabilidad": [],
+  "objetivos_sin_casos": []
+}

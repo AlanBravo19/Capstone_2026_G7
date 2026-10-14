@@ -1,0 +1,154 @@
+{
+  "versions": [
+    {
+      "version": "PostgreSQL 18.3 (PGlite 0.5.8) on wasm32-unknown-emscripten, compiled by emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 3.1.74 (1092ec30a3fb1d46b1782ff1b4db5094d3d06ae5), 32-bit",
+      "postgis_full_version": "POSTGIS=\"3.6.2 0\" [EXTENSION] PGSQL=\"180\" GEOS=\"3.14.0-CAPI-1.20.4\" PROJ=\"9.7.0 NETWORK_ENABLED=OFF URL_ENDPOINT=https://cdn.proj.org USER_WRITABLE_DIRECTORY=/home/postgres/.local/share/proj DATABASE_PATH=/pglite/share/proj/proj.db\" (compiled against PROJ 9.7.0) LIBXML=\"2.14.5\" LIBJSON=\"0.18\""
+    }
+  ],
+  "tests": [
+    {
+      "prueba": "T01 correo normalizado único",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T02 patente normalizada única",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T03 referencia a modelo inexistente",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T04 asignación de organización ajena",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T05 una asignación vigente por caso",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T06 evidencia no puede mezclar casos",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T07 fotografía recibida requiere metadatos",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T08 hash debe tener 32 bytes",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T09 confianza no se concede al mismo usuario",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T10 confianza requiere vencimiento posterior",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T11 historial de revisión no se sobrescribe",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T12 cámara ajena no se consulta dentro del caso",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T13 una fuente por soporte de afirmación",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T14 soporte no puede quedar sin destino",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T15 candidato no mezcla evidencia de otro caso",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T16 rango visual no puede ser negativo",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T17 decisión de candidato exige motivo",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T18 revisión exige miembro de la organización",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T19 no se envía push a dispositivo de otro usuario",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T20 avistamiento futuro rechazado",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T21 hipótesis necesita ventana temporal positiva",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T22 cerrar caso requiere motivo y fecha",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T23 ruta no publica exposición con datos insuficientes",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T24 se impide autorreferencia de caso duplicado",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T25 geometría exige SRID declarado",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T26 destino de soporte pertenece a la misma sesión",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T27 consulta de indicador exige intervalo",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T28 estado de objetivo admite OE5 y OE6",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T29 distancia PostGIS en metros",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T30 cruce de geometrías",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T31 56 tablas creadas",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T32 110 claves foráneas creadas",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T33 revisión con historial y evento transaccional",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T34 objetivos ampliados presentes",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T35 recuperación requiere fecha y respaldo",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T36 respaldo de recuperación pertenece al caso",
+      "resultado": "CORRECTO"
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+﻿Caso de uso,Acción,Actor principal,Objetivos,Contribución,Entidades
+CU01,Administrar cuenta,Ciudadano,OE1; OE2; OE3; OE4; OE5; OE6,Habilitante,usuario; rol; usuario_rol; token_acceso; preferencia; consentimiento
+CU02,Registrar vehículo,Ciudadano,OE2; OE3,Directa,marca; modelo; vehiculo; foto_vehiculo; vinculo_vehiculo
+CU03,Reportar incidente,Ciudadano,OE2; OE4,Directa,caso; vehiculo; usuario; organizacion; hecho_territorial; evento_salida
+CU04,Aportar evidencia,Ciudadano,OE2; OE3,Directa,evidencia; caso; avistamiento
+CU05,Comunicar avistamiento,Ciudadano,OE3,Directa,solicitud_colaboracion; avistamiento; evidencia; evento_salida
+CU06,Consultar seguimiento y orientación,Ciudadano; Contacto de confianza,OE4,Directa,caso; gestion_caso; acceso_confianza; recurso_apoyo; notificacion
+CU07,Autorizar contacto de confianza,Ciudadano,OE4,Directa,acceso_confianza; usuario; caso
+CU08,Consultar antecedentes territoriales,Ciudadano,OE1,Directa,hecho_territorial; fuente_datos; lote_importacion; registro_fuente
+CU09,Comparar alternativas de ruta,Ciudadano,OE1,Directa,consulta_ruta; alternativa_ruta; hecho_territorial
+CU10,Iniciar trayecto con avisos,Ciudadano,OE1,Directa,trayecto; alternativa_ruta; consulta_ruta; preferencia; consentimiento
+CU11,Consultar solicitudes ciudadanas,Ciudadano,OE3,Directa,solicitud_colaboracion; vehiculo; modelo; marca
+CU12,Configurar avisos y privacidad,Ciudadano,OE1; OE4,Habilitante,preferencia; consentimiento; dispositivo
+CU13,Consultar casos y alertas,Operador,OE2,Directa,caso; asignacion_caso; gestion_caso; avistamiento; evidencia; notificacion
+CU14,Revisar aportes y duplicados,Operador,OE2; OE3,Directa,avistamiento; revision_avistamiento; evidencia; caso; vinculo_vehiculo; evento_auditoria; evento_salida
+CU15,Asignar caso,Supervisor,OE2,Directa,asignacion_caso; membresia; caso; organizacion
+CU16,Registrar gestión y cierre,Operador,OE2; OE4,Directa,gestion_caso; caso; derivacion_caso; canal_derivacion; evento_salida
+CU17,Publicar solicitud de colaboración,Operador,OE3,Directa,solicitud_colaboracion; caso; vehiculo
+CU18,Consultar indicadores y exportar informe,Operador,OE2; OE6,Directa,version_indicador; consulta_indicador; caso; vehiculo; modelo; marca; revision_avistamiento; gestion_caso; ejecucion_modelo; candidato_visual; ejecucion_prueba; medicion
+CU19,Administrar usuarios y permisos,Administrador,OE2; OE3; OE4,Habilitante,usuario; rol; usuario_rol; membresia; organizacion; moderacion_usuario; vinculo_vehiculo; evento_auditoria
+CU20,Gestionar fuentes históricas,Administrador,OE1,Habilitante,fuente_datos; lote_importacion; registro_fuente
+CU21,Revisar datos territoriales,Administrador,OE1; OE3,Habilitante,registro_fuente; hecho_territorial; caso
+CU22,Mantener recursos de apoyo,Administrador,OE4,Habilitante,recurso_apoyo; usuario
+CU23,Consultar auditoría,Administrador,OE2; OE3; OE4,Habilitante,evento_auditoria; consulta_video; revision_avistamiento; revision_recomendacion
+CU24,Ejecutar escenarios de evaluación,Evaluador,OE1; OE2; OE3; OE4; OE5; OE6,Habilitante,escenario_prueba; ejecucion_prueba; medicion
+CU25,Recibir aviso territorial,Ciudadano,OE1,Directa,aviso_territorial; trayecto; hecho_territorial; notificacion; entrega_notificacion; dispositivo
+CU26,Administrar cámaras autorizadas,Administrador,OE5,Habilitante,camara; organizacion; evento_auditoria
+CU27,Consultar video autorizado,Operador,OE2; OE5,Directa,consulta_video; camara; caso; evidencia
+CU28,Explorar recorridos posibles,Operador,OE5,Directa,sesion_busqueda; observacion_busqueda; hipotesis_ruta; recomendacion_camara; camara
+CU29,Comparar candidatos visuales,Operador,OE5,Directa,version_modelo; ejecucion_modelo; candidato_visual; evidencia; observacion_busqueda
+CU30,Consultar copiloto del caso,Operador,OE2; OE5,Directa,consulta_copiloto; afirmacion_copiloto; soporte_afirmacion; ejecucion_modelo
+CU31,Revisar recomendaciones de búsqueda,Operador,OE5,Directa,recomendacion_camara; revision_recomendacion; hipotesis_ruta; camara

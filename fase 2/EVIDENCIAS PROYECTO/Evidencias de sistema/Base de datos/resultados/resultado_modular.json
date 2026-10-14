@@ -1,0 +1,602 @@
+{
+  "fecha_ejecucion": "2026-10-14T13:06:02.181Z",
+  "modo": "modular",
+  "host": {
+    "os": "Windows_NT 10.0.26200 x64",
+    "cpu": "AMD Ryzen 5 5600U with Radeon Graphics         ",
+    "node": "v24.16.0"
+  },
+  "pasos": [
+    {
+      "archivo": "01_Esquema_PostgreSQL_PostGIS.sql",
+      "estado": "Correcto",
+      "ms": 8044
+    },
+    {
+      "archivo": "02_Vistas_y_operaciones.sql",
+      "estado": "Correcto",
+      "ms": 21
+    },
+    {
+      "archivo": "06_Catalogo_indicadores.sql",
+      "estado": "Correcto",
+      "ms": 5
+    },
+    {
+      "archivo": "03_Datos_demo.sql",
+      "estado": "Correcto",
+      "ms": 137
+    },
+    {
+      "archivo": "04_Pruebas_integridad.sql",
+      "estado": "Ejecutado",
+      "ms": 96
+    },
+    {
+      "archivo": "05_Consultas_espaciales.sql",
+      "estado": "Correcto"
+    }
+  ],
+  "pruebas": [
+    {
+      "prueba": "T01 correo normalizado único",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T02 patente normalizada única",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T03 referencia a modelo inexistente",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T04 asignación de organización ajena",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T05 una asignación vigente por caso",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T06 evidencia no puede mezclar casos",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T07 fotografía recibida requiere metadatos",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T08 hash debe tener 32 bytes",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T09 confianza no se concede al mismo usuario",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T10 confianza requiere vencimiento posterior",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T11 historial de revisión no se sobrescribe",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T12 cámara ajena no se consulta dentro del caso",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T13 una fuente por soporte de afirmación",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T14 soporte no puede quedar sin destino",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T15 candidato no mezcla evidencia de otro caso",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T16 rango visual no puede ser negativo",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T17 decisión de candidato exige motivo",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T18 revisión exige miembro de la organización",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T19 no se envía push a dispositivo de otro usuario",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T20 avistamiento futuro rechazado",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T21 hipótesis necesita ventana temporal positiva",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T22 cerrar caso requiere motivo y fecha",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T23 ruta no publica exposición con datos insuficientes",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T24 se impide autorreferencia de caso duplicado",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T25 geometría exige SRID declarado",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T26 destino de soporte pertenece a la misma sesión",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T27 consulta de indicador exige intervalo",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T28 estado de objetivo admite OE5 y OE6",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T29 distancia PostGIS en metros",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T30 cruce de geometrías",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T31 56 tablas creadas",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T32 110 claves foráneas creadas",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T33 revisión con historial y evento transaccional",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T34 objetivos ampliados presentes",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T35 recuperación requiere fecha y respaldo",
+      "resultado": "CORRECTO"
+    },
+    {
+      "prueba": "T36 respaldo de recuperación pertenece al caso",
+      "resultado": "CORRECTO"
+    }
+  ],
+  "motor": {
+    "v": "PostgreSQL 18.3 (PGlite 0.5.8) on wasm32-unknown-emscripten, compiled by emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 3.1.74 (1092ec30a3fb1d46b1782ff1b4db5094d3d06ae5), 32-bit",
+    "p": "POSTGIS=\"3.6.2 0\" [EXTENSION] PGSQL=\"180\" GEOS=\"3.14.0-CAPI-1.20.4\" PROJ=\"9.7.0 NETWORK_ENABLED=OFF URL_ENDPOINT=https://cdn.proj.org USER_WRITABLE_DIRECTORY=/home/postgres/.local/share/proj DATABASE_PATH=/pglite/share/proj/proj.db\" (compiled against PROJ 9.7.0) LIBXML=\"2.14.5\" LIBJSON=\"0.18\""
+  },
+  "conteos": {
+    "tablas": 56,
+    "columnas": 549,
+    "claves_foraneas": 110,
+    "claves_primarias": 56,
+    "checks": 250,
+    "unicas": 51,
+    "indices": 250,
+    "vistas": 5,
+    "funciones": 3,
+    "triggers": 7,
+    "indicadores_catalogo": 19
+  },
+  "tablas": [
+    "acceso_confianza",
+    "afirmacion_copiloto",
+    "alternativa_ruta",
+    "asignacion_caso",
+    "aviso_territorial",
+    "avistamiento",
+    "camara",
+    "canal_derivacion",
+    "candidato_visual",
+    "caso",
+    "consentimiento",
+    "consulta_copiloto",
+    "consulta_indicador",
+    "consulta_ruta",
+    "consulta_video",
+    "derivacion_caso",
+    "dispositivo",
+    "ejecucion_modelo",
+    "ejecucion_prueba",
+    "entrega_notificacion",
+    "escenario_prueba",
+    "evento_auditoria",
+    "evento_salida",
+    "evidencia",
+    "foto_vehiculo",
+    "fuente_datos",
+    "gestion_caso",
+    "hecho_territorial",
+    "hipotesis_ruta",
+    "lote_importacion",
+    "marca",
+    "medicion",
+    "membresia",
+    "modelo",
+    "moderacion_usuario",
+    "notificacion",
+    "observacion_busqueda",
+    "organizacion",
+    "preferencia",
+    "recomendacion_camara",
+    "recurso_apoyo",
+    "registro_fuente",
+    "revision_avistamiento",
+    "revision_recomendacion",
+    "rol",
+    "sesion_busqueda",
+    "solicitud_colaboracion",
+    "soporte_afirmacion",
+    "token_acceso",
+    "trayecto",
+    "usuario",
+    "usuario_rol",
+    "vehiculo",
+    "version_indicador",
+    "version_modelo",
+    "vinculo_vehiculo"
+  ],
+  "filas_demo": [
+    {
+      "tabla": "acceso_confianza",
+      "filas": 0
+    },
+    {
+      "tabla": "afirmacion_copiloto",
+      "filas": 0
+    },
+    {
+      "tabla": "alternativa_ruta",
+      "filas": 0
+    },
+    {
+      "tabla": "asignacion_caso",
+      "filas": 0
+    },
+    {
+      "tabla": "aviso_territorial",
+      "filas": 0
+    },
+    {
+      "tabla": "avistamiento",
+      "filas": 0
+    },
+    {
+      "tabla": "camara",
+      "filas": 0
+    },
+    {
+      "tabla": "canal_derivacion",
+      "filas": 0
+    },
+    {
+      "tabla": "candidato_visual",
+      "filas": 0
+    },
+    {
+      "tabla": "caso",
+      "filas": 0
+    },
+    {
+      "tabla": "consentimiento",
+      "filas": 0
+    },
+    {
+      "tabla": "consulta_copiloto",
+      "filas": 0
+    },
+    {
+      "tabla": "consulta_indicador",
+      "filas": 0
+    },
+    {
+      "tabla": "consulta_ruta",
+      "filas": 0
+    },
+    {
+      "tabla": "consulta_video",
+      "filas": 0
+    },
+    {
+      "tabla": "derivacion_caso",
+      "filas": 0
+    },
+    {
+      "tabla": "dispositivo",
+      "filas": 0
+    },
+    {
+      "tabla": "ejecucion_modelo",
+      "filas": 0
+    },
+    {
+      "tabla": "ejecucion_prueba",
+      "filas": 0
+    },
+    {
+      "tabla": "entrega_notificacion",
+      "filas": 0
+    },
+    {
+      "tabla": "escenario_prueba",
+      "filas": 0
+    },
+    {
+      "tabla": "evento_auditoria",
+      "filas": 0
+    },
+    {
+      "tabla": "evento_salida",
+      "filas": 0
+    },
+    {
+      "tabla": "evidencia",
+      "filas": 0
+    },
+    {
+      "tabla": "foto_vehiculo",
+      "filas": 0
+    },
+    {
+      "tabla": "fuente_datos",
+      "filas": 0
+    },
+    {
+      "tabla": "gestion_caso",
+      "filas": 0
+    },
+    {
+      "tabla": "hecho_territorial",
+      "filas": 0
+    },
+    {
+      "tabla": "hipotesis_ruta",
+      "filas": 0
+    },
+    {
+      "tabla": "lote_importacion",
+      "filas": 0
+    },
+    {
+      "tabla": "marca",
+      "filas": 0
+    },
+    {
+      "tabla": "medicion",
+      "filas": 0
+    },
+    {
+      "tabla": "membresia",
+      "filas": 0
+    },
+    {
+      "tabla": "modelo",
+      "filas": 0
+    },
+    {
+      "tabla": "moderacion_usuario",
+      "filas": 0
+    },
+    {
+      "tabla": "notificacion",
+      "filas": 0
+    },
+    {
+      "tabla": "observacion_busqueda",
+      "filas": 0
+    },
+    {
+      "tabla": "organizacion",
+      "filas": 0
+    },
+    {
+      "tabla": "preferencia",
+      "filas": 0
+    },
+    {
+      "tabla": "recomendacion_camara",
+      "filas": 0
+    },
+    {
+      "tabla": "recurso_apoyo",
+      "filas": 0
+    },
+    {
+      "tabla": "registro_fuente",
+      "filas": 0
+    },
+    {
+      "tabla": "revision_avistamiento",
+      "filas": 0
+    },
+    {
+      "tabla": "revision_recomendacion",
+      "filas": 0
+    },
+    {
+      "tabla": "rol",
+      "filas": 0
+    },
+    {
+      "tabla": "sesion_busqueda",
+      "filas": 0
+    },
+    {
+      "tabla": "solicitud_colaboracion",
+      "filas": 0
+    },
+    {
+      "tabla": "soporte_afirmacion",
+      "filas": 0
+    },
+    {
+      "tabla": "token_acceso",
+      "filas": 0
+    },
+    {
+      "tabla": "trayecto",
+      "filas": 0
+    },
+    {
+      "tabla": "usuario",
+      "filas": 0
+    },
+    {
+      "tabla": "usuario_rol",
+      "filas": 0
+    },
+    {
+      "tabla": "vehiculo",
+      "filas": 0
+    },
+    {
+      "tabla": "version_indicador",
+      "filas": 0
+    },
+    {
+      "tabla": "version_modelo",
+      "filas": 0
+    },
+    {
+      "tabla": "vinculo_vehiculo",
+      "filas": 0
+    }
+  ],
+  "consultas_espaciales": [
+    [
+      {
+        "id_camara": 1,
+        "nombre": "Cámara ficticia A",
+        "distancia_m": 142.39307057
+      }
+    ],
+    [
+      {
+        "zona": "Zona sintética A",
+        "hechos_validados": 1
+      }
+    ]
+  ],
+  "vistas": {
+    "v_bandeja_institucional": [
+      {
+        "id_caso": 1,
+        "id_organizacion": 1,
+        "folio": "DEMO-001",
+        "estado": "reportado",
+        "prioridad": "normal",
+        "entorno": "prueba",
+        "creado_en": "2026-10-14T13:06:10.261Z",
+        "id_membresia": 1,
+        "aportes_pendientes": 0,
+        "primera_revision_en": "2026-10-14T13:06:10.261Z"
+      },
+      {
+        "id_caso": 2,
+        "id_organizacion": 2,
+        "folio": "DEMO-002",
+        "estado": "reportado",
+        "prioridad": "normal",
+        "entorno": "prueba",
+        "creado_en": "2026-10-14T13:06:10.261Z",
+        "id_membresia": null,
+        "aportes_pendientes": 0,
+        "primera_revision_en": null
+      }
+    ],
+    "v_solicitudes_publicables": [
+      {
+        "id_solicitud_colaboracion": 1,
+        "zona_publicable": "Sector sintético",
+        "texto_aprobado": "Vehículo ficticio DEMO01. No es una búsqueda real.",
+        "inicio": "2026-10-14T12:06:10.261Z",
+        "vence_en": "2026-10-15T13:06:10.261Z",
+        "patente_normalizada": "DEMO01",
+        "color": "gris",
+        "modelo": "Modelo piloto",
+        "marca": "Marca ficticia"
+      }
+    ],
+    "v_seguimiento_limitado": [
+      {
+        "id_caso": 1,
+        "folio": "DEMO-001",
+        "id_usuario_reportante": 1,
+        "estado": "reportado",
+        "motivo_cierre": null,
+        "zona": "Zona sintética A",
+        "fecha_hecho": "2026-10-13T13:06:10.261Z",
+        "actualizado_en": "2026-10-14T13:06:10.261Z"
+      },
+      {
+        "id_caso": 2,
+        "folio": "DEMO-002",
+        "id_usuario_reportante": 1,
+        "estado": "reportado",
+        "motivo_cierre": null,
+        "zona": "Zona sintética B",
+        "fecha_hecho": "2026-10-13T13:06:10.261Z",
+        "actualizado_en": "2026-10-14T13:06:10.261Z"
+      }
+    ],
+    "v_revisiones_oportunas": [
+      {
+        "id_avistamiento": 1,
+        "id_caso": 1,
+        "id_organizacion": 1,
+        "entorno": "prueba",
+        "recibido_en": "2026-10-14T13:06:10.261Z",
+        "estado_revision": "aceptado",
+        "primera_decision_en": "2026-10-14T13:06:10.342Z",
+        "segundos_primera_decision": "0.081000"
+      }
+    ],
+    "v_casos_por_marca": [
+      {
+        "id_organizacion": 1,
+        "entorno": "prueba",
+        "mes": "2026-10-01T03:00:00.000Z",
+        "marca": "Marca ficticia",
+        "modelo": "Modelo piloto",
+        "casos_reportados": 1,
+        "recuperaciones_registradas": 0
+      },
+      {
+        "id_organizacion": 2,
+        "entorno": "prueba",
+        "mes": "2026-10-01T03:00:00.000Z",
+        "marca": "Marca ficticia",
+        "modelo": "Modelo piloto",
+        "casos_reportados": 1,
+        "recuperaciones_registradas": 0
+      }
+    ]
+  },
+  "resumen": {
+    "total": 36,
+    "correctas": 36
+  },
+  "duracion_total_ms": 8612
+}
