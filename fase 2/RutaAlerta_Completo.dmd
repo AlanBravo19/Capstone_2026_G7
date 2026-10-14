@@ -1,8 +1,0 @@
-<?xml version='1.0' encoding='UTF-8'?>
-<OSDM_Design class="oracle.dbtools.crest.model.design.Design" name="RutaAlerta_Completo" id="2B074342-3176-587E-BD26-3B2F75557C20" version="3.5">
-  <createdBy>Grupo 7</createdBy>
-  <createdTime>2026-10-01 18:14:00 UTC</createdTime>
-  <ownerDesignName>RutaAlerta_Completo</ownerDesignName>
-  <capitalNames>false</capitalNames>
-  <designId>2B074342-3176-587E-BD26-3B2F75557C20</designId>
-</OSDM_Design>
