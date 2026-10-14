@@ -1,0 +1,12 @@
+Ejecución: 2026-10-14 11:48:52 -0300 · Python 3.14.5 · Windows 11 · FastAPI 0.115.14 · pg8000 1.31.5 · base de prueba: PGlite 0.5.8 + PostGIS 0.2.8 + pglite-socket 0.2.13 cargada con RutaAlerta_PostgreSQL_Completo.sql, 06_Catalogo_indicadores.sql y 03_Datos_demo.sql
+tests/test_casos.py::test_cp42_reporte_devuelve_folio_persistido PASSED  [ 10%]
+tests/test_casos.py::test_cp43_reintento_con_misma_clave_no_duplica PASSED [ 20%]
+tests/test_casos.py::test_reporte_rechaza_vehiculo_no_vinculado_y_fecha_futura PASSED [ 30%]
+tests/test_casos.py::test_cp44_bandeja_y_detalle_restringidos_a_la_organizacion PASSED [ 40%]
+tests/test_cuentas.py::test_health_conecta_con_postgis PASSED            [ 50%]
+tests/test_cuentas.py::test_cp40_registro_ciudadano_y_correo_repetido PASSED [ 60%]
+tests/test_cuentas.py::test_cp40_registro_no_concede_ambito_institucional PASSED [ 70%]
+tests/test_cuentas.py::test_cp41_token_de_recuperacion_de_un_solo_uso PASSED [ 80%]
+tests/test_cuentas.py::test_cp41_token_vencido_rechazado PASSED          [ 90%]
+tests/test_cuentas.py::test_sin_token_no_hay_acceso PASSED               [100%]
+============================= 10 passed in 3.88s ==============================
