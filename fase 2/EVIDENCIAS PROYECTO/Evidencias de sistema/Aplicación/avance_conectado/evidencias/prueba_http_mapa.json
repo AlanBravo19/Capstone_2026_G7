@@ -1,0 +1,118 @@
+{
+  "fecha_utc": "2026-10-29T05:36:25.700267+00:00",
+  "url": "https://rutaalerta-mvp-g7.vercel.app",
+  "nota": "Datos ficticios; correo y SMS simulados. Ejecución HTTP real contra Vercel y Supabase.",
+  "resultados": [
+    {
+      "paso": "Página disponible",
+      "ruta": "/",
+      "esperado": 200,
+      "obtenido": 200,
+      "correcto": true
+    },
+    {
+      "paso": "Conexión Supabase",
+      "ruta": "/health",
+      "esperado": 200,
+      "obtenido": 200,
+      "correcto": true
+    },
+    {
+      "paso": "Crear cuenta ficticia",
+      "ruta": "/cuentas",
+      "esperado": 201,
+      "obtenido": 201,
+      "correcto": true
+    },
+    {
+      "paso": "Ingresar",
+      "ruta": "/sesiones",
+      "esperado": 201,
+      "obtenido": 201,
+      "correcto": true
+    },
+    {
+      "paso": "Solicitar token simulado",
+      "ruta": "/identidad/correo/solicitar",
+      "esperado": 202,
+      "obtenido": 202,
+      "correcto": true
+    },
+    {
+      "paso": "Verificar correo",
+      "ruta": "/identidad/correo/confirmar",
+      "esperado": 200,
+      "obtenido": 200,
+      "correcto": true
+    },
+    {
+      "paso": "Solicitar OTP simulado",
+      "ruta": "/identidad/telefono/solicitar",
+      "esperado": 202,
+      "obtenido": 202,
+      "correcto": true
+    },
+    {
+      "paso": "Verificar teléfono",
+      "ruta": "/identidad/telefono/confirmar",
+      "esperado": 200,
+      "obtenido": 200,
+      "correcto": true
+    },
+    {
+      "paso": "Persistir vehículo",
+      "ruta": "/vehiculos",
+      "esperado": 201,
+      "obtenido": 201,
+      "correcto": true
+    },
+    {
+      "paso": "Consultar vehículo",
+      "ruta": "/vehiculos",
+      "esperado": 200,
+      "obtenido": 200,
+      "correcto": true
+    },
+    {
+      "paso": "Persistir caso",
+      "ruta": "/casos",
+      "esperado": 201,
+      "obtenido": 201,
+      "correcto": true
+    },
+    {
+      "paso": "Reintentar sin duplicar",
+      "ruta": "/casos",
+      "esperado": 200,
+      "obtenido": 200,
+      "correcto": true
+    },
+    {
+      "paso": "Consultar casos guardados",
+      "ruta": "/mis-casos",
+      "esperado": 200,
+      "obtenido": 200,
+      "correcto": true
+    },
+    {
+      "paso": "Coordenadas PostGIS del caso propio",
+      "ruta": "/mis-casos",
+      "correcto": true,
+      "obtenido": 200
+    },
+    {
+      "paso": "Cerrar sesión",
+      "ruta": "/sesiones/cerrar",
+      "esperado": 204,
+      "obtenido": 204,
+      "correcto": true
+    },
+    {
+      "paso": "Rechazar sesión revocada",
+      "ruta": "/mi-perfil",
+      "esperado": 401,
+      "obtenido": 401,
+      "correcto": true
+    }
+  ]
+}
