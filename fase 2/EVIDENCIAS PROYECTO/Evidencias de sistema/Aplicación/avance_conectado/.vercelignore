@@ -1,0 +1,9 @@
+.venv
+node_modules
+__pycache__
+tests
+scripts
+sql
+evidencias
+.env
+.env.*

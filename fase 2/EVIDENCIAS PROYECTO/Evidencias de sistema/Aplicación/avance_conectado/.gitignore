@@ -1,0 +1,11 @@
+.env
+.env.*
+!.env.example
+.vercel/
+evidencias_locales/
+ACCESO_DEMO_PRIVADO.txt
+*.zip
+__pycache__/
+.pytest_cache/
+.venv/
+scripts/node_modules/
