@@ -1,0 +1,7 @@
+Transcripción de la salida observada al instalar y abrir el APK mediante ADB:
+
+Performing Push Install
+Success
+Starting: Intent { cmp=cl.rutaalerta.rutaalerta_movil/.MainActivity }
+
+La pantalla Flutter de acceso fue capturada después de finalizar el primer arranque. Ver android_login.png.

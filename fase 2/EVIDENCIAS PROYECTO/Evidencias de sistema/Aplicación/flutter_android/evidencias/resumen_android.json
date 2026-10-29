@@ -1,0 +1,32 @@
+{
+  "fecha_utc": "2026-10-29T06:20:54.035273+00:00",
+  "flutter": "3.47.8",
+  "dart": "3.13.7",
+  "java": "21.0.7",
+  "android_compile_sdk": 36,
+  "android_min_sdk": 26,
+  "version": "0.4.0+1",
+  "apk_bytes": 154897018,
+  "apk_sha256": "6ad0a6a7cc51e2b8ef75e25e2610a02df570a9278580997018155c7c28b44b15",
+  "firma_android_v2_verificada": true,
+  "flutter_analyze": "sin incidencias",
+  "pruebas_locales_aprobadas": 6,
+  "prueba_remota_aprobada": 1,
+  "prueba_remota_omitida_en_ejecucion_local": 1,
+  "prueba_instalacion_emulador": "instalación exitosa y pantalla Flutter de acceso observada",
+  "telefono_fisico_probado": false,
+  "waze_probado": false,
+  "avisos_historicos_implementados": false,
+  "correo_sms_beta": "simulados",
+  "prueba_servicio_android": {
+    "metodo": "instrumentación ADB con permisos de prueba en emulador, no flujo completo de interfaz",
+    "primer_plano_detectado": true,
+    "tipo_location": "0x00000008",
+    "id_notificacion": 731,
+    "pantalla_externa_detectada": "NexusLauncherActivity",
+    "continuidad_prolongada_validada": false,
+    "estado_al_final": "sin servicio activo",
+    "limitacion": "ANR del sistema y proveedor Google en emulador con memoria limitada; inicio de sesión por interfaz no validado",
+    "ubicacion": "coordenadas inyectadas de prueba, no GPS físico"
+  }
+}

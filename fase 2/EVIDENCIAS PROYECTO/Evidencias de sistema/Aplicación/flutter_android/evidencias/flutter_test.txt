@@ -1,0 +1,9 @@
+00:00 +0: loading C:/Users/Camila Castro/Desktop/RutaAlerta/RutaAlerta_Flutter/test/api_test.dart
+00:00 +0: C:/Users/Camila Castro/Desktop/RutaAlerta/RutaAlerta_Flutter/test/live_api_test.dart: cliente Flutter registra cuenta, vehículo y reporte en Vercel/Supabase
+00:00 +0 ~1: C:/Users/Camila Castro/Desktop/RutaAlerta/RutaAlerta_Flutter/test/api_test.dart: envía invitación y sesión sólo a la API HTTPS
+00:00 +1 ~1: C:/Users/Camila Castro/Desktop/RutaAlerta/RutaAlerta_Flutter/test/api_test.dart: sesión revocada limpia los datos privados
+00:00 +2 ~1: C:/Users/Camila Castro/Desktop/RutaAlerta/RutaAlerta_Flutter/test/api_test.dart: el error del servidor se presenta sin HTML ni trazas
+00:00 +3 ~1: C:/Users/Camila Castro/Desktop/RutaAlerta/RutaAlerta_Flutter/test/api_test.dart: un reintento del mismo reporte conserva la idempotencia
+00:00 +4 ~1: C:/Users/Camila Castro/Desktop/RutaAlerta/RutaAlerta_Flutter/test/api_test.dart: el cierre elimina también la invitación aunque falle la red
+00:01 +5 ~1: C:/Users/Camila Castro/Desktop/RutaAlerta/RutaAlerta_Flutter/test/widget_test.dart: inicio muestra acceso e invitación sin pedir ubicación
+00:03 +6 ~1: All tests passed!

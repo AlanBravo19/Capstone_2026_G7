@@ -1,0 +1,3 @@
+00:00 +0: loading C:/Users/Camila Castro/Desktop/RutaAlerta/RutaAlerta_Flutter/test/live_api_test.dart
+00:00 +0: cliente Flutter registra cuenta, vehículo y reporte en Vercel/Supabase
+00:11 +1: All tests passed!

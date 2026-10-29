@@ -1,0 +1,4 @@
+Running Gradle task 'assembleDebug'...                          
+Picked up JAVA_TOOL_OPTIONS: -Djava.net.preferIPv4Stack=true -Djava.io.tmpdir=C:/Users/CAMILA~1/Desktop/RUTAAL~1/tmp/javatmp -Djdk.net.unixdomain.tmpdir=C:/Users/CAMILA~1/Desktop/RUTAAL~1/tmp/javatmp
+Running Gradle task 'assembleDebug'...                             88,7s
+√ Built build\app\outputs\flutter-apk\app-debug.apk

@@ -1,0 +1,71 @@
+ACTIVITY MANAGER SERVICES (dumpsys activity services)
+  Last ANR service:
+ServiceRecord{f3bdf94 u0 com.google.android.gms/com.google.android.location.fused.FusedLocationService c:android}
+    intent={act=com.android.location.service.FusedLocationProvider cmp=com.google.android.gms/com.google.android.location.fused.FusedLocationService}
+    packageName=com.google.android.gms
+    processName=com.google.android.gms.persistent
+    targetSdkVersion=36
+    baseDir=/product/priv-app/PrebuiltGmsCore/PrebuiltGmsCore.apk
+    dataDir=/data/user/0/com.google.android.gms
+    app=ProcessRecord{bf92b98 3721:com.google.android.gms.persistent/u0a146}
+    useNewWiuLogic_forCapabilities()=true
+    useNewWiuLogic_forStart()=true
+    useNewBfslLogic()=true
+    mAllowWiu_noBinding=DENIED
+    mAllowWiu_inBindService=DENIED
+    mAllowWiu_byBindings=DENIED
+    getFgsAllowWiu_legacy=DENIED
+    getFgsAllowWiu_new=DENIED
+    getFgsAllowWiu_forStart=DENIED
+    getFgsAllowWiu_forCapabilities=DENIED
+    allowUiJobScheduling=false
+    recentCallingPackage=android
+    recentCallingUid=1000
+    mAllowStart_noBinding=DENIED
+    mAllowStart_inBindService=DENIED
+    mAllowStart_byBindings=DENIED
+    getFgsAllowStart_legacy=DENIED
+    getFgsAllowStart_new=DENIED
+    getFgsAllowStart=DENIED
+    startForegroundCount=0
+    infoAllowStartForeground=null
+    createTime=-25s587ms startingBgTimeout=--
+    lastActivity=-25s584ms restartTime=-- createdFromFg=true
+    executeNesting=2 executeFg=true executingStart=-21s638ms
+    destroying=true destroyTime=-21s639ms
+
+  User 0 active services:
+  * ServiceRecord{9011dc2 u0 cl.rutaalerta.rutaalerta_movil/.TripLocationService c:com.android.shell}
+    intent={cmp=cl.rutaalerta.rutaalerta_movil/.TripLocationService}
+    packageName=cl.rutaalerta.rutaalerta_movil
+    processName=cl.rutaalerta.rutaalerta_movil
+    targetSdkVersion=36
+    baseDir=/data/app/~~Yr5GsE5nwowhlRh-FTGH2A==/cl.rutaalerta.rutaalerta_movil-IGcVlsc6Z_nqfHWMCQQT6g==/base.apk
+    dataDir=/data/user/0/cl.rutaalerta.rutaalerta_movil
+    app=ProcessRecord{6875b32 4313:cl.rutaalerta.rutaalerta_movil/u0a218}
+    useNewWiuLogic_forCapabilities()=true
+    useNewWiuLogic_forStart()=true
+    useNewBfslLogic()=true
+    mAllowWiu_noBinding=PROC_STATE_TOP
+    mAllowWiu_inBindService=DENIED
+    mAllowWiu_byBindings=DENIED
+    getFgsAllowWiu_legacy=PROC_STATE_TOP
+    getFgsAllowWiu_new=PROC_STATE_TOP
+    getFgsAllowWiu_forStart=PROC_STATE_TOP
+    getFgsAllowWiu_forCapabilities=PROC_STATE_TOP
+    allowUiJobScheduling=true
+    recentCallingPackage=com.android.shell
+    recentCallingUid=10218
+    mAllowStart_noBinding=PROC_STATE_TOP
+    mAllowStart_inBindService=DENIED
+    mAllowStart_byBindings=DENIED
+    getFgsAllowStart_legacy=PROC_STATE_TOP
+    getFgsAllowStart_new=PROC_STATE_TOP
+    getFgsAllowStart=PROC_STATE_TOP
+    startForegroundCount=1
+    infoAllowStartForeground=[callingPackage: com.android.shell; callingUid: 10218; uidState: TOP ; uidBFSL: [BFSL]; intent: Intent { xflg=0x4 cmp=cl.rutaalerta.rutaalerta_movil/.TripLocationService }; code:PROC_STATE_TOP; tempAllowListReason:<null>; allowWiu:12; targetSdkVersion:36; callerTargetSdkVersion:36; startForegroundCount:0; bindFromPackage:null: isBindService:false]
+    isForeground=true foregroundId=731 types=0x00000008 foregroundNoti=Notification(channel=rutaalerta_trayecto shortcut=null contentView=null vibrate=null sound=null defaults=0 flags=ONGOING_EVENT|ONLY_ALERT_ONCE|NO_CLEAR|FOREGROUND_SERVICE color=0x00000000 actions=1 vis=PRIVATE)
+    createTime=-18s435ms startingBgTimeout=--
+    lastActivity=-18s429ms restartTime=-18s429ms createdFromFg=true
+    startRequested=true delayedStop=false stopIfKilled=true callStart=true lastStartId=1
+ startCommandResult=2
