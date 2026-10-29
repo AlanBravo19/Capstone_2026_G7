@@ -2,6 +2,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 
 from ..config import config
+from ..correo import correo_real, enviar_codigo, CorreoNoDisponible
+import logging
 from ..db import fila_dict, obtener_conexion, ErrorBD
 from ..esquemas import (CuentaSalida, RecuperacionConfirmar, RecuperacionEntrada, RecuperacionSalida,
                         RegistroEntrada, SesionEntrada, SesionSalida)
@@ -61,10 +63,19 @@ def solicitar_recuperacion(datos: RecuperacionEntrada, request: Request, conn=De
     fila = cur.fetchone()
     token = None
     if fila is not None:
+        cur.execute("UPDATE token_acceso SET revocado_en=CURRENT_TIMESTAMP WHERE id_usuario=%s AND proposito='recuperar_clave' AND revocado_en IS NULL", (fila[0],))
         token, _ = emitir_token(cur, fila[0], "recuperar_clave", config.recuperacion_minutos)
+        if correo_real():
+            cur.execute('SELECT correo FROM usuario WHERE id_usuario=%s', (fila[0],))
+            try:
+                enviar_codigo(cur.fetchone()[0], token, 'recuperar_clave', config.recuperacion_minutos)
+            except CorreoNoDisponible:
+                # No distinguir cuentas existentes en la respuesta ni registrar el destinatario/token.
+                logging.getLogger(__name__).warning('Entrega de recuperación no disponible')
+                cur.execute('UPDATE token_acceso SET revocado_en=CURRENT_TIMESTAMP WHERE token_hash=%s', (huella(token),))
     return RecuperacionSalida(
         mensaje="Si el correo está registrado, se enviarán instrucciones.",
-        token_prueba=token if config.entorno == "prueba" else None,
+        token_prueba=token if config.entorno == "prueba" and not correo_real() else None,
     )
 
 

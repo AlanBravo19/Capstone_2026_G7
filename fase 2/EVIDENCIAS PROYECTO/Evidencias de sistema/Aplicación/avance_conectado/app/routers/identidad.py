@@ -7,6 +7,7 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field, field_validator
 from ..antifraude import DEMO, administrador, limitar, limitar_ip, resumen, participante
+from ..correo import correo_real, enviar_codigo, CorreoNoDisponible
 from ..db import obtener_conexion, ErrorBD, es_unico
 from ..seguridad import usuario_actual, emitir_token, huella
 
@@ -46,7 +47,16 @@ def solicitar_correo(request: Request, usuario=Depends(usuario_actual),conn=Depe
         return {'mensaje':'El correo ya está verificado.'}
     cur.execute("UPDATE token_acceso SET revocado_en=CURRENT_TIMESTAMP WHERE id_usuario=%s AND proposito='verificar_correo' AND revocado_en IS NULL",(usuario['id_usuario'],))
     token,_=emitir_token(cur,usuario['id_usuario'],'verificar_correo',15)
-    return {'mensaje':'DEMO: entrega simulada. No se envió un correo.', 'token_demo':token if DEMO else None}
+    if correo_real():
+        cur.execute('SELECT correo FROM usuario WHERE id_usuario=%s', (usuario['id_usuario'],))
+        try:
+            enviar_codigo(cur.fetchone()[0], token, 'verificar_correo', 15)
+        except CorreoNoDisponible:
+            raise HTTPException(503, 'No fue posible enviar el correo. Intenta más tarde.') from None
+        return {'mensaje':'Revisa tu correo e ingresa el código recibido.', 'canal':'correo'}
+    if not DEMO:
+        raise HTTPException(503, 'El servicio de correo todavía no está disponible.')
+    return {'mensaje':'Entrega simulada. No se envió un correo.', 'token_demo':token, 'canal':'prueba'}
 
 @router.post('/identidad/correo/confirmar')
 def confirmar_correo(datos:TokenEntrada,request:Request,conn=Depends(obtener_conexion)):
@@ -67,6 +77,8 @@ def confirmar_correo(datos:TokenEntrada,request:Request,conn=Depends(obtener_con
 
 @router.post('/identidad/telefono/solicitar',status_code=202)
 def solicitar_telefono(datos:TelefonoEntrada,usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):
+    if not DEMO:
+        raise HTTPException(503, 'La verificación SMS real todavía no está disponible.')
     limitar(conn,f'sms:{usuario["id_usuario"]}',3)
     limitar(conn,'sms-numero:'+datos.telefono,5)
     cur=conn.cursor()
@@ -115,7 +127,7 @@ def mi_estado(usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):
         FROM usuario u LEFT JOIN contacto_telefono t USING(id_usuario) WHERE u.id_usuario=%s''',(usuario['id_usuario'],))
     estado,correo,telefono=cur.fetchone()
     return {'estado':estado,'correo_verificado':correo,'telefono_verificado':telefono,
-            'puede_participar':estado=='activo' and correo and telefono,'canales_demo':DEMO}
+            'puede_participar':estado=='activo' and correo and telefono,'canales_demo':DEMO, 'transporte_correo':'smtp' if correo_real() else 'prueba'}
 
 @router.post('/sesiones/cerrar',status_code=204)
 def cerrar(request:Request,usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):

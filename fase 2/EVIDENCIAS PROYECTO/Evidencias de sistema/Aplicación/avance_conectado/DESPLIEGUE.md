@@ -51,3 +51,7 @@ No subir `.env*`, `.vercel`, `ACCESO_DEMO_PRIVADO.txt`, entornos Python o node_m
 Plan propuesto por validar con equipo y pauta: integrar proveedores de mensajes y MFA; terminar revisión/publicación, aportes y reclamaciones; conectar app/panel y permisos; probar aislamiento, concurrencia, retención y despliegue. No representa trabajo pasado ni aprobación docente.
 
 Fuentes: [Supabase PostGIS](https://supabase.com/docs/guides/database/extensions/postgis), [conexión SQL](https://supabase.com/docs/guides/database/connecting-to-postgres), [Psycopg y poolers](https://www.psycopg.org/psycopg3/docs/advanced/prepare.html), [FastAPI en Vercel](https://vercel.com/docs/frameworks/backend/fastapi).
+
+## Incremento de autenticación por correo
+
+Ver AUTENTICACION_REAL.md: implementación SMTP y recuperación incorporadas, pendientes de proveedor y recepción externa. La beta conserva sus canales de prueba hasta configurar y validar el servicio.

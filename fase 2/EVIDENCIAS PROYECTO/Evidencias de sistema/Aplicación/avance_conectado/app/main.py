@@ -8,10 +8,13 @@ import secrets
 from .db import obtener_conexion
 from .routers import casos, cuentas, identidad, avance
 from .antifraude import DEMO, SECRET
+from .correo import correo_real, configuracion_smtp
 
 # Esta entrega falla cerrada: no es una API de producción con códigos expuestos.
 if not DEMO:
-    raise RuntimeError('Avance local: habilita ENTORNO=prueba y CANALES_DEMO=1. Correo/SMS reales y MFA pendientes.')
+    if not correo_real():
+        raise RuntimeError('Configura el envío SMTP real para operar sin códigos de prueba.')
+    configuracion_smtp()
 if len(SECRET)<32:
     raise RuntimeError('OTP_SECRET debe tener al menos 32 bytes')
 if os.getenv('VERCEL'):

@@ -1,0 +1,17 @@
+test_api_correo_real_no_devuelve_token (test_correo_unitario.CorreoTests.test_api_correo_real_no_devuelve_token) ... C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\fastapi\routing.py:233: DeprecationWarning: 'asyncio.iscoroutinefunction' is deprecated and slated for removal in Python 3.16; use inspect.iscoroutinefunction() instead
+  is_coroutine = asyncio.iscoroutinefunction(dependant.call)
+ok
+test_api_no_finge_envio_si_smtp_falla (test_correo_unitario.CorreoTests.test_api_no_finge_envio_si_smtp_falla) ... ok
+test_error_no_expone_credenciales (test_correo_unitario.CorreoTests.test_error_no_expone_credenciales) ... ok
+test_rechaza_credenciales_incompletas (test_correo_unitario.CorreoTests.test_rechaza_credenciales_incompletas) ... ok
+test_rechaza_inyeccion_en_destinatario (test_correo_unitario.CorreoTests.test_rechaza_inyeccion_en_destinatario) ... ok
+test_rechaza_transporte_sin_tls (test_correo_unitario.CorreoTests.test_rechaza_transporte_sin_tls) ... ok
+test_recuperacion_real_no_revela_cuenta_ni_codigo (test_correo_unitario.CorreoTests.test_recuperacion_real_no_revela_cuenta_ni_codigo) ... ok
+test_sin_demo_no_ofrece_sms_simulado (test_correo_unitario.CorreoTests.test_sin_demo_no_ofrece_sms_simulado) ... ok
+test_ssl_con_validador_de_certificado (test_correo_unitario.CorreoTests.test_ssl_con_validador_de_certificado) ... ok
+test_starttls_antes_de_autenticar (test_correo_unitario.CorreoTests.test_starttls_antes_de_autenticar) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.712s
+
+OK
