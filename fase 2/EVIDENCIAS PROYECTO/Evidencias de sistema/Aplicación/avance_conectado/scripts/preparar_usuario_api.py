@@ -4,11 +4,11 @@ import pg8000.dbapi
 import secrets
 import sys
 sys.path.insert(0,str(BASE))
+v=cargar()
 from app.tls import contexto_tls
 from app.seguridad import cifrar_clave
 from app.db import conectar
 
-v=cargar()
 dest=BASE/'.env.runtime.local'
 if dest.exists():raise SystemExit('La configuración de ejecución ya existe; no se rotan credenciales automáticamente.')
 conn=conectar()
