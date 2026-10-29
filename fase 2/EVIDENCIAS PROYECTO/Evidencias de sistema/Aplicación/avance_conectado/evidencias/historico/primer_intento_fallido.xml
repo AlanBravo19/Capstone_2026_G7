@@ -1,0 +1,559 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="15" time="329.156" timestamp="2026-10-29T01:42:04.255444-03:00" hostname="LAPTOP-VFBHC3I0"><testcase classname="tests.test_avance_conectado" name="test_vehiculo_y_caso_conectados_y_aislamiento" time="56.592" /><testcase classname="tests.test_avance_conectado" name="test_revision_con_ambito_y_sin_publicacion" time="29.760" /><testcase classname="tests.test_avance_conectado" name="test_frontend_y_clave_demo" time="3.473" /><testcase classname="tests.test_casos" name="test_cp42_reporte_devuelve_folio_persistido" time="17.922" /><testcase classname="tests.test_casos" name="test_cp43_reintento_con_misma_clave_no_duplica" time="18.188" /><testcase classname="tests.test_casos" name="test_reporte_rechaza_vehiculo_no_vinculado_y_fecha_futura" time="25.116" /><testcase classname="tests.test_casos" name="test_cp44_bandeja_y_detalle_restringidos_a_la_organizacion" time="51.209" /><testcase classname="tests.test_cuentas" name="test_health_conecta_con_postgis" time="3.399" /><testcase classname="tests.test_cuentas" name="test_cp40_registro_ciudadano_y_correo_repetido" time="6.487" /><testcase classname="tests.test_cuentas" name="test_cp40_registro_no_concede_ambito_institucional" time="13.819" /><testcase classname="tests.test_cuentas" name="test_cp41_token_de_recuperacion_de_un_solo_uso" time="25.723" /><testcase classname="tests.test_cuentas" name="test_cp41_token_vencido_rechazado" time="15.539" /><testcase classname="tests.test_cuentas" name="test_sin_token_no_hay_acceso" time="3.008" /><testcase classname="tests.test_identidad_mvp" name="test_flujo_contactos_y_caso" time="33.432" /><testcase classname="tests.test_identidad_mvp" name="test_telefono_duplicado_no_habilita_otra_cuenta" time="24.470"><failure message="psycopg.OperationalError: consuming input failed: server closed the connection unexpectedly&#10;&#09;This probably means the server terminated abnormally&#10;&#09;before or while processing the request.&#10;server closed the connection unexpectedly&#10;&#09;This probably means the server terminated abnormally&#10;&#09;before or while processing the request.">+ Exception Group Traceback (most recent call last):
+  |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\_utils.py", line 76, in collapse_excgroups
+  |     yield
+  |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\middleware\base.py", line 177, in __call__
+  |     async with anyio.create_task_group() as task_group:
+  |                ~~~~~~~~~~~~~~~~~~~~~~~^^
+  |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\anyio\_backends\_asyncio.py", line 847, in __aexit__
+  |     raise BaseExceptionGroup(
+  |         "unhandled errors in a TaskGroup", self._exceptions
+  |     ) from None
+  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\_pytest\runner.py", line 361, in from_call
+    |     result: TResult | None = func()
+    |                              ~~~~^^
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\_pytest\runner.py", line 250, in &lt;lambda&gt;
+    |     lambda: runtest_hook(item=item, **kwds),
+    |             ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\pluggy\_hooks.py", line 512, in __call__
+    |     return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+    |            ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\pluggy\_manager.py", line 120, in _hookexec
+    |     return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+    |            ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\pluggy\_callers.py", line 167, in _multicall
+    |     raise exception
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\pluggy\_callers.py", line 139, in _multicall
+    |     teardown.throw(exception)
+    |     ~~~~~~~~~~~~~~^^^^^^^^^^^
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\_pytest\logging.py", line 865, in pytest_runtest_call
+    |     yield
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\pluggy\_callers.py", line 139, in _multicall
+    |     teardown.throw(exception)
+    |     ~~~~~~~~~~~~~~^^^^^^^^^^^
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\_pytest\capture.py", line 900, in pytest_runtest_call
+    |     return (yield)
+    |             ^^^^^
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\pluggy\_callers.py", line 139, in _multicall
+    |     teardown.throw(exception)
+    |     ~~~~~~~~~~~~~~^^^^^^^^^^^
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\_pytest\skipping.py", line 268, in pytest_runtest_call
+    |     return (yield)
+    |             ^^^^^
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\pluggy\_callers.py", line 121, in _multicall
+    |     res = hook_impl.function(*args)
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\_pytest\runner.py", line 184, in pytest_runtest_call
+    |     item.runtest()
+    |     ~~~~~~~~~~~~^^
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\_pytest\python.py", line 1707, in runtest
+    |     self.ihook.pytest_pyfunc_call(pyfuncitem=self)
+    |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\pluggy\_hooks.py", line 512, in __call__
+    |     return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+    |            ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\pluggy\_manager.py", line 120, in _hookexec
+    |     return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+    |            ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\pluggy\_callers.py", line 167, in _multicall
+    |     raise exception
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\pluggy\_callers.py", line 121, in _multicall
+    |     res = hook_impl.function(*args)
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\_pytest\python.py", line 167, in pytest_pyfunc_call
+    |     result = testfunction(**testargs)
+    |   File "C:\Users\Camila Castro\Desktop\RutaAlerta\RutaAlerta_Conectado\tests\test_identidad_mvp.py", line 53, in test_telefono_duplicado_no_habilita_otra_cuenta
+    |     _,_,_,tel=activar(client)
+    |               ~~~~~~~^^^^^^^^
+    |   File "C:\Users\Camila Castro\Desktop\RutaAlerta\RutaAlerta_Conectado\tests\test_identidad_mvp.py", line 34, in activar
+    |     uid,mail,h=cuenta(client);correo(client,h);tel=numero()
+    |                ~~~~~~^^^^^^^^
+    |   File "C:\Users\Camila Castro\Desktop\RutaAlerta\RutaAlerta_Conectado\tests\test_identidad_mvp.py", line 15, in cuenta
+    |     r=client.post('/sesiones',json={'correo':mail,'clave':CLAVE})
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\testclient.py", line 538, in post
+    |     return super().post(
+    |            ~~~~~~~~~~~~^
+    |         url,
+    |         ^^^^
+    |     ...&lt;10 lines&gt;...
+    |         extensions=extensions,
+    |         ^^^^^^^^^^^^^^^^^^^^^^
+    |     )
+    |     ^
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\httpx\_client.py", line 1144, in post
+    |     return self.request(
+    |            ~~~~~~~~~~~~^
+    |         "POST",
+    |         ^^^^^^^
+    |     ...&lt;11 lines&gt;...
+    |         extensions=extensions,
+    |         ^^^^^^^^^^^^^^^^^^^^^^
+    |     )
+    |     ^
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\testclient.py", line 437, in request
+    |     return super().request(
+    |            ~~~~~~~~~~~~~~~^
+    |         method,
+    |         ^^^^^^^
+    |     ...&lt;11 lines&gt;...
+    |         extensions=extensions,
+    |         ^^^^^^^^^^^^^^^^^^^^^^
+    |     )
+    |     ^
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\httpx\_client.py", line 825, in request
+    |     return self.send(request, auth=auth, follow_redirects=follow_redirects)
+    |            ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\httpx\_client.py", line 914, in send
+    |     response = self._send_handling_auth(
+    |         request,
+    |     ...&lt;2 lines&gt;...
+    |         history=[],
+    |     )
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\httpx\_client.py", line 942, in _send_handling_auth
+    |     response = self._send_handling_redirects(
+    |         request,
+    |         follow_redirects=follow_redirects,
+    |         history=history,
+    |     )
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\httpx\_client.py", line 979, in _send_handling_redirects
+    |     response = self._send_single_request(request)
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\httpx\_client.py", line 1014, in _send_single_request
+    |     response = transport.handle_request(request)
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\testclient.py", line 340, in handle_request
+    |     raise exc
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\testclient.py", line 337, in handle_request
+    |     portal.call(self.app, scope, receive, send)
+    |     ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\anyio\from_thread.py", line 340, in call
+    |     return cast(T_Retval, self.start_task_soon(func, *args).result())
+    |                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+    |   File "C:\Users\Camila Castro\AppData\Local\Python\pythoncore-3.14-64\Lib\concurrent\futures\_base.py", line 450, in result
+    |     return self.__get_result()
+    |            ~~~~~~~~~~~~~~~~~^^
+    |   File "C:\Users\Camila Castro\AppData\Local\Python\pythoncore-3.14-64\Lib\concurrent\futures\_base.py", line 395, in __get_result
+    |     raise self._exception
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\anyio\from_thread.py", line 265, in _call_func
+    |     retval = await retval_or_awaitable
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\fastapi\applications.py", line 1054, in __call__
+    |     await super().__call__(scope, receive, send)
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\applications.py", line 112, in __call__
+    |     await self.middleware_stack(scope, receive, send)
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\middleware\errors.py", line 187, in __call__
+    |     raise exc
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\middleware\errors.py", line 165, in __call__
+    |     await self.app(scope, receive, _send)
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\middleware\base.py", line 176, in __call__
+    |     with recv_stream, send_stream, collapse_excgroups():
+    |                                    ~~~~~~~~~~~~~~~~~~^^
+    |   File "C:\Users\Camila Castro\AppData\Local\Python\pythoncore-3.14-64\Lib\contextlib.py", line 162, in __exit__
+    |     self.gen.throw(value)
+    |     ~~~~~~~~~~~~~~^^^^^^^
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\_utils.py", line 82, in collapse_excgroups
+    |     raise exc
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\middleware\base.py", line 178, in __call__
+    |     response = await self.dispatch_func(request, call_next)
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Camila Castro\Desktop\RutaAlerta\RutaAlerta_Conectado\app\main.py", line 41, in proteger_demo
+    |     response=await call_next(request)
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\middleware\base.py", line 156, in call_next
+    |     raise app_exc
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\middleware\base.py", line 141, in coro
+    |     await self.app(scope, receive_or_disconnect, send_no_error)
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\middleware\exceptions.py", line 62, in __call__
+    |     await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    |     raise exc
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    |     await app(scope, receive, sender)
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\routing.py", line 714, in __call__
+    |     await self.middleware_stack(scope, receive, send)
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\routing.py", line 734, in app
+    |     await route.handle(scope, receive, send)
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\routing.py", line 288, in handle
+    |     await self.app(scope, receive, send)
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\routing.py", line 76, in app
+    |     await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    |     raise exc
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    |     await app(scope, receive, sender)
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\routing.py", line 73, in app
+    |     response = await f(request)
+    |                ^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\fastapi\routing.py", line 291, in app
+    |     solved_result = await solve_dependencies(
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+    |     ...&lt;6 lines&gt;...
+    |     )
+    |     ^
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\fastapi\dependencies\utils.py", line 634, in solve_dependencies
+    |     solved = await solve_generator(
+    |              ^^^^^^^^^^^^^^^^^^^^^^
+    |         call=call, stack=async_exit_stack, sub_values=solved_result.values
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |     )
+    |     ^
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\fastapi\dependencies\utils.py", line 560, in solve_generator
+    |     return await stack.enter_async_context(cm)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Camila Castro\AppData\Local\Python\pythoncore-3.14-64\Lib\contextlib.py", line 668, in enter_async_context
+    |     result = await _enter(cm)
+    |              ^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Camila Castro\AppData\Local\Python\pythoncore-3.14-64\Lib\contextlib.py", line 214, in __aenter__
+    |     return await anext(self.gen)
+    |            ^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\fastapi\concurrency.py", line 35, in contextmanager_in_threadpool
+    |     raise e
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\fastapi\concurrency.py", line 27, in contextmanager_in_threadpool
+    |     yield await run_in_threadpool(cm.__enter__)
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\concurrency.py", line 37, in run_in_threadpool
+    |     return await anyio.to_thread.run_sync(func)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\anyio\to_thread.py", line 65, in run_sync
+    |     return await get_async_backend().run_sync_in_worker_thread(
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |         func, args, abandon_on_cancel=abandon_on_cancel, limiter=limiter
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |     )
+    |     ^
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\anyio\_backends\_asyncio.py", line 2706, in run_sync_in_worker_thread
+    |     return await future
+    |            ^^^^^^^^^^^^
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\anyio\_backends\_asyncio.py", line 1100, in run
+    |     result = context.run(func, *args)
+    |   File "C:\Users\Camila Castro\AppData\Local\Python\pythoncore-3.14-64\Lib\contextlib.py", line 141, in __enter__
+    |     return next(self.gen)
+    |   File "C:\Users\Camila Castro\Desktop\RutaAlerta\RutaAlerta_Conectado\app\db.py", line 32, in obtener_conexion
+    |     conn = conectar()
+    |   File "C:\Users\Camila Castro\Desktop\RutaAlerta\RutaAlerta_Conectado\app\db.py", line 24, in conectar
+    |     cur.execute("SET search_path TO rutaalerta, public, extensions")
+    |     ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\psycopg\cursor.py", line 117, in execute
+    |     raise ex.with_traceback(None)
+    | psycopg.OperationalError: consuming input failed: server closed the connection unexpectedly
+    | 	This probably means the server terminated abnormally
+    | 	before or while processing the request.
+    | server closed the connection unexpectedly
+    | 	This probably means the server terminated abnormally
+    | 	before or while processing the request.
+    +------------------------------------
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Camila Castro\Desktop\RutaAlerta\RutaAlerta_Conectado\tests\test_identidad_mvp.py", line 53, in test_telefono_duplicado_no_habilita_otra_cuenta
+    _,_,_,tel=activar(client)
+              ~~~~~~~^^^^^^^^
+  File "C:\Users\Camila Castro\Desktop\RutaAlerta\RutaAlerta_Conectado\tests\test_identidad_mvp.py", line 34, in activar
+    uid,mail,h=cuenta(client);correo(client,h);tel=numero()
+               ~~~~~~^^^^^^^^
+  File "C:\Users\Camila Castro\Desktop\RutaAlerta\RutaAlerta_Conectado\tests\test_identidad_mvp.py", line 15, in cuenta
+    r=client.post('/sesiones',json={'correo':mail,'clave':CLAVE})
+  File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\testclient.py", line 538, in post
+    return super().post(
+           ~~~~~~~~~~~~^
+        url,
+        ^^^^
+    ...&lt;10 lines&gt;...
+        extensions=extensions,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\httpx\_client.py", line 1144, in post
+    return self.request(
+           ~~~~~~~~~~~~^
+        "POST",
+        ^^^^^^^
+    ...&lt;11 lines&gt;...
+        extensions=extensions,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\testclient.py", line 437, in request
+    return super().request(
+           ~~~~~~~~~~~~~~~^
+        method,
+        ^^^^^^^
+    ...&lt;11 lines&gt;...
+        extensions=extensions,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\httpx\_client.py", line 825, in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\httpx\_client.py", line 914, in send
+    response = self._send_handling_auth(
+        request,
+    ...&lt;2 lines&gt;...
+        history=[],
+    )
+  File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\httpx\_client.py", line 942, in _send_handling_auth
+    response = self._send_handling_redirects(
+        request,
+        follow_redirects=follow_redirects,
+        history=history,
+    )
+  File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\httpx\_client.py", line 979, in _send_handling_redirects
+    response = self._send_single_request(request)
+  File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\httpx\_client.py", line 1014, in _send_single_request
+    response = transport.handle_request(request)
+  File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\testclient.py", line 340, in handle_request
+    raise exc
+  File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\testclient.py", line 337, in handle_request
+    portal.call(self.app, scope, receive, send)
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\anyio\from_thread.py", line 340, in call
+    return cast(T_Retval, self.start_task_soon(func, *args).result())
+                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Camila Castro\AppData\Local\Python\pythoncore-3.14-64\Lib\concurrent\futures\_base.py", line 450, in result
+    return self.__get_result()
+           ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Camila Castro\AppData\Local\Python\pythoncore-3.14-64\Lib\concurrent\futures\_base.py", line 395, in __get_result
+    raise self._exception
+  File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\anyio\from_thread.py", line 265, in _call_func
+    retval = await retval_or_awaitable
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\fastapi\applications.py", line 1054, in __call__
+    await super().__call__(scope, receive, send)
+  File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\applications.py", line 112, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\middleware\errors.py", line 187, in __call__
+    raise exc
+  File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\middleware\errors.py", line 165, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\middleware\base.py", line 176, in __call__
+    with recv_stream, send_stream, collapse_excgroups():
+                                   ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Camila Castro\AppData\Local\Python\pythoncore-3.14-64\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\_utils.py", line 82, in collapse_excgroups
+    raise exc
+  File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\middleware\base.py", line 178, in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Camila Castro\Desktop\RutaAlerta\RutaAlerta_Conectado\app\main.py", line 41, in proteger_demo
+    response=await call_next(request)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\middleware\base.py", line 156, in call_next
+    raise app_exc
+  File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\middleware\base.py", line 141, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\middleware\exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\routing.py", line 714, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\routing.py", line 734, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\routing.py", line 288, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\routing.py", line 76, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\routing.py", line 73, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\fastapi\routing.py", line 291, in app
+    solved_result = await solve_dependencies(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...&lt;6 lines&gt;...
+    )
+    ^
+  File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\fastapi\dependencies\utils.py", line 634, in solve_dependencies
+    solved = await solve_generator(
+             ^^^^^^^^^^^^^^^^^^^^^^
+        call=call, stack=async_exit_stack, sub_values=solved_result.values
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\fastapi\dependencies\utils.py", line 560, in solve_generator
+    return await stack.enter_async_context(cm)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Camila Castro\AppData\Local\Python\pythoncore-3.14-64\Lib\contextlib.py", line 668, in enter_async_context
+    result = await _enter(cm)
+             ^^^^^^^^^^^^^^^^
+  File "C:\Users\Camila Castro\AppData\Local\Python\pythoncore-3.14-64\Lib\contextlib.py", line 214, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\fastapi\concurrency.py", line 35, in contextmanager_in_threadpool
+    raise e
+  File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\fastapi\concurrency.py", line 27, in contextmanager_in_threadpool
+    yield await run_in_threadpool(cm.__enter__)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\concurrency.py", line 37, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\anyio\to_thread.py", line 65, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        func, args, abandon_on_cancel=abandon_on_cancel, limiter=limiter
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\anyio\_backends\_asyncio.py", line 2706, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\anyio\_backends\_asyncio.py", line 1100, in run
+    result = context.run(func, *args)
+  File "C:\Users\Camila Castro\AppData\Local\Python\pythoncore-3.14-64\Lib\contextlib.py", line 141, in __enter__
+    return next(self.gen)
+  File "C:\Users\Camila Castro\Desktop\RutaAlerta\RutaAlerta_Conectado\app\db.py", line 32, in obtener_conexion
+    conn = conectar()
+  File "C:\Users\Camila Castro\Desktop\RutaAlerta\RutaAlerta_Conectado\app\db.py", line 24, in conectar
+    cur.execute("SET search_path TO rutaalerta, public, extensions")
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\psycopg\cursor.py", line 117, in execute
+    raise ex.with_traceback(None)
+psycopg.OperationalError: consuming input failed: server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+
+During handling of the above exception, another exception occurred:
+tests\test_identidad_mvp.py:53: in test_telefono_duplicado_no_habilita_otra_cuenta
+    _,_,_,tel=activar(client)
+              ^^^^^^^^^^^^^^^
+tests\test_identidad_mvp.py:34: in activar
+    uid,mail,h=cuenta(client);correo(client,h);tel=numero()
+               ^^^^^^^^^^^^^^
+tests\test_identidad_mvp.py:15: in cuenta
+    r=client.post('/sesiones',json={'correo':mail,'clave':CLAVE})
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\..\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\testclient.py:538: in post
+    return super().post(
+..\..\..\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\httpx\_client.py:1144: in post
+    return self.request(
+..\..\..\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\testclient.py:437: in request
+    return super().request(
+..\..\..\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\httpx\_client.py:825: in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\..\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\httpx\_client.py:914: in send
+    response = self._send_handling_auth(
+..\..\..\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\httpx\_client.py:942: in _send_handling_auth
+    response = self._send_handling_redirects(
+..\..\..\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\httpx\_client.py:979: in _send_handling_redirects
+    response = self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\..\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\httpx\_client.py:1014: in _send_single_request
+    response = transport.handle_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\..\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\testclient.py:340: in handle_request
+    raise exc
+..\..\..\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\testclient.py:337: in handle_request
+    portal.call(self.app, scope, receive, send)
+..\..\..\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\anyio\from_thread.py:340: in call
+    return cast(T_Retval, self.start_task_soon(func, *args).result())
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\..\AppData\Local\Python\pythoncore-3.14-64\Lib\concurrent\futures\_base.py:450: in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+..\..\..\AppData\Local\Python\pythoncore-3.14-64\Lib\concurrent\futures\_base.py:395: in __get_result
+    raise self._exception
+..\..\..\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\anyio\from_thread.py:265: in _call_func
+    retval = await retval_or_awaitable
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\..\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\fastapi\applications.py:1054: in __call__
+    await super().__call__(scope, receive, send)
+..\..\..\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\applications.py:112: in __call__
+    await self.middleware_stack(scope, receive, send)
+..\..\..\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\middleware\errors.py:187: in __call__
+    raise exc
+..\..\..\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\middleware\errors.py:165: in __call__
+    await self.app(scope, receive, _send)
+..\..\..\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\middleware\base.py:176: in __call__
+    with recv_stream, send_stream, collapse_excgroups():
+                                   ^^^^^^^^^^^^^^^^^^^^
+..\..\..\AppData\Local\Python\pythoncore-3.14-64\Lib\contextlib.py:162: in __exit__
+    self.gen.throw(value)
+..\..\..\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\_utils.py:82: in collapse_excgroups
+    raise exc
+..\..\..\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\middleware\base.py:178: in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\main.py:41: in proteger_demo
+    response=await call_next(request)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\..\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\middleware\base.py:156: in call_next
+    raise app_exc
+..\..\..\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\middleware\base.py:141: in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+..\..\..\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\middleware\exceptions.py:62: in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+..\..\..\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\_exception_handler.py:53: in wrapped_app
+    raise exc
+..\..\..\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+..\..\..\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\routing.py:714: in __call__
+    await self.middleware_stack(scope, receive, send)
+..\..\..\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\routing.py:734: in app
+    await route.handle(scope, receive, send)
+..\..\..\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\routing.py:288: in handle
+    await self.app(scope, receive, send)
+..\..\..\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\routing.py:76: in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+..\..\..\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\_exception_handler.py:53: in wrapped_app
+    raise exc
+..\..\..\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+..\..\..\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\routing.py:73: in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+..\..\..\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\fastapi\routing.py:291: in app
+    solved_result = await solve_dependencies(
+..\..\..\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\fastapi\dependencies\utils.py:634: in solve_dependencies
+    solved = await solve_generator(
+..\..\..\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\fastapi\dependencies\utils.py:560: in solve_generator
+    return await stack.enter_async_context(cm)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\..\AppData\Local\Python\pythoncore-3.14-64\Lib\contextlib.py:668: in enter_async_context
+    result = await _enter(cm)
+             ^^^^^^^^^^^^^^^^
+..\..\..\AppData\Local\Python\pythoncore-3.14-64\Lib\contextlib.py:214: in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+..\..\..\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\fastapi\concurrency.py:35: in contextmanager_in_threadpool
+    raise e
+..\..\..\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\fastapi\concurrency.py:27: in contextmanager_in_threadpool
+    yield await run_in_threadpool(cm.__enter__)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\..\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\concurrency.py:37: in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\..\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\anyio\to_thread.py:65: in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+..\..\..\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\anyio\_backends\_asyncio.py:2706: in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+..\..\..\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\anyio\_backends\_asyncio.py:1100: in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\..\AppData\Local\Python\pythoncore-3.14-64\Lib\contextlib.py:141: in __enter__
+    return next(self.gen)
+           ^^^^^^^^^^^^^^
+app\db.py:32: in obtener_conexion
+    conn = conectar()
+           ^^^^^^^^^^
+app\db.py:24: in conectar
+    cur.execute("SET search_path TO rutaalerta, public, extensions")
+..\..\..\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\psycopg\cursor.py:117: in execute
+    raise ex.with_traceback(None)
+E   psycopg.OperationalError: consuming input failed: server closed the connection unexpectedly
+E   	This probably means the server terminated abnormally
+E   	before or while processing the request.
+E   server closed the connection unexpectedly
+E   	This probably means the server terminated abnormally
+E   	before or while processing the request.</failure></testcase></testsuite></testsuites>

@@ -1,0 +1,27 @@
+============================= test session starts =============================
+platform win32 -- Python 3.14.5, pytest-9.1.1, pluggy-1.6.0 -- C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Scripts\python.exe
+rootdir: C:\Users\Camila Castro\Desktop\RutaAlerta\RutaAlerta_Conectado
+configfile: pytest.ini
+testpaths: tests
+plugins: anyio-4.15.1
+collecting ... collected 25 items
+
+tests/test_avance_conectado.py::test_vehiculo_y_caso_conectados_y_aislamiento PASSED [  4%]
+tests/test_avance_conectado.py::test_revision_con_ambito_y_sin_publicacion PASSED [  8%]
+tests/test_avance_conectado.py::test_frontend_y_clave_demo PASSED        [ 12%]
+tests/test_casos.py::test_cp42_reporte_devuelve_folio_persistido PASSED  [ 16%]
+tests/test_casos.py::test_cp43_reintento_con_misma_clave_no_duplica PASSED [ 20%]
+tests/test_casos.py::test_reporte_rechaza_vehiculo_no_vinculado_y_fecha_futura PASSED [ 24%]
+tests/test_casos.py::test_cp44_bandeja_y_detalle_restringidos_a_la_organizacion PASSED [ 28%]
+tests/test_cuentas.py::test_health_conecta_con_postgis PASSED            [ 32%]
+tests/test_cuentas.py::test_cp40_registro_ciudadano_y_correo_repetido PASSED [ 36%]
+tests/test_cuentas.py::test_cp40_registro_no_concede_ambito_institucional PASSED [ 40%]
+tests/test_cuentas.py::test_cp41_token_de_recuperacion_de_un_solo_uso PASSED [ 44%]
+tests/test_cuentas.py::test_cp41_token_vencido_rechazado PASSED          [ 48%]
+tests/test_cuentas.py::test_sin_token_no_hay_acceso PASSED               [ 52%]
+tests/test_identidad_mvp.py::test_flujo_contactos_y_caso PASSED          [ 56%]
+tests/test_identidad_mvp.py::test_telefono_duplicado_no_habilita_otra_cuenta PASSED [ 60%]
+tests/test_identidad_mvp.py::test_numero_no_se_reserva_antes_de_verificar PASSED [ 64%]
+tests/test_identidad_mvp.py::test_codigo_fallido_persiste_y_agota PASSED [ 68%]
+tests/test_identidad_mvp.py::test_codigo_vencido PASSED                  [ 72%]
+tests/test_identidad_mvp.py::test_codigo_no_transferible_entre_usuarios 

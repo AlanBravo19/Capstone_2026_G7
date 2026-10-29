@@ -1,0 +1,28 @@
+============================= test session starts =============================
+platform win32 -- Python 3.14.5, pytest-9.1.1, pluggy-1.6.0 -- C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Scripts\python.exe
+rootdir: C:\Users\Camila Castro\Desktop\RutaAlerta\RutaAlerta_Conectado
+configfile: pytest.ini
+testpaths: tests
+plugins: anyio-4.15.1
+collecting ... collected 25 items / 18 deselected / 7 selected
+
+tests/test_identidad_mvp.py::test_codigo_no_transferible_entre_usuarios PASSED [ 14%]
+tests/test_identidad_mvp.py::test_no_escalar_a_administrador PASSED      [ 28%]
+tests/test_identidad_mvp.py::test_baneo_revoca_sesiones_impide_reingreso_y_reuso_telefono PASSED [ 42%]
+tests/test_identidad_mvp.py::test_nueva_identidad_contacto_no_se_puede_identificar_infablemente PASSED [ 57%]
+tests/test_identidad_mvp.py::test_limite_login_persiste_y_responde_retry_after PASSED [ 71%]
+tests/test_identidad_mvp.py::test_cerrar_sesion PASSED                   [ 85%]
+tests/test_identidad_mvp.py::test_telefono_formato_y_correo_previo PASSED [100%]
+
+============================== warnings summary ===============================
+..\..\..\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\testclient.py:37
+  C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\starlette\testclient.py:37: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = typing.Callable[[], typing.ContextManager[anyio.abc.BlockingPortal]]
+
+..\..\..\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\fastapi\routing.py:233: 42 warnings
+  C:\Users\Camila Castro\AppData\Local\Temp\claude\C--Users-Camila-Castro-Desktop-RutaAlerta\52e9abe4-fd3b-4f62-8f66-e659972d1d9d\scratchpad\venv_api\Lib\site-packages\fastapi\routing.py:233: DeprecationWarning: 'asyncio.iscoroutinefunction' is deprecated and slated for removal in Python 3.16; use inspect.iscoroutinefunction() instead
+    is_coroutine = asyncio.iscoroutinefunction(dependant.call)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+- generated xml file: C:\Users\Camila Castro\Desktop\RutaAlerta\RutaAlerta_Conectado\evidencias\pytest_supabase_restantes.xml -
+========== 7 passed, 18 deselected, 43 warnings in 243.69s (0:04:03) ==========

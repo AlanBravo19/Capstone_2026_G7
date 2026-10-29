@@ -1,0 +1,15 @@
+{
+  "fecha_utc": "2026-10-29T05:09:22.476600+00:00",
+  "python": "3.14.5",
+  "motor": "PostgreSQL/PostGIS alojado en Supabase",
+  "proyecto": "fmqlijkowxxplltkjoey",
+  "TLS": "CA y hostname verificados",
+  "salida": 0,
+  "paquetes": {
+    "fastapi": "0.115.14",
+    "pg8000": "1.31.5",
+    "pytest": "9.1.1",
+    "httpx": "0.28.1"
+  },
+  "nota": "Contactos simulados. Datos ficticios. No acredita usuarios reales, SMS, MFA ni carga concurrente."
+}
