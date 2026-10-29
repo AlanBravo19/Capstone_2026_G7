@@ -37,7 +37,7 @@ async def proteger_demo(request:Request,call_next):
     clave=os.getenv('DEMO_ACCESS_KEY','')
     libre=request.url.path in ('/','/site.css','/site.js','/favicon.ico')
     if clave and not libre and not secrets.compare_digest(request.headers.get('x-demo-access',''),clave):
-        return JSONResponse({'detail':'Ingresa la clave privada de la demostración.'},status_code=403)
+        return JSONResponse({'detail':'Ingresa una clave de invitación válida a la beta.'},status_code=403)
     response=await call_next(request)
     response.headers['Cache-Control']='no-store'
     response.headers['X-Content-Type-Options']='nosniff'
