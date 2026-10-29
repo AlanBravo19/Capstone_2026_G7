@@ -54,7 +54,8 @@ def mis_vehiculos(usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)
 @router.get('/mis-casos')
 def mis_casos(usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):
     cur=conn.cursor()
-    cur.execute('''SELECT c.id_caso,c.folio,c.estado,c.zona,c.fecha_hecho,c.creado_en,c.denuncia_estado,v.patente
+    cur.execute('''SELECT c.id_caso,c.folio,c.estado,c.zona,c.fecha_hecho,c.creado_en,c.denuncia_estado,v.patente,
+       ST_Y(c.ubicacion::geometry) AS latitud, ST_X(c.ubicacion::geometry) AS longitud
        FROM caso c JOIN vehiculo v USING(id_vehiculo) WHERE c.id_usuario_reportante=%s ORDER BY c.creado_en DESC LIMIT 100''',(usuario['id_usuario'],))
     return [fila_dict(cur,r) for r in cur.fetchall()]
 

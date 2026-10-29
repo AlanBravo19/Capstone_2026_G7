@@ -40,11 +40,16 @@ try:
     repetir=paso('Reintentar sin duplicar','POST','/casos',200,json=datos,headers=h)
     assert caso['id_caso']==repetir['id_caso']
     casos=paso('Consultar casos guardados','GET','/mis-casos',200)
-    assert any(x['id_caso']==caso['id_caso'] for x in casos)
+    guardado=next(x for x in casos if x['id_caso']==caso['id_caso'])
+    if '--mapa' in sys.argv:
+        correcto=abs(guardado['latitud']-datos['latitud'])<0.000001 and abs(guardado['longitud']-datos['longitud'])<0.000001
+        res.append({'paso':'Coordenadas PostGIS del caso propio','ruta':'/mis-casos','correcto':correcto,'obtenido':200 if correcto else 500})
+        assert correcto
+
     paso('Cerrar sesión','POST','/sesiones/cerrar',204)
     paso('Rechazar sesión revocada','GET','/mi-perfil',401)
 finally:
     c.close()
     p=BASE/'evidencias';p.mkdir(exist_ok=True)
-    (p/'prueba_http_vercel.json').write_text(json.dumps({'fecha_utc':datetime.now(timezone.utc).isoformat(),'url':url,'nota':'Datos ficticios; correo y SMS simulados. Ejecución HTTP real contra Vercel y Supabase.','resultados':res},ensure_ascii=False,indent=2),encoding='utf-8')
+    (p/('prueba_http_mapa.json' if '--mapa' in sys.argv else 'prueba_http_vercel.json')).write_text(json.dumps({'fecha_utc':datetime.now(timezone.utc).isoformat(),'url':url,'nota':'Datos ficticios; correo y SMS simulados. Ejecución HTTP real contra Vercel y Supabase.','resultados':res},ensure_ascii=False,indent=2),encoding='utf-8')
     for r in res:print(r['obtenido'],r['paso'])

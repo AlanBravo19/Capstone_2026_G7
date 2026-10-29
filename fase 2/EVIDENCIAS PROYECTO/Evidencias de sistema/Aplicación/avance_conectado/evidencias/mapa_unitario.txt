@@ -1,0 +1,13 @@
+✔ no solicita cartografía hasta abrir el mapa (3.0331ms)
+✔ clic selecciona coordenadas sin guardar un caso (1.4855ms)
+✔ filtra puntos inválidos y conserva texto sin interpretarlo como HTML (2.1928ms)
+✔ cerrar sesión elimina puntos, mapa y coordenadas (1.079ms)
+✔ sin Leaflet ofrece continuar con coordenadas (1.2199ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 148.4533

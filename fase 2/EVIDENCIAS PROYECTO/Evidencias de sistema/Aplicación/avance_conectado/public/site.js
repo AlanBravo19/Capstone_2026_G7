@@ -10,7 +10,7 @@ async function api(ruta,{method='GET',body,headers={}}={}){
  if(body!==undefined)h['Content-Type']='application/json';
  const r=await fetch(ruta,{method,headers:h,body:body===undefined?undefined:JSON.stringify(body)});
  const datos=r.status===204?null:await r.json().catch(()=>null);
- if(!r.ok){let d=datos?.detail;if(Array.isArray(d))d=d.map(x=>x.msg).join('. ');if(r.status===401&&token){token='';$('panel').hidden=true;$('acceso').hidden=false;$('salir').hidden=true}throw new Error(d||'No se pudo completar la operación. Intenta nuevamente.');}
+ if(!r.ok){let d=datos?.detail;if(Array.isArray(d))d=d.map(x=>x.msg).join('. ');if(r.status===401&&token){RutaMapa.limpiar();token='';$('panel').hidden=true;$('acceso').hidden=false;$('salir').hidden=true}throw new Error(d||'No se pudo completar la operación. Intenta nuevamente.');}
  return datos;
 }
 function formulario(id,fn){$(id).addEventListener('submit',async e=>{e.preventDefault();const b=e.submitter;if(b)b.disabled=true;try{await fn(e)}catch(err){aviso(err.message,true)}finally{if(b)b.disabled=false}})}
@@ -20,9 +20,9 @@ $('modo-ingreso').onclick=()=>modo(false);$('modo-registro').onclick=()=>modo(tr
 formulario('form-acceso',async()=>{const correo=$('correo').value,clave=$('clave').value;
  if(registro)await api('/cuentas',{method:'POST',body:{correo,clave,nombre_visible:$('nombre').value}});
  token=(await api('/sesiones',{method:'POST',body:{correo,clave}})).token;$('clave').value='';
- try{await cargar();$('acceso').hidden=true;$('panel').hidden=false;$('salir').hidden=false;aviso('Sesión iniciada. Bienvenido a RutaAlerta.')}catch(e){token='';throw e}
+ try{await cargar();$('acceso').hidden=true;$('panel').hidden=false;$('salir').hidden=false;aviso('Sesión iniciada. Bienvenido a RutaAlerta.')}catch(e){token='';RutaMapa.limpiar();throw e}
 });
-accion('salir',async()=>{try{await api('/sesiones/cerrar',{method:'POST'})}finally{token='';perfil=null;$('panel').hidden=true;$('acceso').hidden=false;$('salir').hidden=true;$('administracion').hidden=true}});
+accion('salir',async()=>{try{await api('/sesiones/cerrar',{method:'POST'})}finally{token='';perfil=null;$('panel').hidden=true;$('acceso').hidden=false;$('salir').hidden=true;$('administracion').hidden=true;RutaMapa.limpiar()}});
 accion('actualizar',cargar);
 async function cargar(){
  perfil=await api('/mi-perfil');const estado=await api('/identidad/mi-estado');const vehiculos=await api('/vehiculos');const casos=await api('/mis-casos');
@@ -30,6 +30,7 @@ async function cargar(){
   $('pedir-correo').textContent='Enviar código por correo';
   $('nota-verificacion').textContent=estado.canales_demo?'El código de correo se envía a tu buzón. El paso de teléfono sigue siendo de prueba y no acredita su titularidad.':'El código de correo se envía a tu buzón. La verificación por SMS aún no está disponible; la participación permanece restringida.';
  }
+ RutaMapa.actualizar(casos);
  $('saludo').textContent='Hola, '+perfil.nombre_visible;$('estado-cuenta').textContent=estado.estado;$('total-vehiculos').textContent=vehiculos.length;$('total-casos').textContent=casos.length;
  $('estado-contactos').textContent=`Correo: ${estado.correo_verificado?'paso beta completado':'pendiente'} · Teléfono: ${estado.telefono_verificado?'paso beta completado':'pendiente'} · ${estado.puede_participar?'Puedes registrar vehículos y reportes.':'Completa los dos pasos para participar.'}`;
  $('lista-vehiculos').innerHTML=vehiculos.length?vehiculos.map(v=>`<article class="item"><b>${esc(v.patente)} · ${esc(v.marca)} ${esc(v.modelo)}</b><p>${esc(v.color)} · ${esc(v.anio)}</p><span class="pill">Vínculo ${esc(v.estado_vinculo)}</span></article>`).join(''):'<p class="empty">Todavía no has registrado vehículos.</p>';
@@ -46,7 +47,7 @@ formulario('form-vehiculo',async e=>{const d=Object.fromEntries(new FormData(e.t
 formulario('form-caso',async e=>{const d={id_vehiculo:Number($('vehiculo-caso').value),id_organizacion:1,fecha_hecho:new Date($('fecha-caso').value).toISOString(),zona:$('zona-caso').value,descripcion:$('descripcion').value,latitud:Number($('latitud').value),longitud:Number($('longitud').value)};
  // Un fallo de red conserva la clave para no duplicar el mismo envío.
  const firma=JSON.stringify(d);if(!envioCaso||envioCaso.firma!==firma)envioCaso={firma,clave:crypto.randomUUID()};
- const r=await api('/casos',{method:'POST',body:d,headers:{'Idempotency-Key':envioCaso.clave}});envioCaso=null;e.target.reset();await cargar();aviso('Reporte guardado: '+r.folio+'. Está pendiente de revisión.')});
+ const r=await api('/casos',{method:'POST',body:d,headers:{'Idempotency-Key':envioCaso.clave}});envioCaso=null;e.target.reset();RutaMapa.quitarSeleccion();await cargar();aviso('Reporte guardado: '+r.folio+'. Está pendiente de revisión.')});
 formulario('form-sancion',async e=>{await api('/moderacion/usuarios/'+Number($('usuario-sancion').value)+'/sanciones',{method:'POST',body:{accion:'suspension',motivo:$('motivo-sancion').value}});e.target.reset();aviso('Cuenta suspendida y sesiones revocadas. Acción registrada.')});
 $('bandeja').addEventListener('click',async e=>{const b=e.target.closest('.revisar');if(!b)return;const id=Number(b.dataset.id);b.disabled=true;try{await api('/gestion/casos/'+id+'/revision',{method:'POST',body:{estado:'en_revision',motivo:$('revision-'+id).value}});await cargar();aviso('Estado actualizado. El reporte continúa privado.')}catch(err){aviso(err.message,true)}finally{b.disabled=false}});
 

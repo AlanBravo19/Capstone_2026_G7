@@ -12,3 +12,9 @@
 Explicación sugerida: “Este es un incremento conectado: interfaz web, API y base alojada. Ya guardamos y consultamos registros reales de prueba con permisos. La entrega de correo/SMS se simula de forma explícita y las funciones restantes no se presentan como terminadas”.
 
 El repositorio del grupo conserva esta evidencia en `fase 2/EVIDENCIAS PROYECTO/Evidencias de sistema/Aplicación/avance_conectado`. Vercel despliega la copia privada `JORCEB/rutaalerta-avance-conectado`. Al modificar código, sincronizar ambos; una subida al repositorio del grupo no actualiza automáticamente la copia privada.
+
+## Mapa de reportes
+
+Después de entrar, pulsa **Explorar mapa**. Elige un punto haciendo clic: sus coordenadas pasan al formulario de nuevo reporte. También puedes escribirlas manualmente. Al guardar, el caso aparece en **Ver mis reportes**, con su ubicación leída desde PostGIS. Solo se consultan los casos de la cuenta actual; al salir se eliminan los puntos de la pantalla. Concepción y Santiago son accesos de navegación cartográfica, no zonas de riesgo. El mapa no incluye historial delictual, alertas predictivas ni rastreo GPS.
+
+Cartografía OpenStreetMap y Leaflet 1.9.4; atribución visible, carga de teselas sólo tras pulsar el botón, sin descargas masivas. El proveedor recibe IP y área consultada, no la descripción ni las credenciales de los casos. Si la cartografía falla, el formulario permite escribir coordenadas. Reglas del proveedor: https://operations.osmfoundation.org/policies/tiles/ . Pruebas lógicas de interfaz: `node --test tests/test_mapa.cjs`; no sustituyen una revisión visual en navegador.
