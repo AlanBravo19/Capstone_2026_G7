@@ -2,6 +2,7 @@ test_api_correo_real_no_devuelve_token (test_correo_unitario.CorreoTests.test_ap
   is_coroutine = asyncio.iscoroutinefunction(dependant.call)
 ok
 test_api_no_finge_envio_si_smtp_falla (test_correo_unitario.CorreoTests.test_api_no_finge_envio_si_smtp_falla) ... ok
+test_correo_real_rechaza_tokens_anteriores_de_prueba (test_correo_unitario.CorreoTests.test_correo_real_rechaza_tokens_anteriores_de_prueba) ... ok
 test_error_no_expone_credenciales (test_correo_unitario.CorreoTests.test_error_no_expone_credenciales) ... ok
 test_rechaza_credenciales_incompletas (test_correo_unitario.CorreoTests.test_rechaza_credenciales_incompletas) ... ok
 test_rechaza_inyeccion_en_destinatario (test_correo_unitario.CorreoTests.test_rechaza_inyeccion_en_destinatario) ... ok
@@ -12,6 +13,6 @@ test_ssl_con_validador_de_certificado (test_correo_unitario.CorreoTests.test_ssl
 test_starttls_antes_de_autenticar (test_correo_unitario.CorreoTests.test_starttls_antes_de_autenticar) ... ok
 
 ----------------------------------------------------------------------
-Ran 10 tests in 0.712s
+Ran 11 tests in 0.711s
 
 OK

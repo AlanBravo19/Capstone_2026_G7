@@ -33,8 +33,8 @@ def huella(token: str) -> bytes:
     return hashlib.sha256(token.encode()).digest()
 
 
-def emitir_token(cur, id_usuario: int, proposito: str, minutos: int) -> tuple[str, datetime]:
-    token = secrets.token_urlsafe(32)
+def emitir_token(cur, id_usuario: int, proposito: str, minutos: int, *, prefijo: str = "") -> tuple[str, datetime]:
+    token = prefijo + secrets.token_urlsafe(32)
     vence = datetime.now(timezone.utc) + timedelta(minutes=minutos)
     cur.execute(
         "INSERT INTO token_acceso(id_usuario, proposito, token_hash, vence_en) VALUES (%s, %s, %s, %s)",

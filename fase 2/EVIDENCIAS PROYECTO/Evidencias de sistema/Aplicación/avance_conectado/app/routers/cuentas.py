@@ -64,7 +64,7 @@ def solicitar_recuperacion(datos: RecuperacionEntrada, request: Request, conn=De
     token = None
     if fila is not None:
         cur.execute("UPDATE token_acceso SET revocado_en=CURRENT_TIMESTAMP WHERE id_usuario=%s AND proposito='recuperar_clave' AND revocado_en IS NULL", (fila[0],))
-        token, _ = emitir_token(cur, fila[0], "recuperar_clave", config.recuperacion_minutos)
+        token, _ = emitir_token(cur, fila[0], "recuperar_clave", config.recuperacion_minutos, prefijo="correo_real_" if correo_real() else "")
         if correo_real():
             cur.execute('SELECT correo FROM usuario WHERE id_usuario=%s', (fila[0],))
             try:
@@ -82,6 +82,8 @@ def solicitar_recuperacion(datos: RecuperacionEntrada, request: Request, conn=De
 @router.post("/cuentas/recuperacion/confirmar", status_code=status.HTTP_204_NO_CONTENT)
 def confirmar_recuperacion(datos: RecuperacionConfirmar, conn=Depends(obtener_conexion)):
     """El token es de un solo uso y vence: un token consumido o vencido se rechaza (CP41)."""
+    if correo_real() and not datos.token.startswith('correo_real_'):
+        raise HTTPException(400, 'Solicita un código nuevo enviado por correo.')
     cur = conn.cursor()
     cur.execute(
         """UPDATE token_acceso SET consumido_en = CURRENT_TIMESTAMP

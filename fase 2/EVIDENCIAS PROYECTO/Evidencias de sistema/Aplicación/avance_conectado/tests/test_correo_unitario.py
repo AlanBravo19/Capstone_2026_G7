@@ -104,6 +104,22 @@ class CorreoTests(unittest.TestCase):
                     identidad.TelefonoEntrada(telefono='+56900000000'), {'id_usuario':1}, MagicMock())
         self.assertEqual(error.exception.status_code, 503)
 
+    def test_correo_real_rechaza_tokens_anteriores_de_prueba(self):
+        from app.routers import identidad, cuentas
+        from app.esquemas import RecuperacionConfirmar
+        from fastapi import HTTPException
+        for funcion, datos in [
+            (identidad.confirmar_correo, identidad.TokenEntrada(token='token-ficticio-anterior-123456')),
+            (cuentas.confirmar_recuperacion, RecuperacionConfirmar(
+                token='token-ficticio-anterior-123456', nueva_clave='otra-clave-ficticia')),
+        ]:
+            with self.assertRaises(HTTPException) as error:
+                if funcion is identidad.confirmar_correo:
+                    funcion(datos, MagicMock(), MagicMock())
+                else:
+                    funcion(datos, MagicMock())
+            self.assertEqual(error.exception.status_code, 400)
+
 
 if __name__ == '__main__':
     unittest.main()

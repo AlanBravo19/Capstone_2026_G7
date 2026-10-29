@@ -46,7 +46,7 @@ def solicitar_correo(request: Request, usuario=Depends(usuario_actual),conn=Depe
     if correo is not None:
         return {'mensaje':'El correo ya está verificado.'}
     cur.execute("UPDATE token_acceso SET revocado_en=CURRENT_TIMESTAMP WHERE id_usuario=%s AND proposito='verificar_correo' AND revocado_en IS NULL",(usuario['id_usuario'],))
-    token,_=emitir_token(cur,usuario['id_usuario'],'verificar_correo',15)
+    token,_=emitir_token(cur,usuario['id_usuario'],'verificar_correo',15, prefijo='correo_real_' if correo_real() else '')
     if correo_real():
         cur.execute('SELECT correo FROM usuario WHERE id_usuario=%s', (usuario['id_usuario'],))
         try:
@@ -60,6 +60,8 @@ def solicitar_correo(request: Request, usuario=Depends(usuario_actual),conn=Depe
 
 @router.post('/identidad/correo/confirmar')
 def confirmar_correo(datos:TokenEntrada,request:Request,conn=Depends(obtener_conexion)):
+    if correo_real() and not datos.token.startswith('correo_real_'):
+        raise HTTPException(400, 'Solicita un código nuevo enviado por correo.')
     limitar_ip(conn,request,'confirmar_correo',30)
     cur=conn.cursor()
     # Bloquear primero la cuenta, como el proceso de sanción, para evitar carreras.
