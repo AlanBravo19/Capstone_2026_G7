@@ -1,0 +1,20 @@
+{
+  "fecha_utc": "2026-11-05T18:31:11.973615+00:00",
+  "version": "0.5.0+3",
+  "motor_android": "MapLibre GL 0.28.0",
+  "estilo": "https://tiles.openfreemap.org/styles/liberty",
+  "capa_edificios": "building-3d",
+  "inclinacion_inicial": 55,
+  "zoom_inicial": 16,
+  "analisis_flutter": "sin incidencias",
+  "compilacion_apk": "correcta",
+  "pruebas_logica_web": 6,
+  "renderizado_web_aislado": {
+    "ready": true,
+    "info": "{\"loaded\":true,\"tiles\":true,\"buildings\":62}",
+    "errors": []
+  },
+  "prueba_android_fisico": false,
+  "apk_bytes": 187244697,
+  "apk_sha256": "c801543263ccabf9dfd6edcdb5025bf79cd4938e111c69c7f8c9d327050a3a83"
+}

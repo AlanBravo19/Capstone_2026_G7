@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_map/flutter_map.dart';
+import 'package:maplibre_gl/maplibre_gl.dart' as m;
 import 'package:latlong2/latlong.dart';
 
 import 'session.dart';
@@ -15,17 +14,19 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen> {
-  final controller = MapController();
-  bool open = false;
+  m.MapLibreMapController? controller;
+  bool open = false, ready = false, perspective = true;
   LatLng? point;
+  Future<void> updates = Future.value();
+  static const style = 'https://tiles.openfreemap.org/styles/liberty';
   @override
-  void dispose() {
-    controller.dispose();
-    super.dispose();
+  void didUpdateWidget(covariant MapScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    sync();
   }
 
-  List<Marker> markers() {
-    final result = <Marker>[];
+  Map<String, dynamic> features() {
+    final points = <Map<String, dynamic>>[];
     for (final c in widget.session.cases) {
       final lat = (c['latitud'] as num?)?.toDouble(),
           lng = (c['longitud'] as num?)?.toDouble();
@@ -37,64 +38,94 @@ class _MapScreenState extends State<MapScreen> {
           lng.abs() > 180) {
         continue;
       }
-      result.add(
-        Marker(
-          point: LatLng(lat, lng),
-          width: 44,
-          height: 44,
-          child: GestureDetector(
-            onTap: () => showDialog<void>(
-              context: context,
-              builder: (context) => AlertDialog(
-                title: Text('${c['folio']}'),
-                content: Text(
-                  '${c['zona']}\nEstado: ${c['estado']}\nEste reporte continúa siendo privado.',
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Cerrar'),
-                  ),
-                ],
-              ),
-            ),
-            child: Container(
-              decoration: BoxDecoration(
-                color: const Color(0xffbf7545),
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 3),
-                boxShadow: const [
-                  BoxShadow(color: Colors.black26, blurRadius: 8),
-                ],
-              ),
-              child: const Icon(
-                Icons.directions_car_rounded,
-                color: Colors.white,
-                size: 24,
-              ),
-            ),
-          ),
-        ),
-      );
+      points.add({
+        'type': 'Feature',
+        'geometry': {
+          'type': 'Point',
+          'coordinates': [lng, lat],
+        },
+        'properties': {'color': '#bf7545', 'folio': c['folio']},
+      });
     }
     if (point != null) {
-      result.add(
-        Marker(
-          point: point!,
-          width: 48,
-          height: 48,
-          child: Container(
-            decoration: BoxDecoration(
-              color: teal,
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 3),
-            ),
-            child: const Icon(Icons.location_on, color: Colors.white),
-          ),
+      points.add({
+        'type': 'Feature',
+        'geometry': {
+          'type': 'Point',
+          'coordinates': [point!.longitude, point!.latitude],
+        },
+        'properties': {'color': '#087f80'},
+      });
+    }
+    return {'type': 'FeatureCollection', 'features': points};
+  }
+
+  void sync() {
+    if (!ready || controller == null) return;
+    updates = updates
+        .then((_) async {
+          if (mounted && ready) {
+            await controller?.setGeoJsonSource('mis-reportes', features());
+          }
+        })
+        .catchError((Object e) {
+          if (mounted) {
+            feedback(context, 'No se pudieron actualizar los puntos del mapa.');
+          }
+        });
+  }
+
+  Future<void> loaded() async {
+    try {
+      await controller!.addGeoJsonSource('mis-reportes', features());
+      await controller!.addCircleLayer(
+        'mis-reportes',
+        'puntos-privados',
+        const m.CircleLayerProperties(
+          circleColor: ['get', 'color'],
+          circleRadius: 8,
+          circleStrokeColor: '#ffffff',
+          circleStrokeWidth: 3,
         ),
       );
+      if (mounted) setState(() => ready = true);
+    } catch (_) {
+      if (mounted) {
+        feedback(
+          context,
+          'No se pudieron cargar los puntos. Puedes continuar con coordenadas manuales.',
+        );
+      }
     }
-    return result;
+  }
+
+  Future<void> fly(double lat, double lng) async {
+    await controller?.animateCamera(
+      m.CameraUpdate.newCameraPosition(
+        m.CameraPosition(
+          target: m.LatLng(lat, lng),
+          zoom: 16,
+          tilt: perspective ? 55 : 0,
+          bearing: -20,
+        ),
+      ),
+    );
+  }
+
+  Future<void> changeView() async {
+    final c = controller?.cameraPosition;
+    if (c == null) return;
+    setState(() => perspective = !perspective);
+    await controller?.animateCamera(
+      m.CameraUpdate.newCameraPosition(
+        m.CameraPosition(
+          target: c.target,
+          zoom: c.zoom,
+          tilt: perspective ? 55 : 0,
+          bearing: perspective ? -20 : 0,
+        ),
+      ),
+    );
   }
 
   @override
@@ -104,7 +135,7 @@ class _MapScreenState extends State<MapScreen> {
         padding: const EdgeInsets.all(20),
         children: [
           const SectionTitle(
-            'Tu territorio',
+            'Tu ciudad en 3D',
             eyebrow: 'Mapa de reportes privados',
           ),
           Panel(
@@ -112,39 +143,39 @@ class _MapScreenState extends State<MapScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Container(
-                  height: 170,
+                  height: 160,
                   decoration: BoxDecoration(
-                    color: const Color(0xffe3f1eb),
-                    borderRadius: BorderRadius.circular(18),
+                    gradient: const LinearGradient(colors: [navy, teal]),
+                    borderRadius: BorderRadius.circular(22),
                   ),
                   child: const Icon(
-                    Icons.travel_explore_rounded,
+                    Icons.location_city_rounded,
                     size: 90,
-                    color: teal,
+                    color: Colors.white,
                   ),
                 ),
                 gap(20),
                 const Text(
-                  'Cada reporte comienza con un lugar.',
+                  'Explora calles y edificios con perspectiva.',
                   style: TextStyle(
                     fontSize: 25,
                     fontWeight: FontWeight.w800,
                     color: navy,
                   ),
                 ),
-                gap(10),
+                gap(12),
                 const Text(
-                  'Toca el mapa para elegir el lugar del incidente. Los puntos guardados pertenecen únicamente a tu cuenta.',
+                  'Gira, inclina y acerca el mapa. Toca el lugar del incidente para usarlo en tu reporte.',
                   style: TextStyle(color: muted),
                 ),
                 gap(20),
                 FilledButton.icon(
                   onPressed: () => setState(() => open = true),
-                  icon: const Icon(Icons.map_outlined),
-                  label: const Text('Explorar mapa'),
+                  icon: const Icon(Icons.view_in_ar_rounded),
+                  label: const Text('Explorar mapa 3D'),
                 ),
                 const Note(
-                  'Al abrir el mapa, OpenStreetMap recibe tu IP y el área consultada. No recibe tus descripciones ni tus credenciales. No hay seguimiento automático ni capas de riesgo.',
+                  'Los edificios se muestran donde existen datos cartográficos. Sus alturas pueden ser aproximadas; no son imágenes de cámaras ni información en vivo. OpenFreeMap recibe tu IP y el área consultada; los textos de tus reportes permanecen en la plataforma.',
                 ),
               ],
             ),
@@ -154,215 +185,129 @@ class _MapScreenState extends State<MapScreen> {
     }
     return Column(
       children: [
-        Container(
-          margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(colors: [navy, Color(0xff17666b)]),
-            borderRadius: BorderRadius.circular(24),
-          ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
           child: Row(
             children: [
-              const Icon(
-                Icons.explore_rounded,
-                color: Color(0xffa8e6d3),
-                size: 32,
-              ),
-              const SizedBox(width: 14),
               const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Explora tu territorio',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 21,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    Text(
-                      'Tus reportes. Tu ubicación elegida.',
-                      style: TextStyle(color: Color(0xffc6e4dc), fontSize: 12),
-                    ),
-                  ],
+                child: Text(
+                  'Tu ciudad en perspectiva',
+                  style: TextStyle(
+                    fontSize: 19,
+                    fontWeight: FontWeight.w800,
+                    color: navy,
+                  ),
                 ),
+              ),
+              FilledButton.tonal(
+                onPressed: controller == null ? null : changeView,
+                child: Text(perspective ? 'Ver en 2D' : 'Ver en 3D'),
               ),
             ],
           ),
         ),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
             children: [
               Expanded(
                 child: OutlinedButton(
-                  onPressed: () =>
-                      controller.move(const LatLng(-36.827, -73.05), 12),
+                  onPressed: controller == null
+                      ? null
+                      : () => fly(-36.827, -73.05),
                   child: const Text('Concepción'),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: OutlinedButton(
-                  onPressed: () =>
-                      controller.move(const LatLng(-33.45, -70.66), 12),
+                  onPressed: controller == null
+                      ? null
+                      : () => fly(-33.45, -70.66),
                   child: const Text('Santiago'),
                 ),
               ),
               IconButton(
-                tooltip: 'Ver mis reportes',
-                onPressed: () {
-                  final valid = widget.session.cases
-                      .where(
-                        (c) => c['latitud'] != null && c['longitud'] != null,
-                      )
-                      .toList();
-                  if (valid.isEmpty) {
-                    feedback(context, 'Todavía no tienes reportes ubicados.');
-                    return;
-                  }
-                  controller.fitCamera(
-                    CameraFit.bounds(
-                      bounds: LatLngBounds.fromPoints(
-                        valid
-                            .map(
-                              (c) => LatLng(
-                                (c['latitud'] as num).toDouble(),
-                                (c['longitud'] as num).toDouble(),
-                              ),
+                tooltip: 'Mis reportes',
+                onPressed: controller == null
+                    ? null
+                    : () {
+                        final c = widget.session.cases
+                            .where(
+                              (c) =>
+                                  c['latitud'] != null && c['longitud'] != null,
                             )
-                            .toList(),
-                      ),
-                      padding: const EdgeInsets.all(40),
-                      maxZoom: 14,
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.center_focus_strong_rounded),
+                            .firstOrNull;
+                        if (c == null) {
+                          feedback(
+                            context,
+                            'Todavía no tienes reportes ubicados.',
+                          );
+                          return;
+                        }
+                        fly(
+                          (c['latitud'] as num).toDouble(),
+                          (c['longitud'] as num).toDouble(),
+                        );
+                      },
+                icon: const Icon(Icons.center_focus_strong),
               ),
             ],
           ),
         ),
         Expanded(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+            padding: const EdgeInsets.all(12),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(26),
-              child: FlutterMap(
-                mapController: controller,
-                options: MapOptions(
-                  initialCenter: const LatLng(-36.827, -73.05),
-                  initialZoom: 12,
-                  minZoom: 3,
-                  maxZoom: 19,
-                  onTap: (_, p) => setState(
-                    () => point = LatLng(
-                      p.latitude,
-                      ((p.longitude + 180) % 360) - 180,
-                    ),
-                  ),
-                ),
+              borderRadius: BorderRadius.circular(24),
+              child: Stack(
                 children: [
-                  TileLayer(
-                    urlTemplate:
-                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                    userAgentPackageName: 'cl.rutaalerta.rutaalerta_movil',
-                    tileProvider: NetworkTileProvider(
-                      headers: {
-                        'User-Agent': 'RutaAlertaBeta/0.4 (+https://rutaalerta-mvp-g7.vercel.app/)',
-                      },
+                  m.MapLibreMap(
+                    styleString: style,
+                    initialCameraPosition: const m.CameraPosition(
+                      target: m.LatLng(-36.827, -73.05),
+                      zoom: 16,
+                      tilt: 55,
+                      bearing: -20,
                     ),
-                    tileBuilder: (context, tileWidget, tile) => ColorFiltered(
-                      colorFilter: const ColorFilter.matrix([
-                        .72,
-                        .18,
-                        .10,
-                        0,
-                        7,
-                        .12,
-                        .78,
-                        .10,
-                        0,
-                        8,
-                        .12,
-                        .18,
-                        .70,
-                        0,
-                        7,
-                        0,
-                        0,
-                        0,
-                        1,
-                        0,
-                      ]),
-                      child: tileWidget,
-                    ),
-                    keepBuffer: 0,
+                    myLocationEnabled: false,
+                    compassEnabled: true,
+                    tiltGesturesEnabled: true,
+                    rotateGesturesEnabled: true,
+                    trackCameraPosition: true,
+                    onMapCreated: (c) => setState(() => controller = c),
+                    onStyleLoadedCallback: loaded,
+                    onMapClick: (_, p) {
+                      setState(() => point = LatLng(p.latitude, p.longitude));
+                      sync();
+                    },
                   ),
-                  MarkerLayer(markers: markers()),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(18),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Color(0x240e3438),
-                              blurRadius: 16,
-                              offset: Offset(0, 5),
+                  Positioned(
+                    right: 12,
+                    top: 72,
+                    child: Material(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      elevation: 4,
+                      child: Column(
+                        children: [
+                          IconButton(
+                            tooltip: 'Acercar',
+                            onPressed: () => controller?.animateCamera(
+                              m.CameraUpdate.zoomIn(),
                             ),
-                          ],
-                        ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              tooltip: 'Acercar',
-                              onPressed: () => controller.move(
-                                controller.camera.center,
-                                (controller.camera.zoom + 1).clamp(3.0, 19.0),
-                              ),
-                              icon: const Icon(Icons.add_rounded, color: teal),
+                            icon: const Icon(Icons.add, color: teal),
+                          ),
+                          IconButton(
+                            tooltip: 'Alejar',
+                            onPressed: () => controller?.animateCamera(
+                              m.CameraUpdate.zoomOut(),
                             ),
-                            IconButton(
-                              tooltip: 'Alejar',
-                              onPressed: () => controller.move(
-                                controller.camera.center,
-                                (controller.camera.zoom - 1).clamp(3.0, 19.0),
-                              ),
-                              icon: const Icon(
-                                Icons.remove_rounded,
-                                color: teal,
-                              ),
-                            ),
-                          ],
-                        ),
+                            icon: const Icon(Icons.remove, color: teal),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-                  RichAttributionWidget(
-                    attributions: [
-                      TextSourceAttribution(
-                        'OpenStreetMap contributors',
-                        onTap: () async {
-                          try {
-                            await const MethodChannel('cl.rutaalerta/trayecto')
-                                .invokeMethod<void>('openAttribution');
-                          } catch (_) {
-                            if (context.mounted) {
-                              feedback(
-                                context,
-                                'https://www.openstreetmap.org/copyright',
-                              );
-                            }
-                          }
-                        },
-                      ),
-                    ],
                   ),
                 ],
               ),
@@ -370,51 +315,36 @@ class _MapScreenState extends State<MapScreen> {
           ),
         ),
         Container(
-          margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: const Color(0xffdce7e4)),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x10112a36),
-                blurRadius: 18,
-                offset: Offset(0, 5),
+            borderRadius: BorderRadius.circular(22),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                point == null
+                    ? 'Toca un lugar para ubicar el incidente.'
+                    : '${point!.latitude.toStringAsFixed(5)}, ${point!.longitude.toStringAsFixed(5)}',
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              gap(10),
+              FilledButton.icon(
+                onPressed: point == null
+                    ? null
+                    : () {
+                        widget.session.selectPoint(point!);
+                        widget.usePoint();
+                      },
+                icon: const Icon(Icons.check),
+                label: const Text('Usar esta ubicación'),
+              ),
+              const Note(
+                'Verde: selección · Naranja: tus reportes privados. Edificios según cobertura cartográfica.',
               ),
             ],
-          ),
-          padding: const EdgeInsets.all(16),
-          child: SafeArea(
-            top: false,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  point == null
-                      ? 'Toca un lugar para ubicar el nuevo reporte.'
-                      : '${point!.latitude.toStringAsFixed(5)}, ${point!.longitude.toStringAsFixed(5)}',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: navy,
-                  ),
-                ),
-                gap(10),
-                FilledButton.icon(
-                  onPressed: point == null
-                      ? null
-                      : () {
-                          widget.session.selectPoint(point!);
-                          widget.usePoint();
-                        },
-                  icon: const Icon(Icons.check_rounded),
-                  label: const Text('Usar esta ubicación'),
-                ),
-                const Text(
-                  'Verde: selección · Naranja: tus reportes privados',
-                  style: TextStyle(fontSize: 11, color: muted),
-                ),
-              ],
-            ),
           ),
         ),
       ],

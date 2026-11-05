@@ -42,3 +42,11 @@ Código Flutter en lib/, servicio Android en android/app/src/main/kotlin/cl/ruta
 ## Revisión visual 0.4.1 — 05/11/2026
 
 Mapa con cartografía de tonos suaves, cabecera con degradado, esquinas redondeadas, tarjeta de ubicación y controles de zoom. Se conserva OpenStreetMap y el alcance de los datos. Compilación Android correcta y análisis Flutter sin incidencias. Evidencia nueva en compilacion_mapa_041.txt y mapa_041.json. Las pruebas del emulador descritas anteriormente corresponden a la versión 0.4.0; no se atribuyen como una nueva prueba visual de la 0.4.1.
+
+## Mapa vectorial 3D — 0.5.0
+
+El mapa base utiliza MapLibre y OpenFreeMap (estilo Liberty), con edificios extruidos desde la capa cartográfica building-3d. Se confirmó que la capa usa render_height y render_min_height, a partir del nivel de zoom 14. La vista inicial usa zoom 16 e inclinación de 55 grados. Es posible alternar 2D/3D, girar, acercar, seleccionar el incidente y consultar puntos propios.
+
+Los volúmenes y alturas dependen de la cobertura del proveedor y pueden ser aproximados. No son cámaras, imágenes en directo ni reconstrucciones verificadas de cada edificio. El proveedor recibe IP y área consultada; no se le transmiten los relatos, patentes o credenciales de los reportes. Las pruebas de lógica no equivalen a una validación visual de cobertura en todas las comunas.
+
+Referencias: https://openfreemap.org/quick_start/ y https://maplibre.org/flutter-maplibre-gl/ . Las notas previas sobre cartografía raster describen versiones anteriores.
