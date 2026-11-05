@@ -7,7 +7,7 @@ window.RutaMapa=(()=>{
  function seleccionar(lat,lng){
   if(!valido(lat,lng))return;
   el('latitud').value=lat.toFixed(6);el('longitud').value=lng.toFixed(6);
-  if(mapa){if(!seleccion)seleccion=new maplibregl.Marker({color:'#087f80'});seleccion.setLngLat([lng,lat]).addTo(mapa);}
+  if(mapa){if(!seleccion)seleccion=new maplibregl.Marker({color:'#2867d8'});seleccion.setLngLat([lng,lat]).addTo(mapa);}
   mensaje(`Lugar seleccionado: ${lat.toFixed(5)}, ${lng.toFixed(5)}. Se guardará al registrar el reporte.`);
  }
  function puntos(){
@@ -18,7 +18,7 @@ window.RutaMapa=(()=>{
    const lat=Number(c.latitud),lng=Number(c.longitud);if(!valido(lat,lng))continue;
    const contenido=document.createElement('div');const titulo=document.createElement('strong');titulo.textContent=c.folio;
    const detalle=document.createElement('p');detalle.textContent=`${c.zona} · ${String(c.estado).replaceAll('_',' ')}`;contenido.append(titulo,detalle);
-   const m=new maplibregl.Marker({color:'#bf7545',scale:.8}).setLngLat([lng,lat]).setPopup(new maplibregl.Popup({offset:25}).setDOMContent(contenido)).addTo(mapa);
+   const m=new maplibregl.Marker({color:'#526f9a',scale:.8}).setLngLat([lng,lat]).setPopup(new maplibregl.Popup({offset:25}).setDOMContent(contenido)).addTo(mapa);
    m.getElement().addEventListener('click',e=>e.stopPropagation());marcas.push(m);
   }
   el('mapa-total').textContent=`${marcas.length} reportes ubicados`;
@@ -27,7 +27,7 @@ window.RutaMapa=(()=>{
   if(!window.maplibregl||!maplibregl.supported()){mensaje('Este dispositivo no pudo iniciar el mapa 3D. Puedes escribir las coordenadas manualmente.',true);el('mapa-contenido').hidden=false;return;}
   el('mapa-intro').hidden=true;el('mapa-contenido').hidden=false;
   if(!mapa){
-   mapa=new maplibregl.Map({container:'mapa',style:'https://tiles.openfreemap.org/styles/liberty',center:[-73.05,-36.827],zoom:16,pitch:55,bearing:-20,attributionControl:true});
+   mapa=new maplibregl.Map({container:'mapa',style:'/mapa-azul.json',center:[-73.05,-36.827],zoom:16,pitch:55,bearing:-20,attributionControl:true});
    mapa.addControl(new maplibregl.NavigationControl({visualizePitch:true}),'top-right');mapa.addControl(new maplibregl.FullscreenControl(),'top-right');
    mapa.on('click',e=>seleccionar(e.lngLat.lat,e.lngLat.wrap().lng));
    mapa.on('error',()=>mensaje('No se pudo cargar parte de la cartografía 3D. Puedes continuar con coordenadas manuales.',true));

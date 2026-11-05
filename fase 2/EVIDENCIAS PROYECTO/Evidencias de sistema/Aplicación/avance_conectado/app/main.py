@@ -38,7 +38,7 @@ BASE=Path(__file__).resolve().parents[1]
 @app.middleware('http')
 async def proteger_demo(request:Request,call_next):
     clave=os.getenv('DEMO_ACCESS_KEY','')
-    libre=request.url.path in ('/','/site.css','/site.js','/mapa.js','/favicon.ico')
+    libre=request.url.path in ('/','/site.css','/site.js','/mapa.js','/mapa-azul.json','/favicon.ico')
     if clave and not libre and not secrets.compare_digest(request.headers.get('x-demo-access',''),clave):
         return JSONResponse({'detail':'Ingresa una clave de invitación válida a la beta.'},status_code=403)
     response=await call_next(request)
@@ -60,6 +60,9 @@ def js():return FileResponse(BASE/'public/site.js',media_type='text/javascript')
 @app.get('/mapa.js',include_in_schema=False)
 def mapa_js():return FileResponse(BASE/'public/mapa.js',media_type='text/javascript')
 
+
+@app.get('/mapa-azul.json',include_in_schema=False)
+def mapa_estilo():return FileResponse(BASE/'public/mapa-azul.json',media_type='application/json')
 
 @app.get("/health", tags=["operación"])
 def health(conn=Depends(obtener_conexion)):

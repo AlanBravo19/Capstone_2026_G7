@@ -10,7 +10,7 @@ function entorno(supported=true){
  return {api:ctx.window.RutaMapa,el:doc.getElementById.bind(doc),maps,config:()=>config};
 }
 test('no carga cartografía antes de pulsar abrir',()=>{const e=entorno();assert.equal(e.maps.length,0);});
-test('abre estilo vectorial con perspectiva y conserva selección',()=>{const e=entorno();e.el('abrir-mapa').events.click();assert.equal(e.config().pitch,55);assert.match(e.config().style,/openfreemap/);e.maps[0].events.click({lngLat:{lat:-36.82,wrap:()=>({lng:-73.05})}});assert.equal(e.el('latitud').value,'-36.820000');});
+test('abre estilo vectorial con perspectiva y conserva selección',()=>{const e=entorno();e.el('abrir-mapa').events.click();assert.equal(e.config().pitch,55);assert.match(e.config().style,/mapa-azul/);e.maps[0].events.click({lngLat:{lat:-36.82,wrap:()=>({lng:-73.05})}});assert.equal(e.el('latitud').value,'-36.820000');});
 test('alterna 2D y 3D',()=>{const e=entorno();e.el('abrir-mapa').events.click();e.el('mapa-vista').events.click();assert.equal(e.maps[0].camera.pitch,0);e.el('mapa-vista').events.click();assert.equal(e.maps[0].camera.pitch,55);});
 test('filtra ubicaciones inválidas',()=>{const e=entorno();e.api.actualizar([{latitud:-36,longitud:-73,folio:'ENSAYO',estado:'reportado',zona:'Sector ficticio'},{latitud:999,longitud:0}]);e.el('abrir-mapa').events.click();assert.equal(e.el('mapa-total').textContent,'1 reportes ubicados');});
 test('limpia mapa y coordenadas al cerrar sesión',()=>{const e=entorno();e.el('abrir-mapa').events.click();e.el('latitud').value='-36';e.api.limpiar();assert.equal(e.maps[0].removed,true);assert.equal(e.el('latitud').value,'');});
