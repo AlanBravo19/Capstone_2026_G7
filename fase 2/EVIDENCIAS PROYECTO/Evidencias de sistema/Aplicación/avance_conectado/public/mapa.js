@@ -1,7 +1,7 @@
 "use strict";
 window.RutaMapa=(()=>{
  const el=id=>document.getElementById(id);
- let mapa=null,seleccion=null,casos=[],marcas=[],vista3d=true;
+ let mapa=null,seleccion=null,casos=[],marcas=[],vista3d=true,gpsControl=null;
  const valido=(lat,lng)=>Number.isFinite(lat)&&Number.isFinite(lng)&&Math.abs(lat)<=90&&Math.abs(lng)<=180;
  function mensaje(t,error=false){el('mapa-estado').textContent=t;el('mapa-estado').classList.toggle('map-error',error);}
  function seleccionar(lat,lng){
@@ -23,12 +23,19 @@ window.RutaMapa=(()=>{
   }
   el('mapa-total').textContent=`${marcas.length} reportes ubicados`;
  }
+ function agregarGps(){
+  gpsControl=new maplibregl.GeolocateControl({positionOptions:{enableHighAccuracy:true,timeout:15000,maximumAge:0},trackUserLocation:true,showAccuracyCircle:true});
+  gpsControl.on('geolocate',e=>mensaje(`GPS del dispositivo · precisión aproximada ± ${Math.round(e.coords.accuracy)} m. No cambia el lugar del incidente.`));
+  gpsControl.on('error',()=>mensaje('No se pudo obtener tu ubicación. Revisa el permiso del navegador y la ubicación del dispositivo.',true));
+  mapa.addControl(gpsControl,'top-right');
+ }
+ document.addEventListener?.('visibilitychange',()=>{if(!mapa)return;if(document.hidden&&gpsControl){mapa.removeControl(gpsControl);gpsControl=null;}else if(!document.hidden&&!gpsControl)agregarGps();});
  function abrir(){
   if(!window.maplibregl||!maplibregl.supported()){mensaje('Este dispositivo no pudo iniciar el mapa 3D. Puedes escribir las coordenadas manualmente.',true);el('mapa-contenido').hidden=false;return;}
   el('mapa-intro').hidden=true;el('mapa-contenido').hidden=false;
   if(!mapa){
-   mapa=new maplibregl.Map({container:'mapa',style:'/mapa-azul.json',center:[-73.05,-36.827],zoom:16,pitch:55,bearing:-20,attributionControl:true});
-   mapa.addControl(new maplibregl.NavigationControl({visualizePitch:true}),'top-right');mapa.addControl(new maplibregl.FullscreenControl(),'top-right');
+   mapa=new maplibregl.Map({container:'mapa',style:'/mapa-azul.json',center:[-73.05,-36.827],zoom:16,pitch:55,bearing:-20,attributionControl:true,locale:{'GeolocateControl.FindMyLocation':'Mi ubicación','GeolocateControl.LocationNotAvailable':'Ubicación no disponible'}});
+   agregarGps();mapa.addControl(new maplibregl.NavigationControl({visualizePitch:true}),'top-right');mapa.addControl(new maplibregl.FullscreenControl(),'top-right');
    mapa.on('click',e=>seleccionar(e.lngLat.lat,e.lngLat.wrap().lng));
    mapa.on('error',()=>mensaje('No se pudo cargar parte de la cartografía 3D. Puedes continuar con coordenadas manuales.',true));
    mapa.on('load',()=>{puntos();desdeCampos();mensaje('Mapa 3D: gira e inclina la vista. Los edificios dependen de la cobertura cartográfica y sus alturas pueden ser aproximadas.');});
@@ -45,6 +52,6 @@ window.RutaMapa=(()=>{
  el('mapa-mis-casos').addEventListener('click',()=>{if(!marcas.length){mensaje('Todavía no tienes reportes ubicados.');return;}const bounds=new maplibregl.LngLatBounds();marcas.forEach(m=>bounds.extend(m.getLngLat()));mapa.fitBounds(bounds,{padding:60,maxZoom:16,pitch:vista3d?55:0});});
  el('latitud').addEventListener('change',desdeCampos);el('longitud').addEventListener('change',desdeCampos);
  function quitarSeleccion(){seleccion?.remove();seleccion=null;mensaje('Toca el lugar del incidente para preparar tu reporte.');}
- function limpiar(){casos=[];marcas.forEach(m=>m.remove());marcas=[];quitarSeleccion();mapa?.remove();mapa=null;vista3d=true;el('mapa-vista').textContent='Ver en 2D';el('mapa-contenido').hidden=true;el('mapa-intro').hidden=false;el('latitud').value='';el('longitud').value='';el('mapa-total').textContent='0 puntos';}
+ function limpiar(){casos=[];marcas.forEach(m=>m.remove());marcas=[];quitarSeleccion();mapa?.remove();mapa=null;gpsControl=null;vista3d=true;el('mapa-vista').textContent='Ver en 2D';el('mapa-contenido').hidden=true;el('mapa-intro').hidden=false;el('latitud').value='';el('longitud').value='';el('mapa-total').textContent='0 puntos';}
  return {actualizar(datos){casos=datos;puntos();},limpiar,quitarSeleccion};
 })();
