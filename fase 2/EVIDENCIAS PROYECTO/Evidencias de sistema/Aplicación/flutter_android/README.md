@@ -54,3 +54,11 @@ Referencias: https://openfreemap.org/quick_start/ y https://maplibre.org/flutter
 ## Paleta azul urbano — 0.5.1
 
 Cartografía vectorial personalizada: fondo azul muy claro, edificios azul grisáceo, agua celeste, calles claras y texto azul oscuro. Se ocultan etiquetas secundarias y paradas de transporte para reducir ruido; se conservan calles y puntos principales. La interfaz usa azul profundo #10213C, azul principal #2867D8 y fondo #F2F5FB. El estilo queda guardado en assets/mapa_azul.json (Android) y public/mapa-azul.json (web), con fuentes, alturas y atribución originales. El nombre de estilo es RutaAlerta Azul urbano; la referencia de claridad a apps de movilidad no implica afiliación con esas marcas.
+
+## Ubicación del dispositivo — 0.6.0
+
+En el mapa, pulsar Mi ubicación y autorizar ubicación de Android. Se muestra el punto nativo de ubicación y su precisión; el mapa recibe nuevas lecturas del proveedor del dispositivo. Mi ubicación vuelve a centrar y activa el seguimiento de cámara. Ocultar GPS apaga la capa. Al seleccionar un incidente se deja de seguir la cámara, manteniendo separados GPS y reporte. El botón no guarda ni cambia automáticamente el incidente.
+
+El GPS del mapa se pausa al cambiar de pestaña o dejar la app en segundo plano; Modo trayecto es una función distinta, voluntaria, con notificación. No se envía un historial de ubicaciones a la plataforma. Al centrar el mapa, el proveedor cartográfico recibe solicitudes del área consultada. Android puede conceder sólo ubicación aproximada: la app muestra la precisión que recibe y no promete una ubicación exacta. Si pasan más de 30 segundos sin una lectura reciente, se indica última posición sin actualización reciente.
+
+Web: el control de ubicación de MapLibre requiere permiso del navegador y HTTPS. Se retira al ocultar la página y debe reactivarse al volver. Las pruebas de lógica con lecturas simuladas no sustituyen la prueba con GPS físico. Fuente técnica: https://maplibre.org/flutter-maplibre-gl/advanced/user-location/ .

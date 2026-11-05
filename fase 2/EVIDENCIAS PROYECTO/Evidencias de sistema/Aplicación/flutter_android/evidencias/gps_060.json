@@ -1,0 +1,13 @@
+{
+  "fecha_utc": "2026-11-05T19:12:58.130631+00:00",
+  "version": "0.6.0+5",
+  "funcion": "GPS del dispositivo en mapa con permiso explícito, precisión y seguimiento de cámara",
+  "compilacion": "correcta",
+  "analisis_flutter": "sin incidencias",
+  "pruebas_estado_flutter_simuladas": 3,
+  "pruebas_logica_web": 8,
+  "gps_fisico_probado": false,
+  "datos_gps_enviados_como_reporte_automatico": false,
+  "apk_sha256": "90260ba733a2da8b49f74ff378d97a322f6f4f96a71c70b207f634e93edccc56",
+  "apk_bytes": 187255126
+}

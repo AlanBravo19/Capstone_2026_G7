@@ -11,12 +11,22 @@ import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
     private var pending: MethodChannel.Result? = null
+    private var pendingMap: MethodChannel.Result? = null
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "cl.rutaalerta/trayecto").setMethodCallHandler { call, result ->
             when (call.method) {
+                "mapLocationAllowed" -> result.success(hasLocation())
+                "requestMapLocation" -> {
+                    if (pendingMap != null || pending != null) result.error("busy", "Completa primero la solicitud de permisos en curso.", null)
+                    else if (hasLocation()) result.success(true)
+                    else {
+                        pendingMap = result
+                        requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION), 732)
+                    }
+                }
                 "start" -> {
-                    if (pending != null) result.error("busy", "Ya hay una solicitud en curso.", null)
+                    if (pending != null || pendingMap != null) result.error("busy", "Ya hay una solicitud en curso.", null)
                     else {
                         val permissions = mutableListOf<String>()
                         if (!hasLocation()) {
@@ -60,11 +70,14 @@ class MainActivity : FlutterActivity() {
     }
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 732) { val result = pendingMap; pendingMap = null; result?.success(hasLocation()) }
         if (requestCode == 731) { val result = pending; pending = null; if (result != null) launchTrip(result) }
     }
     override fun onDestroy() {
         pending?.error("cancelled", "Solicitud cancelada. Vuelve a iniciar el trayecto.", null)
         pending = null
+        pendingMap?.error("cancelled", "Solicitud cancelada.", null)
+        pendingMap = null
         super.onDestroy()
     }
 }

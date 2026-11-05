@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:maplibre_gl/maplibre_gl.dart' as m;
 import 'package:latlong2/latlong.dart';
@@ -8,20 +11,135 @@ import 'ui.dart';
 class MapScreen extends StatefulWidget {
   final Session session;
   final VoidCallback usePoint;
-  const MapScreen({super.key, required this.session, required this.usePoint});
+  final bool active;
+  const MapScreen({
+    super.key,
+    required this.session,
+    required this.usePoint,
+    this.active = true,
+  });
   @override
   State<MapScreen> createState() => _MapScreenState();
 }
 
-class _MapScreenState extends State<MapScreen> {
+class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   m.MapLibreMapController? controller;
   bool open = false, ready = false, perspective = true;
   LatLng? point;
   Future<void> updates = Future.value();
   static const style = 'assets/mapa_azul.json';
+  static const gpsChannel = MethodChannel('cl.rutaalerta/trayecto');
+  bool gps = false, foreground = true, requestingGps = false, follow = true;
+  m.UserLocation? currentLocation;
+  Timer? clock;
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    clock = Timer.periodic(const Duration(seconds: 2), (_) {
+      if (mounted && gps && widget.active && foreground) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    clock?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (!mounted) return;
+    setState(() {
+      foreground = state == AppLifecycleState.resumed;
+      currentLocation = null;
+    });
+    if (foreground && gps) checkPermission();
+  }
+
+  Future<void> checkPermission() async {
+    try {
+      final allowed = await gpsChannel.invokeMethod<bool>('mapLocationAllowed');
+      if (mounted && allowed != true) {
+        setState(() {
+          gps = false;
+          currentLocation = null;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          gps = false;
+          currentLocation = null;
+        });
+      }
+    }
+  }
+
+  Future<void> locate() async {
+    setState(() => requestingGps = true);
+    try {
+      final allowed = await gpsChannel.invokeMethod<bool>('requestMapLocation');
+      if (!mounted) return;
+      if (allowed != true) {
+        feedback(
+          context,
+          'Autoriza la ubicación en los ajustes de Android para ver tu GPS.',
+        );
+        return;
+      }
+      setState(() {
+        gps = true;
+        follow = true;
+      });
+      if (currentLocation != null) {
+        await fly(
+          currentLocation!.position.latitude,
+          currentLocation!.position.longitude,
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        feedback(
+          context,
+          'No se pudo activar la ubicación. Revisa el permiso y el GPS del teléfono.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => requestingGps = false);
+    }
+  }
+
+  void receiveLocation(m.UserLocation fix) {
+    if (!mounted || !gps || !widget.active || !foreground) return;
+    setState(() => currentLocation = fix);
+    final age = DateTime.now().difference(fix.timestamp).inSeconds;
+    if (follow && age >= -5 && age < 30) {
+      controller?.moveCamera(m.CameraUpdate.newLatLng(fix.position));
+    }
+  }
+
+  String gpsStatus() {
+    if (!gps) {
+      return 'GPS desactivado. Actívalo para ver la ubicación de este teléfono.';
+    }
+    if (currentLocation == null) {
+      return 'Buscando señal. Activa la ubicación del teléfono y espera una posición.';
+    }
+    final age = DateTime.now()
+        .difference(currentLocation!.timestamp)
+        .inSeconds
+        .clamp(0, 86400);
+    final accuracy = currentLocation!.horizontalAccuracy;
+    return '${age > 30 ? 'Última posición, sin actualización reciente' : 'GPS del teléfono'} · ${accuracy == null ? 'precisión no disponible' : '± ${accuracy.round()} m'} · hace ${age}s';
+  }
+
   @override
   void didUpdateWidget(covariant MapScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (!widget.active) currentLocation = null;
+    if (widget.active && !oldWidget.active && gps) checkPermission();
     sync();
   }
 
@@ -54,7 +172,7 @@ class _MapScreenState extends State<MapScreen> {
           'type': 'Point',
           'coordinates': [point!.longitude, point!.latitude],
         },
-        'properties': {'color': '#2867d8'},
+        'properties': {'color': '#10213c'},
       });
     }
     return {'type': 'FeatureCollection', 'features': points};
@@ -186,6 +304,38 @@ class _MapScreenState extends State<MapScreen> {
     return Column(
       children: [
         Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            children: [
+              Expanded(
+                child: FilledButton.tonalIcon(
+                  onPressed: requestingGps ? null : locate,
+                  icon: const Icon(Icons.my_location),
+                  label: Text(
+                    requestingGps ? 'Solicitando permiso…' : 'Mi ubicación',
+                  ),
+                ),
+              ),
+              if (gps)
+                TextButton(
+                  onPressed: () => setState(() {
+                    gps = false;
+                    currentLocation = null;
+                    follow = false;
+                  }),
+                  child: const Text('Ocultar GPS'),
+                ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+          child: Text(
+            gpsStatus(),
+            style: const TextStyle(color: muted, fontSize: 11),
+          ),
+        ),
+        Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
           child: Row(
             children: [
@@ -270,7 +420,8 @@ class _MapScreenState extends State<MapScreen> {
                       tilt: 55,
                       bearing: -20,
                     ),
-                    myLocationEnabled: false,
+                    myLocationEnabled: gps && widget.active && foreground,
+                    onUserLocationUpdated: receiveLocation,
                     compassEnabled: true,
                     tiltGesturesEnabled: true,
                     rotateGesturesEnabled: true,
@@ -278,7 +429,7 @@ class _MapScreenState extends State<MapScreen> {
                     onMapCreated: (c) => setState(() => controller = c),
                     onStyleLoadedCallback: loaded,
                     onMapClick: (_, p) {
-                      setState(() => point = LatLng(p.latitude, p.longitude));
+                      setState(() { point = LatLng(p.latitude, p.longitude); follow = false; });
                       sync();
                     },
                   ),
@@ -342,7 +493,7 @@ class _MapScreenState extends State<MapScreen> {
                 label: const Text('Usar esta ubicación'),
               ),
               const Note(
-                'Verde: selección · Naranja: tus reportes privados. Edificios según cobertura cartográfica.',
+                'Punto GPS: este teléfono · Marcador: lugar del incidente. El GPS no cambia el reporte automáticamente.',
               ),
             ],
           ),

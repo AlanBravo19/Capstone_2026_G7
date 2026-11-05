@@ -101,7 +101,11 @@ class _MobileShellState extends State<MobileShell> {
         HomeScreen(session: widget.session, navigate: navigate),
         VehiclesScreen(session: widget.session),
         ReportScreen(session: widget.session, openMap: () => navigate(3)),
-        MapScreen(session: widget.session, usePoint: () => navigate(2)),
+        MapScreen(
+          session: widget.session,
+          active: index == 3,
+          usePoint: () => navigate(2),
+        ),
         const TripScreen(),
       ],
     ),

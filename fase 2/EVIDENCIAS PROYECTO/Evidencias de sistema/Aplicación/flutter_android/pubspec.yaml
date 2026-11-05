@@ -1,7 +1,7 @@
 name: rutaalerta_movil
 description: App Android beta de RutaAlerta conectada a la API del Grupo 7.
 publish_to: none
-version: 0.5.1+4
+version: 0.6.0+5
 environment:
   sdk: ^3.13.0
 dependencies:
