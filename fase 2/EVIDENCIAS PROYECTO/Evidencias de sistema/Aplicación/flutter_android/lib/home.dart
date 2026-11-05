@@ -20,7 +20,7 @@ class HomeScreen extends StatelessWidget {
             padding: const EdgeInsets.all(24),
             margin: const EdgeInsets.only(bottom: 20),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [navy, Color(0xff166667)]),
+              gradient: const LinearGradient(colors: [navy, Color(0xff244e8c)]),
               borderRadius: BorderRadius.circular(26),
             ),
             child: Column(
@@ -28,7 +28,7 @@ class HomeScreen extends StatelessWidget {
               children: [
                 const Icon(
                   Icons.shield_outlined,
-                  color: Color(0xff9edac8),
+                  color: Color(0xffb6d0ff),
                   size: 40,
                 ),
                 gap(),
@@ -44,7 +44,7 @@ class HomeScreen extends StatelessWidget {
                 gap(12),
                 const Text(
                   'Registra antecedentes y consulta el estado de tus reportes privados.',
-                  style: TextStyle(color: Color(0xffc2ded8)),
+                  style: TextStyle(color: Color(0xffccdfff)),
                 ),
                 gap(18),
                 FilledButton.tonalIcon(

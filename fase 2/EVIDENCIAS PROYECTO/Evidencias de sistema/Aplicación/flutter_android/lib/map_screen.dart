@@ -18,7 +18,7 @@ class _MapScreenState extends State<MapScreen> {
   bool open = false, ready = false, perspective = true;
   LatLng? point;
   Future<void> updates = Future.value();
-  static const style = 'https://tiles.openfreemap.org/styles/liberty';
+  static const style = 'assets/mapa_azul.json';
   @override
   void didUpdateWidget(covariant MapScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -44,7 +44,7 @@ class _MapScreenState extends State<MapScreen> {
           'type': 'Point',
           'coordinates': [lng, lat],
         },
-        'properties': {'color': '#bf7545', 'folio': c['folio']},
+        'properties': {'color': '#526f9a', 'folio': c['folio']},
       });
     }
     if (point != null) {
@@ -54,7 +54,7 @@ class _MapScreenState extends State<MapScreen> {
           'type': 'Point',
           'coordinates': [point!.longitude, point!.latitude],
         },
-        'properties': {'color': '#087f80'},
+        'properties': {'color': '#2867d8'},
       });
     }
     return {'type': 'FeatureCollection', 'features': points};

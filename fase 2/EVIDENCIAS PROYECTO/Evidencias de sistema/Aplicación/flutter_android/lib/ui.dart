@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-const navy = Color(0xff112a36);
-const teal = Color(0xff087f80);
-const paper = Color(0xfff3f7f6);
-const muted = Color(0xff657a80);
+const navy = Color(0xff10213c);
+const teal = Color(0xff2867d8);
+const paper = Color(0xfff2f5fb);
+const muted = Color(0xff667994);
 
 ThemeData appTheme() => ThemeData(
   useMaterial3: true,
@@ -20,14 +20,14 @@ ThemeData appTheme() => ThemeData(
   ),
   inputDecorationTheme: InputDecorationTheme(
     filled: true,
-    fillColor: const Color(0xfff6f9f8),
+    fillColor: const Color(0xfff7f9fd),
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),
-      borderSide: const BorderSide(color: Color(0xffdae4e2)),
+      borderSide: const BorderSide(color: Color(0xffdce4f0)),
     ),
     enabledBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),
-      borderSide: const BorderSide(color: Color(0xffdae4e2)),
+      borderSide: const BorderSide(color: Color(0xffdce4f0)),
     ),
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
   ),
@@ -54,7 +54,7 @@ class Panel extends StatelessWidget {
     decoration: BoxDecoration(
       color: Colors.white,
       borderRadius: BorderRadius.circular(22),
-      border: Border.all(color: const Color(0xffdce7e4)),
+      border: Border.all(color: const Color(0xffdce4f0)),
     ),
     child: child,
   );
@@ -127,7 +127,7 @@ class StateChip extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
     decoration: BoxDecoration(
-      color: const Color(0xffe6f3ee),
+      color: const Color(0xffe7efff),
       borderRadius: BorderRadius.circular(20),
     ),
     child: Text(

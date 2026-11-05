@@ -1,0 +1,21 @@
+{
+  "fecha_utc": "2026-11-05T18:47:26.396607+00:00",
+  "version": "0.5.1+4",
+  "estilo": "RutaAlerta Azul urbano",
+  "compilacion": "correcta",
+  "analisis_flutter": "sin incidencias",
+  "vista_previa_web": {
+    "ready": true,
+    "info": "{\"loaded\":true,\"tiles\":true,\"buildings\":62}",
+    "errors": []
+  },
+  "prueba_visual_android_fisico": false,
+  "apk_sha256": "d58ea80928d6c41ada88c27a81ef5d13506723a8de5367c2af5245916f56ee6c",
+  "apk_bytes": 187255077,
+  "paleta": {
+    "principal": "#2867D8",
+    "oscuro": "#10213C",
+    "fondo": "#F2F5FB",
+    "edificios": "#93ACCD"
+  }
+}

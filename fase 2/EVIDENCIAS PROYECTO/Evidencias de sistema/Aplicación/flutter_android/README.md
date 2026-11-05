@@ -50,3 +50,7 @@ El mapa base utiliza MapLibre y OpenFreeMap (estilo Liberty), con edificios extr
 Los volúmenes y alturas dependen de la cobertura del proveedor y pueden ser aproximados. No son cámaras, imágenes en directo ni reconstrucciones verificadas de cada edificio. El proveedor recibe IP y área consultada; no se le transmiten los relatos, patentes o credenciales de los reportes. Las pruebas de lógica no equivalen a una validación visual de cobertura en todas las comunas.
 
 Referencias: https://openfreemap.org/quick_start/ y https://maplibre.org/flutter-maplibre-gl/ . Las notas previas sobre cartografía raster describen versiones anteriores.
+
+## Paleta azul urbano — 0.5.1
+
+Cartografía vectorial personalizada: fondo azul muy claro, edificios azul grisáceo, agua celeste, calles claras y texto azul oscuro. Se ocultan etiquetas secundarias y paradas de transporte para reducir ruido; se conservan calles y puntos principales. La interfaz usa azul profundo #10213C, azul principal #2867D8 y fondo #F2F5FB. El estilo queda guardado en assets/mapa_azul.json (Android) y public/mapa-azul.json (web), con fuentes, alturas y atribución originales. El nombre de estilo es RutaAlerta Azul urbano; la referencia de claridad a apps de movilidad no implica afiliación con esas marcas.

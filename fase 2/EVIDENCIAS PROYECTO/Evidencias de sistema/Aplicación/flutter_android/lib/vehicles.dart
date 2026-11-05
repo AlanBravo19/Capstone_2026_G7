@@ -66,7 +66,7 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: const Color(0xffeaf4f0),
+                  color: const Color(0xffe8effb),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: const Icon(Icons.directions_car_rounded, color: teal),

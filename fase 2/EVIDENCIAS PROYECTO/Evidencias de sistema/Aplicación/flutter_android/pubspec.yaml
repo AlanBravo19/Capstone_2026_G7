@@ -1,7 +1,7 @@
 name: rutaalerta_movil
 description: App Android beta de RutaAlerta conectada a la API del Grupo 7.
 publish_to: none
-version: 0.5.0+3
+version: 0.5.1+4
 environment:
   sdk: ^3.13.0
 dependencies:
@@ -18,3 +18,5 @@ dev_dependencies:
   flutter_lints: ^6.0.0
 flutter:
   uses-material-design: true
+  assets:
+    - assets/mapa_azul.json
