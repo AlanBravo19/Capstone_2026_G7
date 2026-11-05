@@ -1,0 +1,14 @@
+✔ no carga cartografía antes de pulsar abrir (4.0074ms)
+✔ abre estilo vectorial con perspectiva y conserva selección (1.6507ms)
+✔ alterna 2D y 3D (2.2529ms)
+✔ filtra ubicaciones inválidas (1.0635ms)
+✔ limpia mapa y coordenadas al cerrar sesión (1.1976ms)
+✔ sin soporte gráfico permite coordenadas manuales (0.8364ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 190.5433

@@ -1,46 +1,17 @@
-const {test}=require('node:test');
-const assert=require('node:assert/strict');
-const vm=require('node:vm');
-const fs=require('node:fs');
-const path=require('node:path');
-function entorno(conL=true){
- const elementos=new Map();
- const elemento=()=>({value:'',textContent:'',hidden:false,listeners:{},classList:{toggle(){}},
-  addEventListener(n,fn){this.listeners[n]=fn},querySelector(){return this},append(...x){this.hijos=x}});
- const document={getElementById(id){if(!elementos.has(id))elementos.set(id,elemento());return elementos.get(id)},createElement:elemento};
- let mapas=0,tiles=0,capas=[];
- const mapa={eventos:{},setView(){return this},on(n,f){this.eventos[n]=f;return this},invalidateSize(){},remove(){this.eliminado=true},fitBounds(){}};
- const L={map(){mapas++;return mapa},tileLayer(url,opts){tiles++;assert.equal(opts.referrerPolicy,'origin');return {on(){return this},addTo(){return this}}},
-  layerGroup(){const grupo={layers:[],addTo(){return this},clearLayers(){this.layers=[]},getLayers(){return this.layers}};capas.push(grupo);return grupo},
-  circleMarker(coords){return {coords,addTo(capa){if(capa.layers)capa.layers.push(this);return this},bindTooltip(){return this},bindPopup(x){this.popup=x;return this},remove(){}}},
-  featureGroup(){return {getBounds(){return {}}}}};
- const ctx={window:{},document,requestAnimationFrame:f=>f(),Number,String};
- if(conL){ctx.L=L;ctx.window.L=L;}
- vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../public/mapa.js'),'utf8'),ctx);
- return {api:ctx.window.RutaMapa,el:document.getElementById.bind(document),mapa,capas,cuentas:()=>({mapas,tiles})};
+const {test}=require('node:test');const assert=require('node:assert/strict');const vm=require('node:vm');const fs=require('node:fs');const path=require('node:path');
+function entorno(supported=true){
+ const els=new Map();const doc={getElementById(id){if(!els.has(id))els.set(id,{value:'',hidden:false,textContent:'',events:{},classList:{toggle(){}},addEventListener(n,f){this.events[n]=f;}});return els.get(id)},createElement(){return {textContent:'',append(...items){this.children=items}}}};
+ let config;const maps=[];
+ class MockMap{constructor(c){config=c;this.events={};maps.push(this)}on(n,f){this.events[n]=f;return this}addControl(){}resize(){}remove(){this.removed=true}flyTo(c){this.camera=c}easeTo(c){this.camera=c}fitBounds(){}}
+ class Marker{constructor(){this.element={addEventListener(){}}}setLngLat(c){this.coords=c;return this}addTo(){return this}remove(){this.removed=true}setPopup(p){this.popup=p;return this}getElement(){return this.element}getLngLat(){return this.coords}}
+ class Popup{setDOMContent(c){this.content=c;return this}}
+ const lib={Map:MockMap,Marker,Popup,supported:()=>supported,NavigationControl:class{},FullscreenControl:class{},LngLatBounds:class{extend(){}}};
+ const ctx={window:{maplibregl:lib},maplibregl:lib,document:doc,requestAnimationFrame:f=>f()};vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../public/mapa.js'),'utf8'),ctx);
+ return {api:ctx.window.RutaMapa,el:doc.getElementById.bind(doc),maps,config:()=>config};
 }
-test('no solicita cartografía hasta abrir el mapa',()=>{
- const e=entorno();assert.equal(e.cuentas().tiles,0);
- e.el('abrir-mapa').listeners.click();assert.equal(e.cuentas().tiles,1);
-});
-test('clic selecciona coordenadas sin guardar un caso',()=>{
- const e=entorno();e.el('abrir-mapa').listeners.click();
- e.mapa.eventos.click({latlng:{lat:-36.82,wrap:()=>({lng:-73.05})}});
- assert.equal(e.el('latitud').value,'-36.820000');assert.equal(e.el('longitud').value,'-73.050000');
- assert.match(e.el('mapa-estado').textContent,/al registrar/);
-});
-test('filtra puntos inválidos y conserva texto sin interpretarlo como HTML',()=>{
- const e=entorno();e.api.actualizar([{latitud:-36.82,longitud:-73.05,folio:'<script>x</script>',zona:'Sector de ensayo',estado:'reportado'},
-  {latitud:null,longitud:null},{latitud:999,longitud:0}]);e.el('abrir-mapa').listeners.click();
- assert.equal(e.capas[0].layers.length,1);
- assert.equal(e.capas[0].layers[0].popup.hijos[0].textContent,'<script>x</script>');
-});
-test('cerrar sesión elimina puntos, mapa y coordenadas',()=>{
- const e=entorno();e.el('abrir-mapa').listeners.click();e.el('latitud').value='-36';
- e.api.limpiar();assert.equal(e.mapa.eliminado,true);assert.equal(e.el('latitud').value,'');
- assert.equal(e.el('mapa-contenido').hidden,true);assert.equal(e.el('mapa-intro').hidden,false);
-});
-test('sin Leaflet ofrece continuar con coordenadas',()=>{
- const e=entorno(false);e.el('abrir-mapa').listeners.click();
- assert.match(e.el('mapa-intro').textContent,/latitud y longitud/);assert.equal(e.cuentas().tiles,0);
-});
+test('no carga cartografía antes de pulsar abrir',()=>{const e=entorno();assert.equal(e.maps.length,0);});
+test('abre estilo vectorial con perspectiva y conserva selección',()=>{const e=entorno();e.el('abrir-mapa').events.click();assert.equal(e.config().pitch,55);assert.match(e.config().style,/openfreemap/);e.maps[0].events.click({lngLat:{lat:-36.82,wrap:()=>({lng:-73.05})}});assert.equal(e.el('latitud').value,'-36.820000');});
+test('alterna 2D y 3D',()=>{const e=entorno();e.el('abrir-mapa').events.click();e.el('mapa-vista').events.click();assert.equal(e.maps[0].camera.pitch,0);e.el('mapa-vista').events.click();assert.equal(e.maps[0].camera.pitch,55);});
+test('filtra ubicaciones inválidas',()=>{const e=entorno();e.api.actualizar([{latitud:-36,longitud:-73,folio:'ENSAYO',estado:'reportado',zona:'Sector ficticio'},{latitud:999,longitud:0}]);e.el('abrir-mapa').events.click();assert.equal(e.el('mapa-total').textContent,'1 reportes ubicados');});
+test('limpia mapa y coordenadas al cerrar sesión',()=>{const e=entorno();e.el('abrir-mapa').events.click();e.el('latitud').value='-36';e.api.limpiar();assert.equal(e.maps[0].removed,true);assert.equal(e.el('latitud').value,'');});
+test('sin soporte gráfico permite coordenadas manuales',()=>{const e=entorno(false);e.el('abrir-mapa').events.click();assert.equal(e.maps.length,0);assert.match(e.el('mapa-estado').textContent,/manualmente/);});

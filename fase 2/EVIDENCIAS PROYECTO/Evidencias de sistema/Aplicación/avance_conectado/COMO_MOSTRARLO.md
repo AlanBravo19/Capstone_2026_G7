@@ -18,3 +18,11 @@ El repositorio del grupo conserva esta evidencia en `fase 2/EVIDENCIAS PROYECTO/
 Después de entrar, pulsa **Explorar mapa**. Elige un punto haciendo clic: sus coordenadas pasan al formulario de nuevo reporte. También puedes escribirlas manualmente. Al guardar, el caso aparece en **Ver mis reportes**, con su ubicación leída desde PostGIS. Solo se consultan los casos de la cuenta actual; al salir se eliminan los puntos de la pantalla. Concepción y Santiago son accesos de navegación cartográfica, no zonas de riesgo. El mapa no incluye historial delictual, alertas predictivas ni rastreo GPS.
 
 Cartografía OpenStreetMap y Leaflet 1.9.4; atribución visible, carga de teselas sólo tras pulsar el botón, sin descargas masivas. El proveedor recibe IP y área consultada, no la descripción ni las credenciales de los casos. Si la cartografía falla, el formulario permite escribir coordenadas. Reglas del proveedor: https://operations.osmfoundation.org/policies/tiles/ . Pruebas lógicas de interfaz: `node --test tests/test_mapa.cjs`; no sustituyen una revisión visual en navegador.
+
+## Mapa vectorial 3D — 0.5.0
+
+El mapa base utiliza MapLibre y OpenFreeMap (estilo Liberty), con edificios extruidos desde la capa cartográfica building-3d. Se confirmó que la capa usa render_height y render_min_height, a partir del nivel de zoom 14. La vista inicial usa zoom 16 e inclinación de 55 grados. Es posible alternar 2D/3D, girar, acercar, seleccionar el incidente y consultar puntos propios.
+
+Los volúmenes y alturas dependen de la cobertura del proveedor y pueden ser aproximados. No son cámaras, imágenes en directo ni reconstrucciones verificadas de cada edificio. El proveedor recibe IP y área consultada; no se le transmiten los relatos, patentes o credenciales de los reportes. Las pruebas de lógica no equivalen a una validación visual de cobertura en todas las comunas.
+
+Referencias: https://openfreemap.org/quick_start/ y https://maplibre.org/flutter-maplibre-gl/ . Las notas previas sobre cartografía raster describen versiones anteriores.
