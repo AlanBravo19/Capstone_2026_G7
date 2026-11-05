@@ -38,3 +38,7 @@ Código Flutter en lib/, servicio Android en android/app/src/main/kotlin/cl/ruta
 - https://developer.android.com/develop/background-work/services/fgs/service-types#location
 - https://pub.dev/packages/flutter_map
 - https://operations.osmfoundation.org/policies/tiles/
+
+## Revisión visual 0.4.1 — 05/11/2026
+
+Mapa con cartografía de tonos suaves, cabecera con degradado, esquinas redondeadas, tarjeta de ubicación y controles de zoom. Se conserva OpenStreetMap y el alcance de los datos. Compilación Android correcta y análisis Flutter sin incidencias. Evidencia nueva en compilacion_mapa_041.txt y mapa_041.json. Las pruebas del emulador descritas anteriormente corresponden a la versión 0.4.0; no se atribuyen como una nueva prueba visual de la 0.4.1.

@@ -1,0 +1,9 @@
+{
+  "fecha_utc": "2026-11-05T17:59:32.502189+00:00",
+  "version": "0.4.1+2",
+  "apk_sha256": "12237a6eaae080e29cf28a46fb44352d23d1d02375bf1d60369b62c34e3e7f28",
+  "compilacion": "correcta",
+  "flutter_analyze": "sin incidencias",
+  "alcance": "Cambios visuales del mapa; sin cambio de proveedor ni de funciones de ubicación.",
+  "prueba_visual_dispositivo_version_041": false
+}

@@ -154,8 +154,45 @@ class _MapScreenState extends State<MapScreen> {
     }
     return Column(
       children: [
+        Container(
+          margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(colors: [navy, Color(0xff17666b)]),
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.explore_rounded,
+                color: Color(0xffa8e6d3),
+                size: 32,
+              ),
+              const SizedBox(width: 14),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Explora tu territorio',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 21,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    Text(
+                      'Tus reportes. Tu ubicación elegida.',
+                      style: TextStyle(color: Color(0xffc6e4dc), fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           child: Row(
             children: [
               Expanded(
@@ -208,57 +245,144 @@ class _MapScreenState extends State<MapScreen> {
           ),
         ),
         Expanded(
-          child: FlutterMap(
-            mapController: controller,
-            options: MapOptions(
-              initialCenter: const LatLng(-36.827, -73.05),
-              initialZoom: 12,
-              minZoom: 3,
-              maxZoom: 19,
-              onTap: (_, p) => setState(
-                () => point = LatLng(
-                  p.latitude,
-                  ((p.longitude + 180) % 360) - 180,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(26),
+              child: FlutterMap(
+                mapController: controller,
+                options: MapOptions(
+                  initialCenter: const LatLng(-36.827, -73.05),
+                  initialZoom: 12,
+                  minZoom: 3,
+                  maxZoom: 19,
+                  onTap: (_, p) => setState(
+                    () => point = LatLng(
+                      p.latitude,
+                      ((p.longitude + 180) % 360) - 180,
+                    ),
+                  ),
                 ),
-              ),
-            ),
-            children: [
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'cl.rutaalerta.rutaalerta_movil',
-                tileProvider: NetworkTileProvider(
-                  headers: {
-                    'User-Agent': 'RutaAlertaBeta/0.4 (+https://rutaalerta-mvp-g7.vercel.app/)',
-                  },
-                ),
-                keepBuffer: 0,
-              ),
-              MarkerLayer(markers: markers()),
-              RichAttributionWidget(
-                attributions: [
-                  TextSourceAttribution(
-                    'OpenStreetMap contributors',
-                    onTap: () async {
-                      try {
-                        await const MethodChannel('cl.rutaalerta/trayecto')
-                            .invokeMethod<void>('openAttribution');
-                      } catch (_) {
-                        if (context.mounted) {
-                          feedback(
-                            context,
-                            'https://www.openstreetmap.org/copyright',
-                          );
-                        }
-                      }
-                    },
+                children: [
+                  TileLayer(
+                    urlTemplate:
+                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    userAgentPackageName: 'cl.rutaalerta.rutaalerta_movil',
+                    tileProvider: NetworkTileProvider(
+                      headers: {
+                        'User-Agent': 'RutaAlertaBeta/0.4 (+https://rutaalerta-mvp-g7.vercel.app/)',
+                      },
+                    ),
+                    tileBuilder: (context, tileWidget, tile) => ColorFiltered(
+                      colorFilter: const ColorFilter.matrix([
+                        .72,
+                        .18,
+                        .10,
+                        0,
+                        7,
+                        .12,
+                        .78,
+                        .10,
+                        0,
+                        8,
+                        .12,
+                        .18,
+                        .70,
+                        0,
+                        7,
+                        0,
+                        0,
+                        0,
+                        1,
+                        0,
+                      ]),
+                      child: tileWidget,
+                    ),
+                    keepBuffer: 0,
+                  ),
+                  MarkerLayer(markers: markers()),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(18),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x240e3438),
+                              blurRadius: 16,
+                              offset: Offset(0, 5),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              tooltip: 'Acercar',
+                              onPressed: () => controller.move(
+                                controller.camera.center,
+                                (controller.camera.zoom + 1).clamp(3.0, 19.0),
+                              ),
+                              icon: const Icon(Icons.add_rounded, color: teal),
+                            ),
+                            IconButton(
+                              tooltip: 'Alejar',
+                              onPressed: () => controller.move(
+                                controller.camera.center,
+                                (controller.camera.zoom - 1).clamp(3.0, 19.0),
+                              ),
+                              icon: const Icon(
+                                Icons.remove_rounded,
+                                color: teal,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  RichAttributionWidget(
+                    attributions: [
+                      TextSourceAttribution(
+                        'OpenStreetMap contributors',
+                        onTap: () async {
+                          try {
+                            await const MethodChannel('cl.rutaalerta/trayecto')
+                                .invokeMethod<void>('openAttribution');
+                          } catch (_) {
+                            if (context.mounted) {
+                              feedback(
+                                context,
+                                'https://www.openstreetmap.org/copyright',
+                              );
+                            }
+                          }
+                        },
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
+            ),
           ),
         ),
         Container(
-          color: Colors.white,
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: const Color(0xffdce7e4)),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x10112a36),
+                blurRadius: 18,
+                offset: Offset(0, 5),
+              ),
+            ],
+          ),
           padding: const EdgeInsets.all(16),
           child: SafeArea(
             top: false,
