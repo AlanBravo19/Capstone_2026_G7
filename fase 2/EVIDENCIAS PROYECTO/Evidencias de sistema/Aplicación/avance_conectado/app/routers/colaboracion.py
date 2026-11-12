@@ -21,8 +21,12 @@ def caso_autorizado(cur,cid,usuario,operador=False,propietario=False):
     return c
 
 def bloquear_participante(cur,uid):
-    cur.execute("SELECT 1 FROM usuario u JOIN contacto_telefono t USING(id_usuario) WHERE u.id_usuario=%s AND u.estado='activo' AND u.correo_verificado_en IS NOT NULL FOR UPDATE OF u",(uid,))
-    if not cur.fetchone():raise HTTPException(403,'Cuenta restringida')
+    from ..correo import correo_real
+    if correo_real():
+        cur.execute("SELECT 1 FROM usuario u WHERE u.id_usuario=%s AND u.estado='activo' AND u.correo_verificado_en IS NOT NULL AND u.canal_correo_verificado IN ('smtp','brevo') AND (EXISTS(SELECT 1 FROM autenticador_totp a WHERE a.id_usuario=u.id_usuario AND a.activo) OR EXISTS(SELECT 1 FROM contacto_telefono t WHERE t.id_usuario=u.id_usuario AND t.canal_verificado='sms')) FOR UPDATE OF u",(uid,))
+    else:
+        cur.execute("SELECT 1 FROM usuario u JOIN contacto_telefono t USING(id_usuario) WHERE u.id_usuario=%s AND u.estado='activo' AND u.correo_verificado_en IS NOT NULL FOR UPDATE OF u",(uid,))
+    if not cur.fetchone():raise HTTPException(403,'Cuenta restringida: revisa correo y autenticador')
 
 def aviso(cur,uid,cid,titulo,texto,clave):
     cur.execute('''INSERT INTO notificacion(id_usuario,id_caso,tipo,titulo,mensaje,clave_deduplicacion) VALUES(%s,%s,'caso',%s,%s,%s) ON CONFLICT(id_usuario,clave_deduplicacion) DO NOTHING''',(uid,cid,titulo,texto,clave))

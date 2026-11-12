@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 
 import 'session.dart';
+import 'biometric.dart';
 import 'ui.dart';
 
 // Formularios acotados: los permisos y reglas se vuelven a comprobar en el servidor.
@@ -159,6 +160,46 @@ class SecurityScreen extends StatelessWidget {
     render: (ctx, data, reload) => Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        Panel(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'Acceso con huella o biometría',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const Note(
+                'Android protege una sesión ya autenticada. No guardamos tu contraseña ni tus huellas. Si vence la sesión, cambia la biometría o cierras sesión, debes ingresar de nuevo con contraseña y segundo factor.',
+              ),
+              FilledButton.icon(
+                onPressed: () => perform(ctx, () async {
+                  await session.enableBiometric();
+                  if (ctx.mounted) {
+                    feedback(
+                      ctx,
+                      'Acceso biométrico activado en este teléfono.',
+                    );
+                  }
+                }),
+                icon: const Icon(Icons.fingerprint),
+                label: const Text('Activar en este teléfono'),
+              ),
+              TextButton(
+                onPressed: () => perform(ctx, () async {
+                  await BiometricAccess.clear();
+                  if (ctx.mounted) {
+                    feedback(
+                      ctx,
+                      'Acceso biométrico eliminado de este teléfono.',
+                    );
+                  }
+                }),
+                child: const Text('Desactivar acceso biométrico'),
+              ),
+            ],
+          ),
+        ),
+
         const SectionTitle(
           'Protege tu acceso',
           eyebrow: 'Contraseña + autenticador',

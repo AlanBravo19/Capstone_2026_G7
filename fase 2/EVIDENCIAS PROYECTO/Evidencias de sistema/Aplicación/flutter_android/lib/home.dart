@@ -97,7 +97,7 @@ class HomeScreen extends StatelessWidget {
                 ),
                 gap(12),
                 Text(
-                  session.canReport ? 'Puedes registrar vehículos y reportes.' : 'Completa los pasos de correo y teléfono para participar.',
+                  session.canReport ? 'Puedes registrar vehículos y reportes.' : 'Verifica tus contactos y configura la seguridad de tu cuenta.',
                   style: const TextStyle(color: muted),
                 ),
                 gap(12),
@@ -296,7 +296,7 @@ class _ContactsDialogState extends State<ContactsDialog> {
             children: [
               Note(
                 smtp
-                    ? 'El código de correo llega a tu buzón. El teléfono aún está en fase de prueba.'
+                    ? 'El código de correo llega a tu buzón. Para participar, activa después el autenticador en Seguridad. No necesitas pagar SMS.'
                     : 'En esta beta los códigos se muestran aquí. No se envían correos ni SMS y no acreditan la titularidad de tus contactos. Utiliza datos de prueba.',
               ),
               Text(
@@ -324,11 +324,12 @@ class _ContactsDialogState extends State<ContactsDialog> {
                 ),
               ],
               const Divider(height: 32),
-              Text(
-                '2. Teléfono · ${phoneDone ? 'completado' : 'pendiente'}',
-                style: const TextStyle(fontWeight: FontWeight.w700),
-              ),
-              if (!phoneDone) ...[
+              if (!smtp)
+                Text(
+                  '2. Teléfono · ${phoneDone ? 'completado' : 'pendiente'}',
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+              if (!phoneDone && !smtp) ...[
                 gap(10),
                 TextField(
                   controller: phone,
@@ -359,6 +360,12 @@ class _ContactsDialogState extends State<ContactsDialog> {
                   child: const Text('Confirmar paso'),
                 ),
               ],
+              if (smtp)
+                Note(
+                  widget.session.identity['mfa_activo'] == true
+                      ? 'Autenticador activo.'
+                      : 'Después de confirmar el correo, abre Seguridad y segundo factor para activar tu autenticador.',
+                ),
               Note(message),
               if (busy) const LinearProgressIndicator(),
             ],

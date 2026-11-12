@@ -44,6 +44,9 @@ def solicitar_correo(request: Request, usuario=Depends(usuario_actual),conn=Depe
     cur.execute('SELECT estado FROM usuario WHERE id_usuario=%s',(usuario['id_usuario'],))
     if cur.fetchone()[0] in ('suspendido','anonimizado'):raise HTTPException(403,'Cuenta restringida')
     if correo is not None:
+        cur.execute('SELECT canal_correo_verificado FROM usuario WHERE id_usuario=%s',(usuario['id_usuario'],))
+        if correo_real() and cur.fetchone()[0]=='prueba': correo=None
+    if correo is not None:
         return {'mensaje':'El correo ya está verificado.'}
     cur.execute("UPDATE token_acceso SET revocado_en=CURRENT_TIMESTAMP WHERE id_usuario=%s AND proposito='verificar_correo' AND revocado_en IS NULL",(usuario['id_usuario'],))
     token,_=emitir_token(cur,usuario['id_usuario'],'verificar_correo',15, prefijo='correo_real_' if correo_real() else '')
@@ -74,7 +77,9 @@ def confirmar_correo(datos:TokenEntrada,request:Request,conn=Depends(obtener_con
         WHERE token_hash=%s AND proposito='verificar_correo' AND consumido_en IS NULL
         AND revocado_en IS NULL AND vence_en>CURRENT_TIMESTAMP RETURNING id_usuario""",(huella(datos.token),))
     if cur.fetchone() is None:raise HTTPException(400,'Token inválido, vencido o ya utilizado')
-    cur.execute('UPDATE usuario SET correo_verificado_en=CURRENT_TIMESTAMP,actualizado_en=CURRENT_TIMESTAMP WHERE id_usuario=%s',(fila[0],))
+    cur.execute('UPDATE usuario SET correo_verificado_en=CURRENT_TIMESTAMP,canal_correo_verificado=%s,actualizado_en=CURRENT_TIMESTAMP WHERE id_usuario=%s',('smtp' if correo_real() else 'prueba',fila[0]))
+    if correo_real():
+        cur.execute("UPDATE usuario SET estado='activo' WHERE id_usuario=%s AND estado='pendiente' AND EXISTS(SELECT 1 FROM autenticador_totp WHERE id_usuario=%s AND activo)",(fila[0],fila[0]))
     return {'mensaje':'Correo verificado. Esto no acredita identidad civil.'}
 
 @router.post('/identidad/telefono/solicitar',status_code=202)
@@ -99,6 +104,7 @@ def solicitar_telefono(datos:TelefonoEntrada,usuario=Depends(usuario_actual),con
 
 @router.post('/identidad/telefono/confirmar')
 def confirmar_telefono(datos:CodigoEntrada,usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):
+    if not DEMO:raise HTTPException(503,'La verificación SMS real no está configurada; utiliza correo y autenticador.')
     limitar(conn,f'confirmar_sms:{usuario["id_usuario"]}',10)
     cur=conn.cursor()
     cur.execute('SELECT estado FROM usuario WHERE id_usuario=%s FOR UPDATE',(usuario['id_usuario'],))
@@ -125,11 +131,15 @@ def confirmar_telefono(datos:CodigoEntrada,usuario=Depends(usuario_actual),conn=
 @router.get('/identidad/mi-estado')
 def mi_estado(usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):
     cur=conn.cursor()
-    cur.execute('''SELECT u.estado,u.correo_verificado_en IS NOT NULL,t.id_usuario IS NOT NULL
-        FROM usuario u LEFT JOIN contacto_telefono t USING(id_usuario) WHERE u.id_usuario=%s''',(usuario['id_usuario'],))
-    estado,correo,telefono=cur.fetchone()
-    return {'estado':estado,'correo_verificado':correo,'telefono_verificado':telefono,
-            'puede_participar':estado=='activo' and correo and telefono,'canales_demo':DEMO, 'transporte_correo':'smtp' if correo_real() else 'prueba'}
+    cur.execute("""SELECT u.estado,u.correo_verificado_en IS NOT NULL,t.id_usuario IS NOT NULL,u.canal_correo_verificado,
+      EXISTS(SELECT 1 FROM autenticador_totp a WHERE a.id_usuario=u.id_usuario AND a.activo),t.canal_verificado
+      FROM usuario u LEFT JOIN contacto_telefono t USING(id_usuario) WHERE u.id_usuario=%s""",(usuario['id_usuario'],))
+    estado,correo,telefono,canal,mfa,canal_tel=cur.fetchone()
+    real=correo_real()
+    return {'estado':estado,'correo_verificado':correo and (not real or canal in ('smtp','brevo')),
+            'telefono_verificado':telefono and (not real or canal_tel=='sms'),'mfa_activo':mfa,
+            'puede_participar':estado=='activo' and correo and ((canal in ('smtp','brevo') and (mfa or canal_tel=='sms')) if real else telefono),
+            'canales_demo':DEMO,'transporte_correo':'smtp' if real else 'prueba','metodo_participacion':'correo_real_y_autenticador' if real else 'contactos_de_prueba'}
 
 @router.post('/sesiones/cerrar',status_code=204)
 def cerrar(request:Request,usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):

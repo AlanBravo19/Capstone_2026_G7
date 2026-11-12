@@ -1,0 +1,18 @@
+{
+  "fecha": "2026-11-12",
+  "entorno": "FastAPI local contra Supabase y Brevo SMTP reales; modo operación",
+  "tablas": 65,
+  "correo_confirmado_un_solo_uso": true,
+  "correo_mas_totp_habilita_participacion": true,
+  "sms_no_simulado_ni_contratado": true,
+  "recuperacion_real_revoca_sesion": true,
+  "lugar_privado_guardado": true,
+  "ruta_osrm_real": {
+    "estado_http": 200,
+    "rutas": 2
+  },
+  "avisos_solo_revisados": true,
+  "tokens_en_respuesta": false,
+  "datos": "alias de ensayo en el buzón autorizado; destino ficticio, no vivienda del usuario",
+  "no_acredita": "Sensor biométrico físico ni viaje con Waze"
+}

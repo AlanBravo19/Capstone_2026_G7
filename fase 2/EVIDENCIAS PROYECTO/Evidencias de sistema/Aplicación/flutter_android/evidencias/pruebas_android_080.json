@@ -1,0 +1,7 @@
+{
+  "entorno": "JVM local con posiciones sintéticas, no sensores físicos",
+  "tests": 8,
+  "fallos": 0,
+  "errores": 0,
+  "archivo": "ProximityRulesTest.kt"
+}

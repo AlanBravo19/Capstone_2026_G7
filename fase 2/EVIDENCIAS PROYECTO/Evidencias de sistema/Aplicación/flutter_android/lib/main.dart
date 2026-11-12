@@ -13,6 +13,8 @@ import 'map_screen.dart';
 import 'trip.dart';
 import 'trip_screen.dart';
 import 'expanded.dart';
+import 'movilidad.dart';
+import 'biometric.dart';
 
 final rootNavigator = GlobalKey<NavigatorState>();
 
@@ -95,36 +97,26 @@ class _MobileShellState extends State<MobileShell> {
               openScreen(context, SecurityScreen(session: session));
             }
             if (value == 'history') {
-              openScreen(
-                context,
-                DataScreen(
-                  session: session,
-                  title: 'Antecedentes territoriales',
-                  path: '/territorio/antecedentes',
-                  render: (_, r, _) => Column(
-                    children: [
-                      Note('${r['nota']}'),
-                      if ((r['registros'] as List).isEmpty)
-                        const Panel(
-                          child: Text(
-                            'Todavía no hay antecedentes reales autorizados y validados.',
-                          ),
-                        ),
-                      for (final h in r['registros'])
-                        Panel(
-                          child: ListTile(
-                            title: Text('${h['tipo']} · ${h['zona']}'),
-                            subtitle: Text(
-                              '${h['ocurrido_en']} · Fuentes: ${(h['fuentes'] as List).join(', ')}',
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              );
+              openScreen(context, HistoricalNewsScreen(session: session));
             }
-            if (value == 'trip') openScreen(context, const TripScreen());
+            if (value == 'trip') {
+              openScreen(context, TripScreen(session: session));
+            }
+            if (value == 'routes') {
+              openScreen(context, PlacesRoutesScreen(session: session));
+            }
+            if (value == 'sources') {
+              openScreen(context, HistoricalReviewScreen(session: session));
+            }
+            if (value == 'lock') {
+              perform(context, () async {
+                final s = await BiometricAccess.status();
+                if (s['saved'] != true) {
+                  throw Exception('Activa primero la biometría en Seguridad.');
+                }
+                session.lockLocally();
+              });
+            }
             if (value == 'operator') {
               openScreen(context, OperatorScreen(session: session));
             }
@@ -191,6 +183,20 @@ class _MobileShellState extends State<MobileShell> {
             }
           },
           itemBuilder: (_) => [
+            const PopupMenuItem(
+              value: 'routes',
+              child: Text('Mi casa, trabajo y rutas'),
+            ),
+            const PopupMenuItem(
+              value: 'lock',
+              child: Text('Bloquear con biometría'),
+            ),
+            if ((widget.session.profile?['organizaciones'] as List? ?? [])
+                .isNotEmpty)
+              const PopupMenuItem(
+                value: 'sources',
+                child: Text('Revisar fuentes y avisos'),
+              ),
             const PopupMenuItem(
               value: 'history',
               child: Text('Antecedentes territoriales'),

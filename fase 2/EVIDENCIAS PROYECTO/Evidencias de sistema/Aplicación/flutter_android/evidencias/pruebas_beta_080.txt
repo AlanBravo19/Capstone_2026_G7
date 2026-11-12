@@ -1,0 +1,38 @@
+Resolving dependencies...
+Downloading packages...
+  archive 4.5.2 (4.6.0 available)
+  code_assets 1.2.1 (2.2.0 available)
+  cross_file 0.3.5+5 (0.4.0 available)
+  hooks 2.0.2 (2.2.0 available)
+  jni 1.1.1 (1.1.2 available)
+  latlong2 0.9.1 (0.10.1 available)
+  material_color_utilities 0.13.0 (0.13.1 available)
+  meta 1.18.3 (1.19.0 available)
+  objective_c 9.5.0 (9.6.4 available)
+  record_use 0.6.0 (1.1.1 available)
+  test_api 0.7.12 (0.7.15 available)
+  vector_math 2.4.0 (2.4.4 available)
+Got dependencies!
+12 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+00:00 +0: loading C:/Users/Camila Castro/Desktop/RutaAlerta/RutaAlerta_Flutter/test/api_test.dart
+00:00 +0: C:/Users/Camila Castro/Desktop/RutaAlerta/RutaAlerta_Flutter/test/api_test.dart: envía invitación y sesión sólo a la API HTTPS
+00:00 +0 ~1: C:/Users/Camila Castro/Desktop/RutaAlerta/RutaAlerta_Flutter/test/api_test.dart: envía invitación y sesión sólo a la API HTTPS
+00:00 +1 ~1: C:/Users/Camila Castro/Desktop/RutaAlerta/RutaAlerta_Flutter/test/gps_test.dart: denegar permiso no habilita GPS ni fabrica una posición
+00:00 +2 ~1: C:/Users/Camila Castro/Desktop/RutaAlerta/RutaAlerta_Flutter/test/gps_test.dart: denegar permiso no habilita GPS ni fabrica una posición
+00:00 +3 ~1: C:/Users/Camila Castro/Desktop/RutaAlerta/RutaAlerta_Flutter/test/gps_test.dart: denegar permiso no habilita GPS ni fabrica una posición
+00:00 +4 ~1: C:/Users/Camila Castro/Desktop/RutaAlerta/RutaAlerta_Flutter/test/gps_test.dart: denegar permiso no habilita GPS ni fabrica una posición
+00:00 +5 ~1: C:/Users/Camila Castro/Desktop/RutaAlerta/RutaAlerta_Flutter/test/gps_test.dart: denegar permiso no habilita GPS ni fabrica una posición
+00:00 +6 ~1: C:/Users/Camila Castro/Desktop/RutaAlerta/RutaAlerta_Flutter/test/gps_test.dart: denegar permiso no habilita GPS ni fabrica una posición
+00:00 +7 ~1: C:/Users/Camila Castro/Desktop/RutaAlerta/RutaAlerta_Flutter/test/gps_test.dart: denegar permiso no habilita GPS ni fabrica una posición
+00:00 +8 ~1: C:/Users/Camila Castro/Desktop/RutaAlerta/RutaAlerta_Flutter/test/gps_test.dart: denegar permiso no habilita GPS ni fabrica una posición
+00:00 +9 ~1: C:/Users/Camila Castro/Desktop/RutaAlerta/RutaAlerta_Flutter/test/gps_test.dart: denegar permiso no habilita GPS ni fabrica una posición
+00:00 +10 ~1: C:/Users/Camila Castro/Desktop/RutaAlerta/RutaAlerta_Flutter/test/gps_test.dart: denegar permiso no habilita GPS ni fabrica una posición
+00:01 +11 ~1: C:/Users/Camila Castro/Desktop/RutaAlerta/RutaAlerta_Flutter/test/expanded_test.dart: vista security carga sin desbordes con datos controlados
+00:01 +12 ~1: C:/Users/Camila Castro/Desktop/RutaAlerta/RutaAlerta_Flutter/test/gps_test.dart: lectura GPS muestra precisión sin elegir incidente
+00:01 +13 ~1: C:/Users/Camila Castro/Desktop/RutaAlerta/RutaAlerta_Flutter/test/expanded_test.dart: vista case carga sin desbordes con datos controlados
+00:01 +14 ~1: C:/Users/Camila Castro/Desktop/RutaAlerta/RutaAlerta_Flutter/test/gps_test.dart: pausar y revocar permiso limpia posición y desactiva GPS
+00:01 +15 ~1: C:/Users/Camila Castro/Desktop/RutaAlerta/RutaAlerta_Flutter/test/expanded_test.dart: vista community carga sin desbordes con datos controlados
+00:02 +16 ~1: C:/Users/Camila Castro/Desktop/RutaAlerta/RutaAlerta_Flutter/test/widget_test.dart: inicio muestra acceso e invitación sin pedir ubicación
+00:02 +17 ~1: C:/Users/Camila Castro/Desktop/RutaAlerta/RutaAlerta_Flutter/test/widget_test.dart: inicio muestra acceso e invitación sin pedir ubicación
+00:03 +18 ~1: All tests passed!

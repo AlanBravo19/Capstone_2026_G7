@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'session.dart';
 import 'ui.dart';
+import 'biometric.dart';
 
 class LoginScreen extends StatefulWidget {
   final Session session;
@@ -17,6 +18,33 @@ class _LoginScreenState extends State<LoginScreen> {
       name = TextEditingController(),
       factor = TextEditingController();
   bool register = false, busy = false, obscure = true;
+  bool savedBiometric = false;
+  @override
+  void initState() {
+    super.initState();
+    BiometricAccess.status()
+        .then((s) {
+          if (mounted) {
+            setState(
+              () =>
+                  savedBiometric = s['available'] == true && s['saved'] == true,
+            );
+          }
+        })
+        .catchError((Object _) {});
+  }
+
+  Future<void> biometricLogin() async {
+    setState(() => busy = true);
+    try {
+      await widget.session.loginBiometric();
+    } catch (e) {
+      if (mounted) feedback(context, e);
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
   @override
   void dispose() {
     for (final c in [email, password, invitation, name, factor]) {
@@ -223,6 +251,14 @@ class _LoginScreenState extends State<LoginScreen> {
                                       : 'Ingresar',
                                 ),
                         ),
+                        if (savedBiometric &&
+                            !register &&
+                            widget.session.mfaChallenge == null)
+                          OutlinedButton.icon(
+                            onPressed: busy ? null : biometricLogin,
+                            icon: const Icon(Icons.fingerprint),
+                            label: const Text('Ingresar con biometría'),
+                          ),
                         TextButton(
                           onPressed: busy ? null : recovery,
                           child: const Text('Olvidé mi contraseña'),
@@ -232,7 +268,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const Note(
-                  'Beta cerrada. Los reportes requieren revisión y no reemplazan una denuncia. La verificación de contactos de esta beta sigue identificada como de prueba.',
+                  'Beta cerrada. Verifica tu correo y configura el autenticador para participar. Los reportes requieren revisión y no reemplazan una denuncia.',
                 ),
               ],
             ),

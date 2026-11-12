@@ -1,3 +1,9 @@
+# RutaAlerta · Beta 0.8.0
+
+Documentación vigente: [ESTADO_FUNCIONAL_080.md](ESTADO_FUNCIONAL_080.md). Correo real por Brevo, TOTP, desbloqueo biométrico Android, lugares privados, rutas con apertura Google Maps/Waze y avisos locales basados en fuentes revisadas. El esquema actual tiene 65 tablas. SMS no contratado; no se simula en operación.
+
+El contenido siguiente documenta la versión anterior:
+
 # RutaAlerta · Flutter Android 0.7.0+6
 
 Aplicación nativa Flutter conectada por HTTPS a la beta existente. Código editable en `lib/`, servicio Android en `android/app/src/main/kotlin/`. El APK no contiene claves privadas. Instalar en Android 8 o superior; firma de desarrollo, no publicación en tienda.

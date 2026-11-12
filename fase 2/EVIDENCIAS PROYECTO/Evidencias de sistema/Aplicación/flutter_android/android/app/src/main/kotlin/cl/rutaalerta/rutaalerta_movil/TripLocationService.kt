@@ -16,6 +16,9 @@ import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
 import android.os.Looper
+import android.net.Uri
+import org.json.JSONObject
+import java.time.Instant
 
 /** Ubicación local en memoria. No envía recorridos, no lee Waze y no calcula riesgo. */
 class TripLocationService : Service(), LocationListener {
@@ -23,13 +26,19 @@ class TripLocationService : Service(), LocationListener {
         @Volatile var running = false
         @Volatile var lastLocation: Location? = null
         @Volatile var error: String? = null
+        @Volatile var noticeCount=0
+        @Volatile var cacheUntil=0L
         const val CHANNEL = "rutaalerta_trayecto"
     }
+    private var notices=emptyList<TerritorialNotice>()
+    private val alerted=mutableMapOf<String,Long>()
+    private var lastAny=0L
     private var manager: LocationManager? = null
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == "STOP_TRIP") { stopSelf(); return START_NOT_STICKY }
+        loadNotices(intent?.getStringExtra("alerts") ?: "{}")
         if (running) return START_NOT_STICKY
         val notifications = getSystemService(NotificationManager::class.java)
         notifications.createNotificationChannel(NotificationChannel(CHANNEL, "Trayecto de RutaAlerta", NotificationManager.IMPORTANCE_LOW))
@@ -37,7 +46,7 @@ class TripLocationService : Service(), LocationListener {
         val stop = PendingIntent.getService(this, 1, Intent(this, TripLocationService::class.java).setAction("STOP_TRIP"), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val notification = Notification.Builder(this, CHANNEL)
             .setContentTitle("RutaAlerta · Trayecto activo")
-            .setContentText("Ubicación local activa. Sin avisos territoriales en esta versión.")
+            .setContentText("Ubicación local activa. Avisos sólo con antecedentes revisados vigentes.")
             .setSmallIcon(R.drawable.ic_notification)
             .setContentIntent(open).setOngoing(true).setOnlyAlertOnce(true)
             .setVisibility(Notification.VISIBILITY_PRIVATE)
@@ -68,7 +77,44 @@ class TripLocationService : Service(), LocationListener {
         }
         return START_NOT_STICKY
     }
-    override fun onLocationChanged(location: Location) { if (running) lastLocation = Location(location) }
+    override fun onLocationChanged(location: Location) {
+        if (!running) return
+        lastLocation=Location(location)
+        val now=System.currentTimeMillis()
+        for(n in notices){
+            if(ProximityRules.eligible(n,location.latitude,location.longitude,location.accuracy.toDouble(),location.time,now,cacheUntil,alerted[n.id] ?: 0L,lastAny)){
+                val manager=getSystemService(NotificationManager::class.java)
+                manager.createNotificationChannel(NotificationChannel("rutaalerta_antecedentes","Antecedentes territoriales",NotificationManager.IMPORTANCE_DEFAULT))
+                val id=(n.id.hashCode() and 0x7fffffff)%100000+2000
+                val open=PendingIntent.getActivity(this,id,Intent(Intent.ACTION_VIEW,Uri.parse(n.url)),PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+                val text="Antecedente publicado en ${n.zone}. Fuente: ${n.source}, ${n.published}. No indica un delito en curso."
+                val notification=Notification.Builder(this,"rutaalerta_antecedentes").setContentTitle("RutaAlerta · Antecedente histórico cercano")
+                    .setContentText(text).setStyle(Notification.BigTextStyle().bigText(text+" Consulta la fuente cuando estés detenido."))
+                    .setSmallIcon(R.drawable.ic_notification).setContentIntent(open).setAutoCancel(true).setVisibility(Notification.VISIBILITY_PRIVATE).build()
+                try {manager.notify(id,notification);alerted[n.id]=now;lastAny=now}catch(_:Exception){}
+                break
+            }
+        }
+    }
+    private fun loadNotices(raw:String){
+        notices=emptyList();noticeCount=0;cacheUntil=0
+        try {
+            if(raw.length>250000)return
+            val data=JSONObject(raw)
+            cacheUntil=data.optLong("cacheUntil",0).coerceAtMost(System.currentTimeMillis()+7200000L)
+            val array=data.optJSONArray("avisos") ?: return
+            val values=mutableListOf<TerritorialNotice>()
+            for(i in 0 until minOf(array.length(),200)){
+                val n=array.getJSONObject(i);val uri=Uri.parse(n.getString("url_fuente"))
+                if(uri.scheme!="https" || uri.host.isNullOrEmpty() || uri.userInfo!=null)continue
+                val lat=n.getDouble("latitud");val lon=n.getDouble("longitud");val radius=n.getDouble("radio_m")
+                if(!lat.isFinite() || !lon.isFinite() || lat !in -90.0..90.0 || lon !in -180.0..180.0 || radius !in 100.0..15000.0)continue
+                val expiry=Instant.parse(n.getString("vence_en").replace("+00:00","Z")).toEpochMilli()
+                values.add(TerritorialNotice(n.getString("id_antecedente"),lat,lon,radius,expiry,n.getString("zona").take(120),n.getString("nombre_fuente").take(100),uri.toString(),n.getString("fecha_publicacion").take(10)))
+            }
+            notices=values;noticeCount=values.size
+        }catch(_:Exception){notices=emptyList();noticeCount=0;cacheUntil=0}
+    }
     override fun onProviderDisabled(provider: String) {
         // Nunca conservar indefinidamente una ubicación vieja como si fuera actual.
         lastLocation = null
@@ -79,7 +125,7 @@ class TripLocationService : Service(), LocationListener {
     override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) { }
     override fun onDestroy() {
         manager?.removeUpdates(this)
-        running = false; lastLocation = null
+        running = false; lastLocation = null;notices=emptyList();noticeCount=0;cacheUntil=0;alerted.clear()
         stopForeground(STOP_FOREGROUND_REMOVE)
         super.onDestroy()
     }

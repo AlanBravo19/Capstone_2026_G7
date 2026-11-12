@@ -1,0 +1,10 @@
+{
+  "fecha": "2026-11-12",
+  "proveedor": "Brevo SMTP",
+  "resultado": "entregado según el panel transaccional de Brevo",
+  "tls": true,
+  "destinatario": "remitente elegido por el usuario",
+  "recepcion_buzon": "Brevo registra Delivered; las métricas de apertura no acreditan lectura humana",
+  "secreto_publicado": false,
+  "vencimiento_clave": "2027-02-12"
+}

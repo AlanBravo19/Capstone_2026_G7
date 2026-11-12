@@ -1,0 +1,22 @@
+{
+  "version": "0.8.0+7",
+  "fecha": "2026-11-12",
+  "apk": "RutaAlerta_Beta_Android.apk",
+  "bytes": 187598277,
+  "sha256": "c862dbe2360bc7e25d0beae6cf973ccbbf48d43c775c066b19e2223cceef83b6",
+  "firma": "desarrollo verificada",
+  "pruebas_backend": 52,
+  "pruebas_flutter": 18,
+  "pruebas_flutter_remotas_omitidas": 1,
+  "reglas_android": {
+    "entorno": "JVM local con posiciones sintéticas, no sensores físicos",
+    "tests": 8,
+    "fallos": 0,
+    "errores": 0,
+    "archivo": "ProximityRulesTest.kt"
+  },
+  "correo": "SMTP real entregado, según Brevo",
+  "ruta_osrm": "dos alternativas reales en ensayo con puntos públicos",
+  "huella_y_trayecto_fisicos_probados": false,
+  "publicacion_verificada": "https://rutaalerta-mvp-g7.vercel.app/version"
+}

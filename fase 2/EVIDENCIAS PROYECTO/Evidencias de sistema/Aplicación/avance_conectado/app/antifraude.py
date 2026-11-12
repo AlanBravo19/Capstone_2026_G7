@@ -36,12 +36,18 @@ def limitar_ip(conn, request: Request, accion, maximo):
     limitar(conn,f'ip:{accion}:{request.client.host if request.client else "desconocida"}',maximo)
 
 def participante(usuario=Depends(usuario_actual), conn=Depends(obtener_conexion)):
+    from .correo import correo_real
     cur=conn.cursor()
-    cur.execute('''SELECT 1 FROM usuario u JOIN contacto_telefono t USING(id_usuario)
-        WHERE u.id_usuario=%s AND u.estado='activo' AND u.correo_verificado_en IS NOT NULL FOR UPDATE OF u''',
-        (usuario['id_usuario'],))
+    if correo_real():
+        cur.execute("""SELECT 1 FROM usuario u WHERE u.id_usuario=%s AND u.estado='activo'
+            AND u.correo_verificado_en IS NOT NULL AND u.canal_correo_verificado IN ('smtp','brevo')
+            AND (EXISTS(SELECT 1 FROM autenticador_totp a WHERE a.id_usuario=u.id_usuario AND a.activo)
+             OR EXISTS(SELECT 1 FROM contacto_telefono t WHERE t.id_usuario=u.id_usuario AND t.canal_verificado='sms')) FOR UPDATE OF u""",(usuario['id_usuario'],))
+    else:
+        cur.execute("""SELECT 1 FROM usuario u JOIN contacto_telefono t USING(id_usuario)
+            WHERE u.id_usuario=%s AND u.estado='activo' AND u.correo_verificado_en IS NOT NULL FOR UPDATE OF u""",(usuario['id_usuario'],))
     if cur.fetchone() is None:
-        raise HTTPException(403,'Verifica el correo y un teléfono para participar. La recepción asistida está pendiente.')
+        raise HTTPException(403,'Verifica tu correo real y activa el autenticador para participar.' if correo_real() else 'Completa los pasos de contacto de la beta para participar.')
     return usuario
 
 def administrador(usuario=Depends(usuario_actual), conn=Depends(obtener_conexion)):

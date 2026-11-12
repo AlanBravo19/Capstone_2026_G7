@@ -1,0 +1,15 @@
+{
+  "fecha": "2026-11-12",
+  "url": "https://rutaalerta-mvp-g7.vercel.app",
+  "version": "0.8.0-beta",
+  "tablas": 65,
+  "resultado": "aprobado",
+  "correo": "SMTP real solicitado por API publicada; sin token de prueba en respuesta",
+  "canales_simulados": false,
+  "sms": "rechazado explícitamente, no contratado",
+  "privacidad_lugares": "guardar, consultar y retirar; sin acceso institucional para ciudadano",
+  "rutas_osrm_reales": 2,
+  "noticias": "ficha de prensa real pendiente visible; no se activa un aviso sin revisión",
+  "descarga_area_avisos": true,
+  "huella_y_viaje_fisicos": "no evaluados en esta prueba HTTP"
+}

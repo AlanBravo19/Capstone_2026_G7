@@ -30,11 +30,12 @@ async function cargar(){
  perfil=await api('/mi-perfil');const estado=await api('/identidad/mi-estado');const vehiculos=await api('/vehiculos');const casos=await api('/mis-casos');
  if(estado.transporte_correo==='smtp'){
   $('pedir-correo').textContent='Enviar código por correo';
-  $('nota-verificacion').textContent=estado.canales_demo?'El código de correo se envía a tu buzón. El paso de teléfono sigue siendo de prueba y no acredita su titularidad.':'El código de correo se envía a tu buzón. La verificación por SMS aún no está disponible; la participación permanece restringida.';
+  $('nota-verificacion').textContent=estado.canales_demo?'El código de correo se envía a tu buzón. El paso de teléfono sigue siendo de prueba y no acredita su titularidad.':'El código llega a tu correo. Para participar, activa el autenticador en Seguridad de la app Android. No necesitas SMS pagados.';
  }
  RutaMapa.actualizar(casos);
  $('saludo').textContent='Hola, '+perfil.nombre_visible;$('estado-cuenta').textContent=estado.estado;$('total-vehiculos').textContent=vehiculos.length;$('total-casos').textContent=casos.length;
- $('estado-contactos').textContent=`Correo: ${estado.correo_verificado?'paso beta completado':'pendiente'} · Teléfono: ${estado.telefono_verificado?'paso beta completado':'pendiente'} · ${estado.puede_participar?'Puedes registrar vehículos y reportes.':'Completa los dos pasos para participar.'}`;
+ if(estado.transporte_correo==='smtp'){$('pedir-sms').hidden=true;$('form-telefono').hidden=true;}
+ $('estado-contactos').textContent=`Correo: ${estado.correo_verificado?'confirmado':'pendiente'} · Autenticador: ${estado.mfa_activo?'activo':'pendiente'} · ${estado.puede_participar?'Puedes registrar vehículos y reportes.':'Completa los dos pasos para participar.'}`;
  $('lista-vehiculos').innerHTML=vehiculos.length?vehiculos.map(v=>`<article class="item"><b>${esc(v.patente)} · ${esc(v.marca)} ${esc(v.modelo)}</b><p>${esc(v.color)} · ${esc(v.anio)}</p><span class="pill">Vínculo ${esc(v.estado_vinculo)}</span></article>`).join(''):'<p class="empty">Todavía no has registrado vehículos.</p>';
  $('vehiculo-caso').innerHTML='<option value="">Selecciona tu vehículo</option>'+vehiculos.map(v=>`<option value="${Number(v.id_vehiculo)}">${esc(v.patente)} · ${esc(v.modelo)}</option>`).join('');
  $('lista-casos').innerHTML=casos.length?casos.map(c=>`<article class="item"><b>${esc(c.folio)} · ${esc(c.patente)}</b><p>${esc(c.zona)} · ${esc(new Date(c.fecha_hecho).toLocaleString('es-CL'))}</p><span class="pill">${esc(c.estado.replaceAll('_',' '))}</span><p>Antecedentes de denuncia: ${esc(c.denuncia_estado.replaceAll('_',' '))}. Sin publicación automática.</p></article>`).join(''):'<p class="empty">Tus reportes aparecerán aquí después de registrarlos.</p>';

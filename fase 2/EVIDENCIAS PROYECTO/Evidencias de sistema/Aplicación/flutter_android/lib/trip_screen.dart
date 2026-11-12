@@ -4,9 +4,12 @@ import 'package:flutter/material.dart';
 
 import 'trip.dart';
 import 'ui.dart';
+import 'session.dart';
+import 'movilidad.dart';
 
 class TripScreen extends StatefulWidget {
-  const TripScreen({super.key});
+  final Session? session;
+  const TripScreen({super.key, this.session});
   @override
   State<TripScreen> createState() => _TripScreenState();
 }
@@ -63,7 +66,7 @@ class _TripScreenState extends State<TripScreen> with WidgetsBindingObserver {
       builder: (context) => AlertDialog(
         title: const Text('Iniciar trayecto'),
         content: const Text(
-          'RutaAlerta utilizará la ubicación mientras el trayecto esté activo, incluso si abres Waze u otra app. Verás una notificación y podrás detenerlo desde allí.\n\nLa ubicación permanece en memoria en este teléfono; no se envía a la plataforma. Esta versión todavía no emite avisos por antecedentes históricos. No ofrece seguimiento del vehículo robado.',
+          'RutaAlerta utilizará la ubicación mientras el trayecto esté activo, incluso si abres Waze u otra app. Verás una notificación y podrás detenerlo desde allí.\n\nLa ubicación permanece en memoria en este teléfono; no se envía a la plataforma. Se consultará una vez el área actual para descargar antecedentes revisados; los avisos de cercanía se calculan después en este teléfono por hasta dos horas. No se lee la ruta de Waze ni se envía un historial continuo de ubicación. No ofrece seguimiento del vehículo robado.',
         ),
         actions: [
           TextButton(
@@ -80,7 +83,31 @@ class _TripScreenState extends State<TripScreen> with WidgetsBindingObserver {
     if (consent != true || !mounted) return;
     setState(() => busy = true);
     try {
-      await TripService.start();
+      List<dynamic> notices = [];
+      DateTime? expiry;
+      if (widget.session != null) {
+        try {
+          final p = await Mobility.location();
+          final r = await widget.session!.api.request(
+            '/territorio/avisos/descargar',
+            method: 'POST',
+            body: {
+              'latitud': double.parse((p['lat'] as num).toStringAsFixed(2)),
+              'longitud': double.parse((p['lon'] as num).toStringAsFixed(2)),
+            },
+          );
+          notices = r['avisos'] as List;
+          expiry = DateTime.tryParse(r['cache_hasta'] as String);
+        } catch (_) {
+          if (mounted) {
+            feedback(
+              context,
+              'No se descargaron antecedentes. El trayecto puede continuar sin avisos.',
+            );
+          }
+        }
+      }
+      await TripService.start(avisos: notices, cacheHasta: expiry);
       await Future<void>.delayed(const Duration(milliseconds: 500));
       await refresh();
     } catch (e) {
@@ -110,7 +137,7 @@ class _TripScreenState extends State<TripScreen> with WidgetsBindingObserver {
       children: [
         const SectionTitle(
           'Modo trayecto',
-          eyebrow: 'Android · base de ubicación',
+          eyebrow: 'Android · ubicación y antecedentes',
         ),
         Panel(
           child: Column(
@@ -171,6 +198,10 @@ class _TripScreenState extends State<TripScreen> with WidgetsBindingObserver {
                       : 'Iniciar trayecto',
                 ),
               ),
+              if (running)
+                Note(
+                  'Antecedentes descargados: ${status['noticeCount'] ?? 0}. ${((status['noticeCount'] ?? 0) as num) == 0 ? 'No hay avisos disponibles para este trayecto.' : 'Se avisará al acercarte a un sector revisado mientras el caché esté vigente.'}',
+                ),
               if (status['lat'] != null)
                 Note(
                   'Última ubicación del dispositivo: ${(status['lat'] as num).toStringAsFixed(5)}, ${(status['lng'] as num).toStringAsFixed(5)}. Precisión aproximada: ${status['accuracy']} m.',
@@ -192,7 +223,7 @@ class _TripScreenState extends State<TripScreen> with WidgetsBindingObserver {
                 style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
               ),
               Note(
-                'Servicio Android visible y control manual de ubicación. No lee la ruta de Waze. No hay avisos territoriales, predicción ni rastreo de vehículos. Su continuidad depende de los permisos y restricciones del teléfono.',
+                'Los avisos se basan sólo en antecedentes revisados descargados al iniciar: no son delitos en curso ni predicción. El caché vence en un máximo de dos horas; fuera del área descargada pueden faltar antecedentes. No lee Waze ni rastrea vehículos. Depende del GPS, permisos y batería.',
               ),
             ],
           ),

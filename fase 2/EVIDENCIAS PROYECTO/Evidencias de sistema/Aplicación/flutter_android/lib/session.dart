@@ -3,6 +3,9 @@ import 'package:latlong2/latlong.dart';
 import 'package:uuid/uuid.dart';
 
 import 'api.dart';
+import 'biometric.dart';
+
+import 'dart:async';
 
 class Session extends ChangeNotifier {
   final RutaApi api;
@@ -18,7 +21,10 @@ class Session extends ChangeNotifier {
   }
   bool get signedIn => profile != null;
   bool get canReport => identity['puede_participar'] == true;
-  void clear() {
+  void clear({bool forgetBiometric = true}) {
+    if (forgetBiometric) {
+      unawaited(BiometricAccess.clear().catchError((Object _) {}));
+    }
     onSessionEnded?.call();
     api.token = '';
     profile = null;
@@ -82,6 +88,43 @@ class Session extends ChangeNotifier {
       clear();
       rethrow;
     }
+  }
+
+  Future<void> loginBiometric() async {
+    final data = await BiometricAccess.unlock();
+    if (data['token'] is! String || data['invitation'] is! String) {
+      await BiometricAccess.clear();
+      throw const ApiError(
+        'Ingresa con tu contraseña para configurar el acceso otra vez.',
+      );
+    }
+    api.invitation = data['invitation'];
+    api.token = data['token'];
+    try {
+      await refresh();
+      if (profile?['id_usuario'] != data['uid']) {
+        clear();
+        throw const ApiError('La cuenta guardada no coincide.');
+      }
+    } catch (_) {
+      clear(forgetBiometric: false);
+      rethrow;
+    }
+  }
+
+  Future<void> enableBiometric() async {
+    if (!signedIn || api.token.isEmpty) {
+      throw const ApiError('Primero ingresa con tu cuenta.');
+    }
+    await BiometricAccess.save(
+      api.token,
+      api.invitation,
+      profile!['id_usuario'] as int,
+    );
+  }
+
+  void lockLocally() {
+    clear(forgetBiometric: false);
   }
 
   Future<void> refresh() async {

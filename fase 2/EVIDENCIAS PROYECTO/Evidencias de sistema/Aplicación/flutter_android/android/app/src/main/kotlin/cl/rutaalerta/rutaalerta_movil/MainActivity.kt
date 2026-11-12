@@ -10,10 +10,17 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
+    private lateinit var vault: BiometricVault
+    private lateinit var navigation: NavigationBridge
     private var pending: MethodChannel.Result? = null
+    private var pendingAlerts="{}"
     private var pendingMap: MethodChannel.Result? = null
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        vault=BiometricVault(this)
+        navigation=NavigationBridge(this)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger,"cl.rutaalerta/biometria").setMethodCallHandler { call,result -> vault.handle(call,result) }
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger,"cl.rutaalerta/movilidad").setMethodCallHandler { call,result -> navigation.handle(call,result) }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "cl.rutaalerta/trayecto").setMethodCallHandler { call, result ->
             when (call.method) {
                 "mapLocationAllowed" -> result.success(hasLocation())
@@ -26,6 +33,8 @@ class MainActivity : FlutterActivity() {
                     }
                 }
                 "start" -> {
+                    pendingAlerts=call.argument<String>("alerts") ?: "{}"
+                    if(pendingAlerts.length>250000){result.error("invalid","Demasiados antecedentes para este trayecto.",null);return@setMethodCallHandler}
                     if (pending != null || pendingMap != null) result.error("busy", "Ya hay una solicitud en curso.", null)
                     else {
                         val permissions = mutableListOf<String>()
@@ -49,7 +58,7 @@ class MainActivity : FlutterActivity() {
                 }
                 "status" -> {
                     val loc = TripLocationService.lastLocation
-                    result.success(mapOf("running" to TripLocationService.running, "lat" to loc?.latitude, "lng" to loc?.longitude, "accuracy" to loc?.accuracy?.toInt(), "error" to TripLocationService.error))
+                    result.success(mapOf("running" to TripLocationService.running, "lat" to loc?.latitude, "lng" to loc?.longitude, "accuracy" to loc?.accuracy?.toInt(), "error" to TripLocationService.error,"noticeCount" to TripLocationService.noticeCount,"cacheUntil" to TripLocationService.cacheUntil))
                 }
                 "openAttribution" -> {
                     try { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.openstreetmap.org/copyright"))); result.success(null) }
@@ -65,7 +74,7 @@ class MainActivity : FlutterActivity() {
         if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             result.error("notifications", "Autoriza las notificaciones para mantener visible el trayecto.", null); return
         }
-        try { startForegroundService(Intent(this, TripLocationService::class.java)); result.success(null) }
+        try { startForegroundService(Intent(this, TripLocationService::class.java).putExtra("alerts",pendingAlerts)); result.success(null) }
         catch (_: Exception) { result.error("service", "No se pudo iniciar el trayecto. Abre RutaAlerta e inténtalo de nuevo.", null) }
     }
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
@@ -78,6 +87,8 @@ class MainActivity : FlutterActivity() {
         pending = null
         pendingMap?.error("cancelled", "Solicitud cancelada.", null)
         pendingMap = null
+        if(::vault.isInitialized)vault.cancel()
+        if(::navigation.isInitialized)navigation.close()
         super.onDestroy()
     }
 }

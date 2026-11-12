@@ -1,0 +1,12 @@
+{
+  "fecha": "2026-11-12",
+  "proyecto": "RutaAlerta Demo fmqlijkowxxplltkjoey",
+  "migracion": "06_Movilidad_y_Fuentes.sql",
+  "tablas_antes": 63,
+  "tablas_despues": 65,
+  "datos_previos_conservados": true,
+  "permisos": "mismo rol ra_api SELECT INSERT UPDATE, sin DELETE ni administración",
+  "fuente_incorporada": "una ficha pública de BioBioChile del 03/07/2026",
+  "estado_fuente": "pendiente, sin geolocalización y sin avisos activos",
+  "verificaciones_previas": "conservadas como prueba; no se convierten automáticamente en reales"
+}

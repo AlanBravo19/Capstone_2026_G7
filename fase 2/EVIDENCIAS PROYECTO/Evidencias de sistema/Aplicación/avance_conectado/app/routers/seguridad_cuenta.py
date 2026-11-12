@@ -80,6 +80,9 @@ def activar(datos:Factor,usuario=Depends(usuario_actual),conn=Depends(obtener_co
     matches=[p for p in [now,now-1,now+1] if hmac.compare_digest(codigo_totp(secret,p),datos.codigo)]
     if not matches:raise HTTPException(400,'Código incorrecto o vencido')
     cur.execute('UPDATE autenticador_totp SET activo=true,ultimo_paso=%s WHERE id_usuario=%s',(matches[0],uid))
+    from ..correo import correo_real
+    if correo_real():
+        cur.execute("UPDATE usuario SET estado='activo' WHERE id_usuario=%s AND estado='pendiente' AND correo_verificado_en IS NOT NULL AND canal_correo_verificado IN ('smtp','brevo')",(uid,))
     codes=[secrets.token_hex(8).upper() for _ in range(8)]
     cur.execute('UPDATE recuperacion_mfa SET consumido_en=CURRENT_TIMESTAMP WHERE id_usuario=%s AND consumido_en IS NULL',(uid,))
     for code in codes:cur.execute('INSERT INTO recuperacion_mfa(id_usuario,codigo_hash) VALUES(%s,%s)',(uid,huella(code)))

@@ -1,6 +1,6 @@
 [project]
 name = "rutaalerta-avance"
-version = "0.7.0"
+version = "0.8.0"
 requires-python = ">=3.12,<3.13"
 dependencies = [
   "fastapi==0.115.14",
@@ -8,7 +8,8 @@ dependencies = [
   "pg8000==1.31.5",
   "psycopg[binary]==3.3.6",
   "cryptography==46.0.3",
-  "Pillow==12.0.0"
+  "Pillow==12.0.0",
+  "httpx==0.28.1"
 ]
 
 [project.optional-dependencies]
