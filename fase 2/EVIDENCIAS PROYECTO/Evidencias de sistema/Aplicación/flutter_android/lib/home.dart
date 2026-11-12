@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'session.dart';
 import 'ui.dart';
+import 'expanded.dart';
 
 class HomeScreen extends StatelessWidget {
   final Session session;
@@ -154,6 +155,14 @@ class HomeScreen extends StatelessWidget {
                   ),
                   gap(8),
                   Text('${c['zona']}', style: const TextStyle(color: muted)),
+                  OutlinedButton.icon(
+                    onPressed: () => openScreen(
+                      context,
+                      CaseScreen(session: session, cid: c['id_caso'] as int),
+                    ),
+                    icon: const Icon(Icons.timeline),
+                    label: const Text('Abrir seguimiento'),
+                  ),
                   const Note(
                     'Reporte privado. Su registro no constituye un encargo policial.',
                   ),

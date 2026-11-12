@@ -1,0 +1,9 @@
+{
+  "destino": "RutaAlerta Demo fmqlijkowxxplltkjoey",
+  "tablas_antes": 59,
+  "tablas_despues": 63,
+  "migracion": "05_Beta_Colaborativa.sql",
+  "aplicada": true,
+  "datos_previos_conservados": true,
+  "permisos_nuevos": "SELECT,INSERT,UPDATE de cuatro tablas; sin administración ni DELETE"
+}

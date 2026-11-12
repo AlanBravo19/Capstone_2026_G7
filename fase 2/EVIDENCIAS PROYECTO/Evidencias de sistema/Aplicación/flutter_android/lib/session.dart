@@ -12,6 +12,7 @@ class Session extends ChangeNotifier {
   List<Map<String, dynamic>> vehicles = [], cases = [];
   LatLng? selectedPoint;
   String? _caseSignature, _caseKey;
+  String? mfaChallenge;
   Session(this.api) {
     api.onExpired = clear;
   }
@@ -21,6 +22,7 @@ class Session extends ChangeNotifier {
     onSessionEnded?.call();
     api.token = '';
     profile = null;
+    mfaChallenge = null;
     identity = {};
     vehicles = [];
     cases = [];
@@ -53,7 +55,27 @@ class Session extends ChangeNotifier {
       method: 'POST',
       body: {'correo': email.trim(), 'clave': password},
     );
+    if (response['requiere_mfa'] == true) {
+      mfaChallenge = response['id_desafio'] as String;
+      return;
+    }
     api.token = response['token'] as String;
+    try {
+      await refresh();
+    } catch (_) {
+      clear();
+      rethrow;
+    }
+  }
+
+  Future<void> confirmMfa(String code) async {
+    final response = await api.request(
+      '/sesiones/mfa',
+      method: 'POST',
+      body: {'id_desafio': mfaChallenge, 'codigo': code.trim()},
+    );
+    api.token = response['token'] as String;
+    mfaChallenge = null;
     try {
       await refresh();
     } catch (_) {

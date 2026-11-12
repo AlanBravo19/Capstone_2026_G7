@@ -4,6 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from ..config import config
 from ..correo import correo_real, enviar_codigo, CorreoNoDisponible
 import logging
+import uuid
+from datetime import datetime, timedelta, timezone
 from ..db import fila_dict, obtener_conexion, ErrorBD
 from ..esquemas import (CuentaSalida, RecuperacionConfirmar, RecuperacionEntrada, RecuperacionSalida,
                         RegistroEntrada, SesionEntrada, SesionSalida)
@@ -49,6 +51,12 @@ def iniciar_sesion(datos: SesionEntrada, request: Request, conn=Depends(obtener_
     fila = cur.fetchone()
     if fila is None or not verificar_clave(datos.clave, fila[1]) or fila[2] in ("suspendido", "anonimizado"):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Credenciales inválidas")
+    cur.execute('SELECT 1 FROM autenticador_totp WHERE id_usuario=%s AND activo',(fila[0],))
+    if cur.fetchone():
+        desafio=str(uuid.uuid4())
+        cur.execute('UPDATE desafio_mfa SET consumido_en=CURRENT_TIMESTAMP WHERE id_usuario=%s AND consumido_en IS NULL',(fila[0],))
+        cur.execute('INSERT INTO desafio_mfa(id_desafio,id_usuario,vence_en) VALUES(%s,%s,%s)',(desafio,fila[0],datetime.now(timezone.utc)+timedelta(minutes=5)))
+        return SesionSalida(requiere_mfa=True,id_desafio=desafio)
     token, vence = emitir_token(cur, fila[0], "sesion", config.sesion_horas * 60)
     return SesionSalida(token=token, vence_en=vence)
 
@@ -97,6 +105,7 @@ def confirmar_recuperacion(datos: RecuperacionConfirmar, conn=Depends(obtener_co
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Token inválido, vencido o ya utilizado")
     cur.execute("UPDATE usuario SET password_hash = %s, actualizado_en = CURRENT_TIMESTAMP WHERE id_usuario = %s",
                 (cifrar_clave(datos.nueva_clave), fila[0]))
+    cur.execute('UPDATE desafio_mfa SET consumido_en=CURRENT_TIMESTAMP WHERE id_usuario=%s',(fila[0],))
     # Cerrar las sesiones abiertas tras cambiar la contraseña.
     cur.execute("""UPDATE token_acceso SET revocado_en = CURRENT_TIMESTAMP
                     WHERE id_usuario = %s AND proposito = 'sesion' AND revocado_en IS NULL""", (fila[0],))

@@ -1,3 +1,5 @@
+> Actualización 0.7.0 (12/11/2026): consultar ESTADO_FUNCIONAL_070.md. Incluye TOTP real, colaboración y 63 tablas. El contenido siguiente describe la configuración anterior y el envío SMTP, que sigue pendiente de proveedor.
+
 # RutaAlerta - Avance conectado 0.3
 
 Avance académico del Grupo 7, preparado con asistencia de IA el 29/10/2026. Interfaz web de ensayo, API FastAPI y PostgreSQL/PostGIS. No es la entrega final ni un servicio de emergencias. No atribuye trabajo ni commits a compañeros.

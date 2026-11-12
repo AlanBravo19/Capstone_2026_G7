@@ -9,7 +9,7 @@ import path from 'node:path';
 
 const [sqlDir, puerto = '54329'] = process.argv.slice(2);
 const db = new PGlite({ extensions: { postgis } });
-for (const f of ['01_Esquema_Completo_Supabase.sql', '02_Catalogo_indicadores.sql', '03_Datos_demo.sql', '04_Identidad_MVP.sql']) {
+for (const f of ['01_Esquema_Completo_Supabase.sql', '02_Catalogo_indicadores.sql', '03_Datos_demo.sql', '04_Identidad_MVP.sql', '05_Beta_Colaborativa.sql']) {
   await db.exec(fs.readFileSync(path.join(sqlDir, f), 'utf8'));
   console.log('cargado', f);
 }

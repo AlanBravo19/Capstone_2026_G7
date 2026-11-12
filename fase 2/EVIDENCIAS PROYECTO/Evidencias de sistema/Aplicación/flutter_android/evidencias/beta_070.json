@@ -1,0 +1,14 @@
+{
+  "version": "0.7.0+6",
+  "fecha": "2026-11-12",
+  "apk": "RutaAlerta_Beta_Android.apk",
+  "bytes": 187543109,
+  "sha256": "9e8de61145dff16645e1680e66f7629e591521a6215acecc3c1d02ec63880cd7",
+  "firma": "apksigner verify correcto; firma de desarrollo",
+  "pruebas_backend": 46,
+  "pruebas_flutter": 14,
+  "pruebas_flutter_remotas_omitidas": 1,
+  "pruebas_mapa_web": 8,
+  "supabase": "migración 59 a 63 tablas y verificación TOTP real con ra_api",
+  "telefono_fisico": false
+}

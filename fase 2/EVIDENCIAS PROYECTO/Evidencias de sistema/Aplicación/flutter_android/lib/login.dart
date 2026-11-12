@@ -13,27 +13,36 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final form = GlobalKey<FormState>();
   final email = TextEditingController(), password = TextEditingController();
-  final invitation = TextEditingController(), name = TextEditingController();
+  final invitation = TextEditingController(),
+      name = TextEditingController(),
+      factor = TextEditingController();
   bool register = false, busy = false, obscure = true;
   @override
   void dispose() {
-    for (final c in [email, password, invitation, name]) {
+    for (final c in [email, password, invitation, name, factor]) {
       c.dispose();
     }
     super.dispose();
   }
 
   Future<void> submit() async {
-    if (!form.currentState!.validate()) return;
+    if (widget.session.mfaChallenge == null && !form.currentState!.validate()) {
+      return;
+    }
     setState(() => busy = true);
     try {
-      await widget.session.login(
-        email.text,
-        password.text,
-        invitation.text,
-        name: register ? name.text : null,
-      );
-      password.clear();
+      if (widget.session.mfaChallenge != null) {
+        await widget.session.confirmMfa(factor.text);
+        factor.clear();
+      } else {
+        await widget.session.login(
+          email.text,
+          password.text,
+          invitation.text,
+          name: register ? name.text : null,
+        );
+        password.clear();
+      }
     } catch (e) {
       if (mounted) feedback(context, e);
     } finally {
@@ -175,6 +184,25 @@ class _LoginScreenState extends State<LoginScreen> {
                               ? null
                               : 'Utiliza al menos 8 caracteres',
                         ),
+                        if (widget.session.mfaChallenge != null) ...[
+                          gap(),
+                          TextFormField(
+                            controller: factor,
+                            decoration: const InputDecoration(
+                              labelText:
+                                  'Código del autenticador o de recuperación',
+                            ),
+                            validator: requiredText,
+                          ),
+                          TextButton(
+                            onPressed: busy
+                                ? null
+                                : () => setState(
+                                    () => widget.session.mfaChallenge = null,
+                                  ),
+                            child: const Text('Volver al ingreso'),
+                          ),
+                        ],
                         gap(22),
                         FilledButton(
                           onPressed: busy ? null : submit,
@@ -188,7 +216,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                                 )
                               : Text(
-                                  register
+                                  widget.session.mfaChallenge != null
+                                      ? 'Verificar segundo factor'
+                                      : register
                                       ? 'Crear cuenta e ingresar'
                                       : 'Ingresar',
                                 ),

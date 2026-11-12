@@ -32,8 +32,10 @@ class SesionEntrada(BaseModel):
 
 
 class SesionSalida(BaseModel):
-    token: str
-    vence_en: datetime
+    token: str | None = None
+    vence_en: datetime | None = None
+    requiere_mfa: bool = False
+    id_desafio: str | None = None
 
 
 class RecuperacionEntrada(BaseModel):

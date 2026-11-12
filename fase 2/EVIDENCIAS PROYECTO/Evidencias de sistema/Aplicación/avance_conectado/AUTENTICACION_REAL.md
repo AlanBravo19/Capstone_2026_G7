@@ -1,3 +1,5 @@
+> Actualización 0.7.0 (12/11/2026): consultar ESTADO_FUNCIONAL_070.md. Incluye TOTP real, colaboración y 63 tablas. El contenido siguiente describe la configuración anterior y el envío SMTP, que sigue pendiente de proveedor.
+
 # Autenticación: avance de integración de correo real
 
 29/10/2026. El inicio de sesión ya valida contraseñas con scrypt y sesiones revocables en PostgreSQL. Este incremento incorpora envío SMTP con TLS de códigos de verificación y recuperación, y formularios de recuperación en la interfaz.

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
@@ -21,6 +22,22 @@ class RutaApi {
   String token = '';
   void Function()? onExpired;
   RutaApi({http.Client? client}) : client = client ?? http.Client();
+
+  Future<Uint8List> photo(int id) async {
+    final r = await client
+        .get(
+          Uri.parse('$base/evidencias/$id/foto'),
+          headers: {
+            'Authorization': 'Bearer $token',
+            'X-Demo-Access': invitation,
+          },
+        )
+        .timeout(const Duration(seconds: 35));
+    if (r.statusCode != 200) {
+      throw const ApiError('No se pudo abrir la foto privada.');
+    }
+    return r.bodyBytes;
+  }
 
   Future<dynamic> request(
     String path, {

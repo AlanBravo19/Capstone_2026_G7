@@ -19,7 +19,9 @@ function modo(r){registro=r;$('nombre-wrap').hidden=!r;$('nombre').required=r;$(
 $('modo-ingreso').onclick=()=>modo(false);$('modo-registro').onclick=()=>modo(true);
 formulario('form-acceso',async()=>{const correo=$('correo').value,clave=$('clave').value;
  if(registro)await api('/cuentas',{method:'POST',body:{correo,clave,nombre_visible:$('nombre').value}});
- token=(await api('/sesiones',{method:'POST',body:{correo,clave}})).token;$('clave').value='';
+ let login=await api('/sesiones',{method:'POST',body:{correo,clave}});
+ if(login.requiere_mfa){const codigo=window.prompt('Ingresa el código del autenticador o un código de recuperación:');if(!codigo)throw new Error('Ingreso cancelado.');login=await api('/sesiones/mfa',{method:'POST',body:{id_desafio:login.id_desafio,codigo:codigo.trim()}});}
+ token=login.token;$('clave').value='';
  try{await cargar();$('acceso').hidden=true;$('panel').hidden=false;$('salir').hidden=false;aviso('Sesión iniciada. Bienvenido a RutaAlerta.')}catch(e){token='';RutaMapa.limpiar();throw e}
 });
 accion('salir',async()=>{try{await api('/sesiones/cerrar',{method:'POST'})}finally{token='';perfil=null;$('panel').hidden=true;$('acceso').hidden=false;$('salir').hidden=true;$('administracion').hidden=true;RutaMapa.limpiar()}});

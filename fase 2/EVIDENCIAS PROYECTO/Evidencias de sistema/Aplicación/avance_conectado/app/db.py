@@ -43,7 +43,10 @@ def obtener_conexion():
         yield conn
         conn.commit()
     except Exception:
-        conn.rollback()
+        try:
+            conn.rollback()
+        except psycopg.Error:
+            pass  # Conservar el error original si la conexión ya está dañada.
         raise
     finally:
         conn.close()

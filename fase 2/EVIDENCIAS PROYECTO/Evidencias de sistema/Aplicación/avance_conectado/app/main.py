@@ -6,7 +6,7 @@ import os
 import secrets
 
 from .db import obtener_conexion
-from .routers import casos, cuentas, identidad, avance
+from .routers import casos, cuentas, identidad, avance, seguridad_cuenta, colaboracion
 from .antifraude import DEMO, SECRET
 from .correo import correo_real, configuracion_smtp
 
@@ -25,20 +25,22 @@ if os.getenv('VERCEL'):
 
 app = FastAPI(
     title="RutaAlerta API",
-    version="0.3.0-demo",
-    description="Avance local 29/10/2026. Verificación de contactos SIMULADA, base SQL real. No usar datos personales reales.",
+    version="0.7.0-beta",
+    description="Beta colaborativa: TOTP, seguimiento, publicación revisada y fotos privadas. Correo y SMS dependen de la configuración de proveedores.",
 )
 app.include_router(cuentas.router)
 app.include_router(casos.router)
 app.include_router(identidad.router)
 app.include_router(avance.router)
+app.include_router(seguridad_cuenta.router)
+app.include_router(colaboracion.router)
 
 BASE=Path(__file__).resolve().parents[1]
 
 @app.middleware('http')
 async def proteger_demo(request:Request,call_next):
     clave=os.getenv('DEMO_ACCESS_KEY','')
-    libre=request.url.path in ('/','/site.css','/site.js','/mapa.js','/mapa-azul.json','/favicon.ico')
+    libre=request.url.path in ('/','/site.css','/site.js','/mapa.js','/mapa-azul.json','/favicon.ico','/version')
     if clave and not libre and not secrets.compare_digest(request.headers.get('x-demo-access',''),clave):
         return JSONResponse({'detail':'Ingresa una clave de invitación válida a la beta.'},status_code=403)
     response=await call_next(request)
@@ -70,3 +72,6 @@ def health(conn=Depends(obtener_conexion)):
     cur.execute("SELECT postgis_lib_version(), (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'rutaalerta' AND table_type = 'BASE TABLE')")
     postgis, tablas = cur.fetchone()
     return {"estado": "ok", "postgis": postgis, "tablas": tablas}
+
+@app.get("/version",include_in_schema=False)
+def version_beta():return {"version":"0.7.0-beta","modelo_tablas":63,"cliente":"Flutter Android"}

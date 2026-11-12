@@ -8,7 +8,7 @@ from app.seguridad import huella
 def test_health_conecta_con_postgis(client):
     r = client.get("/health")
     assert r.status_code == 200
-    assert r.json()["tablas"] == 59
+    assert r.json()["tablas"] == 63
 
 
 def test_cp40_registro_ciudadano_y_correo_repetido(client):

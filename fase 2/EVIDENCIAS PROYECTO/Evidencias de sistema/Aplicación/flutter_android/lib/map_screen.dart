@@ -429,7 +429,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                     onMapCreated: (c) => setState(() => controller = c),
                     onStyleLoadedCallback: loaded,
                     onMapClick: (_, p) {
-                      setState(() { point = LatLng(p.latitude, p.longitude); follow = false; });
+                      setState(() {
+                        point = LatLng(p.latitude, p.longitude);
+                        follow = false;
+                      });
                       sync();
                     },
                   ),

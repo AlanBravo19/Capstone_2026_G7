@@ -64,14 +64,16 @@ def perfil(usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):
     cur=conn.cursor()
     cur.execute('''SELECT r.codigo FROM usuario_rol ur JOIN rol r USING(id_rol)
         WHERE ur.id_usuario=%s AND ur.revocado_en IS NULL''',(usuario['id_usuario'],))
-    return {**usuario,'roles':[r[0] for r in cur.fetchall()]}
+    roles=[r[0] for r in cur.fetchall()]
+    from ..seguridad import organizaciones_del_operador
+    return {**usuario,'roles':roles,'organizaciones':organizaciones_del_operador(cur,usuario['id_usuario'])}
 
 class RevisionCaso(BaseModel):
     estado:str=Field(pattern='^(en_revision|en_gestion)$')
     motivo:str=Field(min_length=10,max_length=500)
 
 @router.post('/gestion/casos/{id_caso}/revision')
-def revision_caso(id_caso:int,datos:RevisionCaso,usuario=Depends(administrador),conn=Depends(obtener_conexion)):
+def revision_caso(id_caso:int,datos:RevisionCaso,usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):
     cur=conn.cursor()
     # Exige además pertenencia institucional al caso, incluso siendo administrador global.
     cur.execute('''SELECT c.estado FROM caso c WHERE c.id_caso=%s AND EXISTS (
@@ -83,4 +85,8 @@ def revision_caso(id_caso:int,datos:RevisionCaso,usuario=Depends(administrador),
     if fila[0]=='cerrado':raise HTTPException(409,'Caso cerrado')
     cur.execute('UPDATE caso SET estado=%s,actualizado_en=CURRENT_TIMESTAMP WHERE id_caso=%s',(datos.estado,id_caso))
     cur.execute("INSERT INTO gestion_caso(id_caso,id_usuario,accion,descripcion) VALUES(%s,%s,'nota',%s)",(id_caso,usuario['id_usuario'],datos.motivo))
+    from .colaboracion import bitacora,aviso
+    bitacora(cur,id_caso,usuario['id_usuario'],'cambio_estado',datos.motivo,'afectado',fila[0],datos.estado)
+    cur.execute('SELECT id_usuario_reportante FROM caso WHERE id_caso=%s',(id_caso,))
+    aviso(cur,cur.fetchone()[0],id_caso,'Estado actualizado','Hay una actualización en el seguimiento.',f'estado:{id_caso}:{__import__("uuid").uuid4()}')
     return {'id_caso':id_caso,'estado':datos.estado,'publicado':False}

@@ -1,0 +1,10 @@
+{
+  "entorno": "FastAPI TestClient local contra Supabase real con TLS y rol ra_api",
+  "resultado": "aprobado",
+  "tablas": 63,
+  "mfa_real_con_codigo_y_recuperacion": true,
+  "sesiones_previas_revocadas": true,
+  "sin_cambio_de_permisos_administrativos": true,
+  "datos": "cuenta ficticia example.invalid; no se enviaron mensajes externos",
+  "no_acredita": "Publicación Vercel ni teléfono físico"
+}
