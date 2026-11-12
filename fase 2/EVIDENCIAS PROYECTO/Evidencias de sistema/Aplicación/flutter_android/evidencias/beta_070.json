@@ -10,5 +10,6 @@
   "pruebas_flutter_remotas_omitidas": 1,
   "pruebas_mapa_web": 8,
   "supabase": "migración 59 a 63 tablas y verificación TOTP real con ra_api",
-  "telefono_fisico": false
+  "telefono_fisico": false,
+  "publicacion_verificada": "https://rutaalerta-mvp-g7.vercel.app/version"
 }

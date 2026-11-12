@@ -1,0 +1,18 @@
+{
+  "fecha": "2026-11-12",
+  "url": "https://rutaalerta-mvp-g7.vercel.app",
+  "version": "0.7.0-beta",
+  "estado": "aprobado",
+  "tablas": 63,
+  "flujos": [
+    "registro e inicio",
+    "contactos expresamente simulados",
+    "vehículo y reporte ficticios",
+    "seguimiento y consentimiento",
+    "foto privada y descarga autenticada",
+    "buzón y listado colaboración",
+    "restricción institucional",
+    "MFA con recuperación real y desactivación"
+  ],
+  "alcance": "HTTP real Vercel a Supabase; no prueba GPS ni teléfono físico"
+}

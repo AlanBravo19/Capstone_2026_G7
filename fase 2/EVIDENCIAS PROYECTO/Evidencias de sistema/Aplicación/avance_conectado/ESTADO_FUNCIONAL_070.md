@@ -72,3 +72,7 @@ Resultados reales guardados en `evidencias/`; las pruebas de interfaz y GPS usan
 - Cifrado autenticado: https://cryptography.io/en/latest/fernet/
 - MapLibre Flutter: https://maplibre.org/flutter-maplibre-gl/
 - Supabase PostGIS: https://supabase.com/docs/guides/database/extensions/postgis
+
+## Verificación del incremento entregado
+
+12/11/2026: 46 pruebas de backend aprobadas en PGlite/PostGIS local; 14 pruebas Flutter aprobadas, una remota omitida por diseño; análisis sin incidencias; ocho pruebas del mapa web aprobadas. APK compilado y firma de desarrollo verificada. Migración en Supabase 59 → 63 tablas sin borrar datos. TOTP verificado con SQL real y rol ra_api. Publicación Vercel verificada por HTTP en https://rutaalerta-mvp-g7.vercel.app: registro, contactos simulados, vehículo/reporte ficticios, seguimiento, consentimiento, foto privada, restricciones y MFA real. Sin pruebas de teléfono físico ni viaje real.
