@@ -15,6 +15,17 @@ def test_recorrido_chillan(client, ciudadano, supervisor_org1, operador_org2):
     r = client.post("/casos", headers={**titular,"Idempotency-Key":str(uuid.uuid4())}, json=reporte)
     assert r.status_code == 201
     cid = r.json()["id_caso"]
+    mapa = "/gestion/mapa?id_organizacion=1"
+    assert client.get(mapa, headers=colaborador).status_code == 403
+    assert client.get(mapa, headers=operador_org2).status_code == 403
+    def eventos():
+        datos = client.get(mapa, headers=op)
+        assert datos.status_code == 200
+        return [e for e in datos.json()["eventos"] if e["id_caso"] == cid]
+    ubicados = eventos()
+    assert len(ubicados) == 1 and ubicados[0]["tipo"] == "reporte"
+    assert abs(ubicados[0]["latitud"] - punto["latitud"]) < 1e-6
+    assert abs(ubicados[0]["longitud"] - punto["longitud"]) < 1e-6
     base = f"/gestion/casos/{cid}"
     assert client.post(f"/mis-casos/{cid}/colaboracion",headers=titular).status_code == 200
     assert client.post(base+"/revision",headers=op,json={"estado":"en_revision","motivo":"Revisión supervisada del ejercicio"}).status_code == 200
@@ -33,6 +44,7 @@ def test_recorrido_chillan(client, ciudadano, supervisor_org1, operador_org2):
     r=client.post(url,headers=h,json=datos)
     assert r.status_code == 201
     aid=r.json()["id_avistamiento"]
+    assert [e["tipo"] for e in eventos()] == ["reporte"]
     assert client.post(url,headers=h,json=datos).json()["id_avistamiento"]==aid
     def pendientes(actor):
         return [p for p in client.get("/gestion/aportes/pendientes",headers=actor).json() if p["id_caso"]==cid]
@@ -47,6 +59,7 @@ def test_recorrido_chillan(client, ciudadano, supervisor_org1, operador_org2):
     resumen="Se recibió un antecedente ficticio y el operador revisó la fotografía."
     assert client.post(f"/gestion/aportes/{aid}/revision",headers=op,json={"decision":"aceptado","motivo":"Aporte revisado en el ensayo","resumen":resumen}).status_code==200
     assert not pendientes(op)
+    assert {e["tipo"] for e in eventos()} == {"reporte", "avistamiento"}
     seguimiento=client.get(f"/seguimiento/{cid}",headers=titular).json()
     assert seguimiento["aportes"][0]["resumen_para_afectado"]==resumen
     mensaje={"mensaje":"Actualización privada del ejercicio en Chillán.","clave_envio":str(uuid.uuid4())}

@@ -2,7 +2,7 @@
 const el=id=>document.getElementById(id);
 const content=el('content');
 const h=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const names={pending:'Avistamientos pendientes',cases:'Bandeja de casos',witness:'Avisos de testigos',sources:'Fuentes territoriales',cameras:'Cámaras autorizadas'};
+const names={map:'Mapa operativo',pending:'Avistamientos pendientes',cases:'Bandeja de casos',witness:'Avisos de testigos',sources:'Fuentes territoriales',cameras:'Cámaras autorizadas'};
 const states={reportado:'Reportado',en_revision:'En revisión',en_gestion:'En gestión',cerrado:'Cerrado'};
 const date=value=>value?new Date(value).toLocaleString('es-CL',{dateStyle:'short',timeStyle:'short'}):'—';
 const badge=value=>`<span class="badge">${h(states[value]||String(value).replaceAll('_',' '))}</span>`;
@@ -12,9 +12,11 @@ const selector=(name,label,values)=>`<label>${label}<select name="${name}">${Obj
 const action=(title,path,fields,submit=title)=>`<details class="record"><summary>${h(title)}</summary><form data-path="${h(path)}">${fields}<button class="primary">${h(submit)}</button></form></details>`;
 let token='', challenge='', view='cases', selected=null, generation=0, records=[], orgs=[], query='', filter='', priority='';
 let photos=[], noticeTimer;
+let mapOrg=null,originView='cases';
 function notify(message){el('status').textContent=message;clearTimeout(noticeTimer);noticeTimer=setTimeout(()=>el('status').textContent='',9500);}
 function clearPhotos(){photos.forEach(URL.revokeObjectURL);photos=[];}
 function reset(){
+  MapaOperador.cerrar();mapOrg=null;originView='cases';
   generation++;token=challenge='';orgs=[];records=[];selected=null;query=filter=priority='';clearPhotos();
   content.replaceChildren();el('name').textContent='';el('desk').hidden=true;document.querySelector('.user').hidden=true;
   el('access').hidden=false;el('mfa').hidden=true;el('login').hidden=false;el('login').reset();el('mfa').reset();
@@ -40,7 +42,7 @@ async function signin(result){
     if(!profile.organizaciones?.length)throw Error('Tu cuenta tiene acceso ciudadano. Para operar se requiere una membresía institucional vigente.');
     const available=await api('/organizaciones');orgs=available.filter(o=>profile.organizaciones.includes(o.id_organizacion));
     el('name').textContent=profile.nombre_visible;el('access').hidden=true;el('desk').hidden=false;document.querySelector('.user').hidden=false;
-    view='cases';selected=null;await load();
+    view='map';selected=null;mapOrg=orgs[0]?.id_organizacion;await load();
   }catch(err){try{if(token)await api('/sesiones/cerrar',{});}finally{reset();}throw err;}
 }
 async function handle(button,work){button.disabled=true;try{await work();}catch(err){notify(err.message);}finally{button.disabled=false;}}
@@ -54,6 +56,7 @@ for(const id of ['login','mfa'])el(id).onsubmit=e=>{
 el('back').onclick=reset;
 el('exit').onclick=()=>handle(el('exit'),async()=>{try{await api('/sesiones/cerrar',{});}finally{reset();}});
 document.querySelector('nav').onclick=e=>{const b=e.target.closest('[data-view]');if(b){view=b.dataset.view;selected=null;load();}};
+function abrirCaso(cid){originView=view;view='cases';selected=Number(cid);load();}
 el('refresh').onclick=()=>load();
 
 function caseRows(){
@@ -94,12 +97,22 @@ function sources(items){
   }).join('')+(items.length?'':empty('Aún no hay fuentes registradas.'));
 }
 async function load(){
+  MapaOperador.cerrar();
   const epoch=++generation;clearPhotos();el('title').textContent=selected?'Ficha del caso':names[view];el('status').textContent='';
   for(const b of document.querySelectorAll('nav button')){if(b.dataset.view===view)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');}
   content.setAttribute('aria-busy','true');content.textContent='Cargando…';
   try{
-    let render;
-    if(view==='cases'&&selected){const result=await Promise.all([api('/seguimiento/'+selected),api(`/gestion/casos/${selected}/aportes`),api('/gestion/casos/'+selected+'/equipo')]);render=()=>detail(...result);}
+    let render, montar;
+    if(view==='map'){
+      const actual=orgs.find(o=>o.id_organizacion===mapOrg);
+      if(!actual){render=()=>empty('No hay una organización disponible para esta cuenta.');}
+      else{
+        const data=await api('/gestion/mapa?id_organizacion='+Number(mapOrg));
+        render=()=>MapaOperador.plantilla(orgs,actual);
+        montar=()=>{el('geo-org').onchange=e=>{mapOrg=Number(e.target.value);load();};MapaOperador.montar(actual,data);};
+      }
+    }
+    else if(view==='cases'&&selected){const result=await Promise.all([api('/seguimiento/'+selected),api(`/gestion/casos/${selected}/aportes`),api('/gestion/casos/'+selected+'/equipo')]);render=()=>detail(...result);}
     else if(view==='cases'){const items=await api('/casos');render=()=>queue(items);}
     else if(view==='pending'){
       const items=await api('/gestion/aportes/pendientes');
@@ -110,6 +123,8 @@ async function load(){
     else{const inventory=await api('/gestion/camaras');render=()=>cameraRoom(inventory);}
     if(epoch!==generation)return;
     content.innerHTML=render();
+    if(montar)montar();
+    if(selected && originView!=='cases'){const back=content.querySelector('[data-list]');if(back)back.textContent='← '+names[originView];}
     if(el('clip'))bindClip();
     if(el('results')){const priorities=content.querySelector('[name=prioridad]');priorities.value=priority;priorities.onchange=()=>{priority=priorities.value;el('results').innerHTML=caseRows();};const select=content.querySelector('[name="estado"]');select.value=filter;select.onchange=()=>{filter=select.value;el('results').innerHTML=caseRows();};el('search').oninput=e=>{query=e.target.value;el('results').innerHTML=caseRows();};}
   }catch(err){if(epoch===generation)content.textContent=err.message;else if(!token)notify(err.message);}
@@ -117,8 +132,8 @@ async function load(){
 }
 content.onclick=e=>{
   const b=e.target.closest('button');if(!b)return;
-  if(b.hasAttribute('data-list')){selected=null;load();}
-  if(b.dataset.case){view='cases';selected=Number(b.dataset.case);load();}
+  if(b.hasAttribute('data-list')){selected=null;view=originView;load();}
+  if(b.dataset.case)abrirCaso(b.dataset.case);
   if(b.dataset.photo)handle(b,async()=>{const epoch=generation;const file=await api(`/evidencias/${Number(b.dataset.photo)}/foto`,undefined,true);if(generation!==epoch)return;const url=URL.createObjectURL(file);photos.push(url);const img=new Image();img.className='photo';img.alt='Evidencia privada del caso';img.src=url;b.replaceWith(img);});
 };
 content.onsubmit=e=>{

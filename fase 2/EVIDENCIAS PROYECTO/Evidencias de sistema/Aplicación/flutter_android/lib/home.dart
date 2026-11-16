@@ -19,7 +19,10 @@ class HomeScreen extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          WelcomeBanner(name: name.toString()),
+          WelcomeBanner(
+            name: name.toString(),
+            onCollaborate: () => navigate(4),
+          ),
           if (session.storageNotice != null) Note(session.storageNotice!),
           if (!session.canReport)
             Panel(
@@ -77,14 +80,8 @@ class HomeScreen extends StatelessWidget {
               ),
             ),
           ActionGroup(
-            title: 'Informar y colaborar',
+            title: 'Reportar un incidente',
             children: [
-              ActionRow(
-                icon: Icons.visibility_outlined,
-                title: 'Vi un vehículo',
-                detail: 'Busca una patente con solicitud activa.',
-                onTap: () => navigate(4),
-              ),
               ActionRow(
                 icon: Icons.forum_outlined,
                 title: 'Presencié un incidente',
@@ -99,6 +96,24 @@ class HomeScreen extends StatelessWidget {
                     ? 'Registra primero tu vehículo.'
                     : 'Selecciona uno de tus vehículos.',
                 onTap: () => navigate(session.vehicles.isEmpty ? 1 : 2),
+              ),
+            ],
+          ),
+          ActionGroup(
+            title: 'Seguimiento',
+            children: [
+              ActionRow(
+                icon: Icons.mark_email_unread_outlined,
+                title: 'Mensajes del caso',
+                detail:
+                    'Lee las actualizaciones del equipo que revisa tu caso.',
+                onTap: () => openScreen(context, InboxScreen(session: session)),
+              ),
+              ActionRow(
+                icon: Icons.fact_check_outlined,
+                title: 'Mis avistamientos',
+                detail: 'Consulta la revisión de los aportes que enviaste.',
+                onTap: () => openScreen(context, mySightings(session)),
               ),
             ],
           ),
@@ -187,7 +202,12 @@ class HomeScreen extends StatelessWidget {
 
 class WelcomeBanner extends StatelessWidget {
   final String name;
-  const WelcomeBanner({super.key, required this.name});
+  final VoidCallback onCollaborate;
+  const WelcomeBanner({
+    super.key,
+    required this.name,
+    required this.onCollaborate,
+  });
   @override
   Widget build(BuildContext context) => Container(
     margin: const EdgeInsets.only(bottom: 20),
@@ -213,7 +233,7 @@ class WelcomeBanner extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Inicio',
+                'Colaboración ciudadana',
                 style: TextStyle(
                   color: Color(0xffc5e4ff),
                   fontWeight: FontWeight.w600,
@@ -228,6 +248,16 @@ class WelcomeBanner extends StatelessWidget {
                   fontWeight: FontWeight.w700,
                   height: 1.15,
                 ),
+              ),
+              const SizedBox(height: 14),
+              FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: const Color(0xff164977),
+                ),
+                icon: const Icon(Icons.visibility_outlined, size: 19),
+                label: const Text('Vi un vehículo'),
+                onPressed: onCollaborate,
               ),
             ],
           ),

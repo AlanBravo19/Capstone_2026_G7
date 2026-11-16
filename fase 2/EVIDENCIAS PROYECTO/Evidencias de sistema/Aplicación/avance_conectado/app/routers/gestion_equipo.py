@@ -2,10 +2,35 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from ..db import obtener_conexion
-from ..seguridad import usuario_actual
+from ..seguridad import usuario_actual, organizaciones_del_operador
 from .colaboracion import caso_autorizado, bitacora, rows
 
 router=APIRouter(tags=['gestión institucional'])
+
+@router.get('/gestion/mapa')
+def mapa_operativo(id_organizacion: int, usuario=Depends(usuario_actual), conn=Depends(obtener_conexion)):
+    cur = conn.cursor()
+    if id_organizacion not in organizaciones_del_operador(cur, usuario['id_usuario']):
+        raise HTTPException(403, 'Organización fuera de tu ámbito')
+    cur.execute("""
+        WITH abiertos AS (
+            SELECT id_caso, folio, estado, zona, ubicacion, fecha_hecho
+            FROM caso WHERE id_organizacion=%s AND estado<>'cerrado'
+        ), eventos AS (
+            SELECT 'reporte' AS tipo, id_caso AS id_evento, id_caso, folio, estado,
+                   zona, ubicacion, fecha_hecho AS fecha FROM abiertos
+            UNION ALL
+            SELECT 'avistamiento', a.id_avistamiento, c.id_caso, c.folio, c.estado,
+                   a.zona, a.ubicacion, a.observado_en
+            FROM avistamiento a JOIN abiertos c USING(id_caso)
+            WHERE a.estado_revision='aceptado'
+        )
+        SELECT tipo, id_evento, id_caso, folio, estado, zona, fecha,
+               ST_Y(ubicacion::geometry) AS latitud, ST_X(ubicacion::geometry) AS longitud
+        FROM eventos ORDER BY fecha DESC, tipo, id_evento DESC LIMIT 301
+    """, (id_organizacion,))
+    items = rows(cur)
+    return {'eventos': items[:300], 'hay_mas': len(items) > 300}
 
 def supervisor(cur,uid,oid):
     cur.execute("""SELECT 1 FROM membresia WHERE id_usuario=%s AND id_organizacion=%s AND rol='supervisor'

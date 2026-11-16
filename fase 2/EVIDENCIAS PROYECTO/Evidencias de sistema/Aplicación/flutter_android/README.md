@@ -1,3 +1,9 @@
+# RutaAlerta · Beta 0.16.0
+
+El panel institucional abre el mapa de casos abiertos de la organización. Se distinguen reportes y avistamientos aceptados y se puede abrir el folio para revisarlo. En Inicio de Android se accede a Vi un vehículo, Mensajes del caso y Mis avistamientos.
+
+## Historial
+
 # RutaAlerta · Beta 0.15.0
 
 Al activar el autenticador, el servidor revoca las sesiones anteriores y entrega una nueva al cliente que presentó el código. La opción «Recordar este teléfono» conserva el acceso ciudadano hasta 30 días después de verificar el segundo factor. Android cifra el acceso en el dispositivo. Si se usa huella, se requiere el desbloqueo biométrico. La app revalida la sesión al abrir y ofrece reintento si falta conexión. Las cuentas con membresía institucional conservan su plazo habitual.
