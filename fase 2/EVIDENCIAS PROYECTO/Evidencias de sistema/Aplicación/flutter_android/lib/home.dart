@@ -5,6 +5,7 @@ import 'ui.dart';
 import 'expanded.dart';
 import 'movilidad.dart';
 import 'trip_screen.dart';
+import 'testigos.dart';
 
 class HomeScreen extends StatelessWidget {
   final Session session;
@@ -111,6 +112,14 @@ class HomeScreen extends StatelessWidget {
                 ],
               ),
             ),
+          Panel(
+            child: ListTile(
+              leading: const Icon(Icons.record_voice_over_outlined),
+              title: const Text('Presencié un incidente'),
+              subtitle: const Text('Iba como pasajero o lo vi desde fuera.'),
+              onTap: () => openScreen(context, WitnessScreen(session: session)),
+            ),
+          ),
           const SectionTitle('Mis trayectos'),
           Panel(
             child: Column(
@@ -139,7 +148,11 @@ class HomeScreen extends StatelessWidget {
               ],
             ),
           ),
-          const SectionTitle('Mis vehículos y reportes'),
+          SectionTitle(
+            session.profile?['modalidad_ciudadana'] == 'con_vehiculo'
+                ? 'Mis vehículos y reportes'
+                : 'Si también tienes vehículo',
+          ),
           Panel(
             child: Column(
               children: [

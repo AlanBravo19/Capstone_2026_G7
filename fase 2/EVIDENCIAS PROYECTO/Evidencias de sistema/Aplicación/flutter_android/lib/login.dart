@@ -15,6 +15,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final form = GlobalKey<FormState>();
   final email = TextEditingController(), password = TextEditingController();
   final name = TextEditingController(), factor = TextEditingController();
+  String modalidad = 'colaborador';
   bool register = false, busy = false, obscure = true;
   bool savedBiometric = false;
   @override
@@ -65,6 +66,7 @@ class _LoginScreenState extends State<LoginScreen> {
           email.text,
           password.text,
           name: register ? name.text : null,
+          modalidad: modalidad,
         );
         password.clear();
       }
@@ -154,6 +156,29 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         gap(22),
                         if (register) ...[
+                          DropdownButtonFormField<String>(
+                            initialValue: modalidad,
+                            isExpanded: true,
+                            decoration: const InputDecoration(
+                              labelText: '¿Cómo vas a participar?',
+                            ),
+                            items: const [
+                              DropdownMenuItem(
+                                value: 'colaborador',
+                                child: Text('Colaborar sin registrar vehículo'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'con_vehiculo',
+                                child: Text(
+                                  'Registrar mi vehículo y colaborar',
+                                ),
+                              ),
+                            ],
+                            onChanged: busy
+                                ? null
+                                : (v) => setState(() => modalidad = v!),
+                          ),
+                          gap(),
                           TextFormField(
                             controller: name,
                             decoration: const InputDecoration(

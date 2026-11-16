@@ -2,7 +2,7 @@
 const el=id=>document.getElementById(id);
 const content=el('content');
 const h=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const names={cases:'Bandeja de casos',sources:'Fuentes territoriales',cameras:'Cámaras autorizadas'};
+const names={cases:'Bandeja de casos',witness:'Avisos de testigos',sources:'Fuentes territoriales',cameras:'Cámaras autorizadas'};
 const states={reportado:'Reportado',en_revision:'En revisión',en_gestion:'En gestión',cerrado:'Cerrado'};
 const date=value=>value?new Date(value).toLocaleString('es-CL',{dateStyle:'short',timeStyle:'short'}):'—';
 const badge=value=>`<span class="badge">${h(states[value]||String(value).replaceAll('_',' '))}</span>`;
@@ -10,12 +10,12 @@ const empty=message=>`<p class="empty">${h(message)}</p>`;
 const motives='<label>Motivo de la decisión<textarea name="motivo" minlength="10" maxlength="500" required></textarea></label>';
 const selector=(name,label,values)=>`<label>${label}<select name="${name}">${Object.entries(values).map(([k,v])=>`<option value="${h(k)}">${h(v)}</option>`).join('')}</select></label>`;
 const action=(title,path,fields,submit=title)=>`<details class="record"><summary>${h(title)}</summary><form data-path="${h(path)}">${fields}<button class="primary">${h(submit)}</button></form></details>`;
-let token='', challenge='', view='cases', selected=null, generation=0, records=[], orgs=[], query='', filter='';
+let token='', challenge='', view='cases', selected=null, generation=0, records=[], orgs=[], query='', filter='', priority='';
 let photos=[], noticeTimer;
 function notify(message){el('status').textContent=message;clearTimeout(noticeTimer);noticeTimer=setTimeout(()=>el('status').textContent='',9500);}
 function clearPhotos(){photos.forEach(URL.revokeObjectURL);photos=[];}
 function reset(){
-  generation++;token=challenge='';orgs=[];records=[];selected=null;query=filter='';clearPhotos();
+  generation++;token=challenge='';orgs=[];records=[];selected=null;query=filter=priority='';clearPhotos();
   content.replaceChildren();el('name').textContent='';el('desk').hidden=true;document.querySelector('.user').hidden=true;
   el('access').hidden=false;el('mfa').hidden=true;el('login').hidden=false;el('login').reset();el('mfa').reset();
 }
@@ -57,7 +57,7 @@ document.querySelector('nav').onclick=e=>{const b=e.target.closest('[data-view]'
 el('refresh').onclick=()=>load();
 
 function caseRows(){
-  const visible=records.filter(c=>(!filter||c.estado===filter)&&c.folio.toLowerCase().includes(query.toLowerCase().trim()));
+  const visible=records.filter(c=>(!filter||c.estado===filter)&&(!priority||c.prioridad===priority)&&c.folio.toLowerCase().includes(query.toLowerCase().trim()));
   const rows=visible.map(c=>`<tr><td><strong>${h(c.folio)}</strong></td><td>${badge(c.estado)}</td><td>${h(c.prioridad)}</td><td>${h(c.aportes_pendientes)}</td><td>${h(date(c.creado_en))}</td><td><button data-case="${Number(c.id_caso)}">Abrir ficha</button></td></tr>`).join('');
   return rows?`<div class="table-wrap"><table><thead><tr><th>Folio</th><th>Estado</th><th>Prioridad</th><th>Aportes pendientes</th><th>Ingreso</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`:empty(records.length?'Ningún caso coincide con la búsqueda.':'Tu organización aún no ha recibido reportes.');
 }
@@ -65,19 +65,20 @@ function queue(data){
   records=data;
   const stats=[['Casos abiertos',data.filter(c=>c.estado!=='cerrado').length],['Por revisar',data.filter(c=>c.estado==='reportado').length],['Aportes pendientes',data.reduce((n,c)=>n+c.aportes_pendientes,0)]];
   return `<div class="stats">${stats.map(([label,n])=>`<div class="stat"><span>${label}</span><strong>${n}</strong></div>`).join('')}</div>
-    <section class="card"><h2>Reportes recibidos</h2><div class="filters"><label>Buscar folio<input id="search" type="search" value="${h(query)}"></label>${selector('estado','Filtrar por estado',{'':'Todos los estados',...states})}</div><div id="results">${caseRows()}</div></section>`;
+    <section class="card"><h2>Reportes recibidos</h2><div class="filters"><label>Buscar folio<input id="search" type="search" value="${h(query)}"></label>${selector('estado','Filtrar por estado',{'':'Todos los estados',...states})}${selector('prioridad','Prioridad',{'':'Todas',alta:'Alta',normal:'Normal',baja:'Baja'})}</div><div id="results">${caseRows()}</div></section>`;
 }
-function detail(c,contributions){
+function detail(c,contributions,equipo){
   const base=`/gestion/casos/${Number(c.id_caso)}`;const open=c.estado!=='cerrado';
   const header=`<button class="back" data-list>← Volver a la bandeja</button><section class="card"><div class="row"><h2>${h(c.folio)}</h2>${badge(c.estado)}</div><p>${h(c.patente)} · ${h(c.zona)} · ${h(date(c.fecha_hecho))}</p><p>Denuncia declarada: ${h(c.denuncia_estado)} · Colaboración ${c.colaboracion_consentida_en?'autorizada por el afectado':'pendiente de consentimiento'}.</p>`;
   const statement='<h3>Relato recibido</h3><p>'+h(c.relato_para_revision || 'Sin relato disponible.')+'</p>';
   const management=open?action('Cambiar estado',base+'/revision',selector('estado','Nuevo estado',{en_revision:'En revisión',en_gestion:'En gestión'})+motives,'Guardar cambio')+
     action('Asignar prioridad',base+'/prioridad',selector('prioridad','Prioridad',{normal:'Normal',alta:'Alta',baja:'Baja'})+motives,'Guardar prioridad')+
-    (c.colaboracion_consentida_en&&c.estado!=='reportado'?action('Publicar solicitud de colaboración',base+'/publicacion','<label>Sector público<input name="zona" required minlength="3" maxlength="200"></label><label>Texto para la ciudadanía<textarea name="texto" required minlength="15" maxlength="1500"></textarea></label>'+motives):'')+
-    action('Retirar solicitud de colaboración',base+'/retirar',motives)+action('Cerrar caso',base+'/cerrar',selector('motivo_cierre','Resultado',{recuperado:'Recuperado',duplicado:'Duplicado',informacion_insuficiente:'Información insuficiente',otro:'Otro'})+'<label>ID de evidencia aceptada (si fue recuperado)<input type="number" min="1" name="id_evidencia"></label><label>ID del caso principal (si fue duplicado)<input type="number" min="1" name="id_caso_principal"></label>'+motives):'';
+    (c.colaboracion_consentida_en&&c.estado!=='reportado'&&!equipo.publicacion?action('Publicar solicitud de colaboración',base+'/publicacion','<label>Sector público<input name="zona" required minlength="3" maxlength="200"></label><label>Texto para la ciudadanía<textarea name="texto" required minlength="15" maxlength="1500"></textarea></label>'+motives):'')+
+    (equipo.publicacion?'<p>Solicitud vigente hasta '+h(date(equipo.publicacion.vence_en))+'</p>'+action('Renovar solicitud',base+'/renovacion','<input type="hidden" name="id_solicitud_colaboracion" value="'+Number(equipo.publicacion.id_solicitud_colaboracion)+'">'+numberField('horas','Nuevo plazo contado desde ahora (horas)',1,72)+motives)+action('Retirar solicitud de colaboración',base+'/retirar',motives):'')+
+    action('Cerrar caso',base+'/cerrar',selector('motivo_cierre','Resultado',{recuperado:'Recuperado',duplicado:'Duplicado',informacion_insuficiente:'Información insuficiente',otro:'Otro'})+'<label>ID de evidencia aceptada (si fue recuperado)<input type="number" min="1" name="id_evidencia"></label><label>ID del caso principal (si fue duplicado)<input type="number" min="1" name="id_caso_principal"></label>'+motives):'';
   const sightings=contributions.map(a=>`<div class="record"><strong>${h(a.zona)}</strong> ${badge(a.estado_revision)}<p>${h(a.descripcion)}</p><p class="muted">${h(date(a.observado_en))}</p>${open?action('Evaluar aporte',`/gestion/aportes/${Number(a.id_avistamiento)}/revision`,selector('decision','Decisión',{aceptado:'Aceptar',requiere_aclaracion:'Pedir aclaración',rechazado:'Rechazar'})+motives+'<label>Resumen que podrá ver el afectado si se acepta<textarea name="resumen" maxlength="500"></textarea></label>'):''}</div>`).join('');
   const evidence=(c.evidencias||[]).map(e=>`<div class="record"><button data-photo="${Number(e.id_evidencia)}">Ver foto #${Number(e.id_evidencia)}</button> ${badge(e.estado_revision)}${open?action('Revisar evidencia',`/gestion/evidencias/${Number(e.id_evidencia)}/revision`,selector('decision','Decisión',{aceptada:'Aceptar',rechazada:'Rechazar'})+motives):''}</div>`).join('');
-  return header+statement+management+`</section><section class="card"><h2>Avistamientos</h2>${sightings||empty('Todavía no hay aportes para este caso.')}</section><section class="card"><h2>Evidencias privadas</h2>${evidence||empty('Sin fotos adjuntas.')}</section><section class="card"><h2>Historial compartido con el afectado</h2>${c.historial.map(x=>`<div class="record"><strong>${h(date(x.creada_en))}</strong><p>${h(x.descripcion)}</p></div>`).join('')||empty('Todavía no hay novedades en el seguimiento.')}</section>`;
+  return header+statement+management+"</section>"+equipoCaso(c,equipo)+`<section class="card"><h2>Avistamientos</h2>${sightings||empty('Todavía no hay aportes para este caso.')}</section><section class="card"><h2>Evidencias privadas</h2>${evidence||empty('Sin fotos adjuntas.')}</section><section class="card"><h2>Historial compartido con el afectado</h2>${c.historial.map(x=>`<div class="record"><strong>${h(date(x.creada_en))}</strong><p>${h(x.descripcion)}</p></div>`).join('')||empty('Todavía no hay novedades en el seguimiento.')}</section>`;
 }
 function numberField(key,label,min,max,step='1'){return `<label>${label}<input type="number" required name="${key}" min="${min}" max="${max}" step="${step}"></label>`;}
 function sources(items){
@@ -97,13 +98,15 @@ async function load(){
   content.setAttribute('aria-busy','true');content.textContent='Cargando…';
   try{
     let render;
-    if(view==='cases'&&selected){const result=await Promise.all([api('/seguimiento/'+selected),api(`/gestion/casos/${selected}/aportes`)]);render=()=>detail(...result);}
+    if(view==='cases'&&selected){const result=await Promise.all([api('/seguimiento/'+selected),api(`/gestion/casos/${selected}/aportes`),api('/gestion/casos/'+selected+'/equipo')]);render=()=>detail(...result);}
     else if(view==='cases'){const items=await api('/casos');render=()=>queue(items);}
     else if(view==='sources'){const items=await api('/gestion/antecedentes');render=()=>sources(items);}
-    else{const {camaras,nota}=await api('/gestion/camaras');render=()=>`<section class="card"><p>${h(nota)}</p>${camaras.map(c=>`<div class="record"><strong>${h(c.nombre)}</strong> ${badge(c.estado)}<p>${h(c.referencia_autorizacion)}</p></div>`).join('')||empty('Sin cámaras registradas en tu organización.')}</section>`;}
+    else if(view==='witness'){const [items,cases]=await Promise.all([api('/gestion/testigos'),api('/casos')]);render=()=>witnessQueue(items,cases);}
+    else{const inventory=await api('/gestion/camaras');render=()=>cameraRoom(inventory);}
     if(epoch!==generation)return;
     content.innerHTML=render();
-    if(el('results')){const select=content.querySelector('[name="estado"]');select.value=filter;select.onchange=()=>{filter=select.value;el('results').innerHTML=caseRows();};el('search').oninput=e=>{query=e.target.value;el('results').innerHTML=caseRows();};}
+    if(el('clip'))bindClip();
+    if(el('results')){const priorities=content.querySelector('[name=prioridad]');priorities.value=priority;priorities.onchange=()=>{priority=priorities.value;el('results').innerHTML=caseRows();};const select=content.querySelector('[name="estado"]');select.value=filter;select.onchange=()=>{filter=select.value;el('results').innerHTML=caseRows();};el('search').oninput=e=>{query=e.target.value;el('results').innerHTML=caseRows();};}
   }catch(err){if(epoch===generation)content.textContent=err.message;else if(!token)notify(err.message);}
   finally{if(epoch===generation)content.setAttribute('aria-busy','false');}
 }
@@ -117,7 +120,57 @@ content.onsubmit=e=>{
   e.preventDefault();const form=e.target;const epoch=generation;
   handle(e.submitter,async()=>{const data=Object.fromEntries(new FormData(form));
     for(const input of form.querySelectorAll('input[type="number"]')){if(input.value==='')delete data[input.name];else data[input.name]=input.valueAsNumber;}
-    if(data.id_organizacion)data.id_organizacion=Number(data.id_organizacion);
+    for(const field of ['id_organizacion','id_membresia','id_caso'])if(data[field])data[field]=Number(data[field]);
     await api(form.dataset.path,data);if(generation!==epoch)return;await load();if(token)notify('Cambio guardado.');
   });
 };
+
+function equipoCaso(c,equipo) {
+  const base=`/gestion/casos/${Number(c.id_caso)}`;
+  const members=Object.fromEntries(equipo.opciones.map(m=>[m.id_membresia,m.nombre_visible]));
+  const assign=c.estado!=='cerrado'&&equipo.opciones.length?action('Asignar responsable',base+'/asignacion',selector('id_membresia','Integrante de la organización',members)+motives):'';
+  const note=c.estado!=='cerrado'?action('Registrar gestión interna',base+'/gestiones',selector('accion','Tipo de gestión',{nota:'Nota interna',derivacion:'Derivación realizada'})+'<label>Describe la gestión realizada<textarea name="descripcion" required minlength="10" maxlength="500"></textarea></label>'):'';
+  return `<section class="card"><h2>Equipo y gestiones internas</h2><p>Responsable: ${h(equipo.responsable||'Sin asignar')}</p>${assign}${note}${equipo.gestiones.map(g=>`<div class="record">${badge(g.accion)} <strong>${h(date(g.creada_en))}</strong><p>${h(g.descripcion)}</p></div>`).join('')}</section>`;
+}
+function witnessQueue(items,cases){
+  if(!items.length)return empty('Aún no hay avisos de pasajeros o testigos en tu organización.');
+  return items.map(a=>{
+    const options=Object.fromEntries(cases.filter(c=>c.id_organizacion===a.id_organizacion&&c.estado!=='cerrado').map(c=>[c.id_caso,c.folio]));
+    const path='/gestion/testigos/'+encodeURIComponent(a.id_aviso)+'/revision';
+    let actions='';
+    if(a.estado==='pendiente'){
+      actions=action('Revisar sin asociar a un caso',path,selector('decision','Decisión',{revisado:'Dejar revisado',descartado:'Descartar'})+motives);
+      if(Object.keys(options).length)actions+=action('Asociar a un caso abierto',path,'<input type="hidden" name="decision" value="asociado">'+selector('id_caso','Caso de la organización',options)+motives);
+    }
+    return `<article class="card"><div class="row"><h2>${a.perspectiva==='pasajero'?'Aviso de pasajero':'Aviso de testigo'}</h2>${badge(a.estado)}</div>
+      <p><strong>${h(a.zona)}</strong> · ${h(date(a.observado_en))}</p><p>${h(a.descripcion)}</p><p>Patente observada: ${h(a.patente_observada||'Desconocida')}</p><p class="muted">Comprobante: ${h(a.id_aviso)}</p>
+      ${a.motivo_revision?`<p>Decisión: ${h(a.motivo_revision)} ${a.folio?'· '+h(a.folio):''}</p>`:''}${actions}</article>`;
+  }).join('');
+}
+function cameraRoom(inventory){
+  const list=inventory.camaras.map(c=>`<div class="record"><strong>${h(c.nombre)}</strong> ${badge(c.estado)} ${badge(c.entorno)}
+    <p>Referencia de autorización: ${h(c.referencia_autorizacion)}</p><p>Última verificación: ${h(date(c.verificada_en))}</p></div>`).join('');
+  return `<section class="card"><h2>Inventario de mi organización</h2><p>${h(inventory.nota)}</p>${list||empty('Sin cámaras registradas en tu organización.')}</section>
+    <section class="card"><h2>Revisar un clip local</h2><p>Selecciona un video autorizado o un clip de práctica. Se reproduce sólo en este navegador. No se incorpora al expediente.</p>
+    <button id="ver-practica" type="button">Ver ejemplo ilustrado</button>
+    <label>Archivo de video<input type="file" id="clip" accept="video/mp4,video/webm"></label>
+    <video id="preview" hidden controls playsinline preload="metadata" style="background:#122236;width:100%;max-height:450px;margin-top:16px"></video><p id="video-status" role="status"></p></section>`;
+}
+function bindClip(){
+  const input=el('clip'),player=el('preview');let url=null;
+  el('ver-practica').onclick=()=>{
+    input.value='';input.onchange();
+    player.hidden=false;player.src='/clip-practica.mp4';
+    el('video-status').textContent='Ejemplo sintético de siete segundos.';
+    player.play().catch(()=>{el('video-status').textContent='Pulsa reproducir para ver el ejemplo sintético.';});
+  };
+  input.onchange=()=>{
+    player.pause();player.removeAttribute('src');player.load();player.hidden=true;el('video-status').textContent='';
+    if(url){URL.revokeObjectURL(url);photos=photos.filter(item=>item!==url);url=null;}
+    const file=input.files[0];if(!file)return;
+    if(!['video/mp4','video/webm'].includes(file.type)){el('video-status').textContent='Selecciona un archivo MP4 o WebM.';return;}
+    url=URL.createObjectURL(file);photos.push(url);
+    player.onerror=()=>{el('video-status').textContent='El navegador no puede reproducir este archivo.';};
+    player.src=url;player.hidden=false;
+  };
+}

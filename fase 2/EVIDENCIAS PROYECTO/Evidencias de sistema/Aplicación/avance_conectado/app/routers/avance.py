@@ -91,7 +91,17 @@ def perfil(usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):
         WHERE ur.id_usuario=%s AND ur.revocado_en IS NULL''',(usuario['id_usuario'],))
     roles=[r[0] for r in cur.fetchall()]
     from ..seguridad import organizaciones_del_operador
-    return {**usuario,'roles':roles,'organizaciones':organizaciones_del_operador(cur,usuario['id_usuario'])}
+    cur.execute("""SELECT COALESCE(modalidad_ciudadana, CASE WHEN EXISTS(SELECT 1 FROM vinculo_vehiculo v
+        WHERE v.id_usuario=u.id_usuario AND v.estado IN ('autorizado','pendiente')) THEN 'con_vehiculo' ELSE 'colaborador' END)
+        FROM usuario u WHERE id_usuario=%s""",(usuario['id_usuario'],))
+    return {**usuario,'roles':roles,'modalidad_ciudadana':cur.fetchone()[0],'organizaciones':organizaciones_del_operador(cur,usuario['id_usuario'])}
+
+class Modalidad(BaseModel):
+    modalidad_ciudadana:Literal['colaborador','con_vehiculo']
+
+@router.put('/mi-perfil/modalidad',status_code=204)
+def cambiar_modalidad(d:Modalidad,usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):
+    conn.cursor().execute('UPDATE usuario SET modalidad_ciudadana=%s WHERE id_usuario=%s',(d.modalidad_ciudadana,usuario['id_usuario']))
 
 class RevisionCaso(BaseModel):
     estado:str=Field(pattern='^(en_revision|en_gestion)$')

@@ -13,6 +13,7 @@ import 'map_screen.dart';
 import 'trip.dart';
 import 'expanded.dart';
 import 'biometric.dart';
+import 'testigos.dart';
 
 final rootNavigator = GlobalKey<NavigatorState>();
 
@@ -193,6 +194,53 @@ class _MobileShellState extends State<MobileShell> {
             Panel(
               child: Column(
                 children: [
+                  ListTile(
+                    leading: const Icon(Icons.record_voice_over_outlined),
+                    title: const Text('Mis avisos de testigo'),
+                    onTap: () =>
+                        openScreen(context, witnessHistory(widget.session)),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.person_outline),
+                    title: const Text('Cómo participo'),
+                    subtitle: Text(
+                      widget.session.profile?['modalidad_ciudadana'] ==
+                              'con_vehiculo'
+                          ? 'Con vehículo y colaborador'
+                          : 'Colaborador',
+                    ),
+                    onTap: () => perform(context, () async {
+                      final choice = await showDialog<String>(
+                        context: context,
+                        builder: (ctx) => SimpleDialog(
+                          title: const Text('Cómo participo'),
+                          children: [
+                            SimpleDialogOption(
+                              onPressed: () =>
+                                  Navigator.pop(ctx, 'colaborador'),
+                              child: const Text(
+                                'Colaborar sin registrar vehículo',
+                              ),
+                            ),
+                            SimpleDialogOption(
+                              onPressed: () =>
+                                  Navigator.pop(ctx, 'con_vehiculo'),
+                              child: const Text(
+                                'Registrar mi vehículo y colaborar',
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (choice == null) return;
+                      await widget.session.api.request(
+                        '/mi-perfil/modalidad',
+                        method: 'PUT',
+                        body: {'modalidad_ciudadana': choice},
+                      );
+                      await widget.session.refresh();
+                    }),
+                  ),
                   accountEntry(
                     'security',
                     Icons.security,

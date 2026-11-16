@@ -52,10 +52,10 @@ async function api(ruta,{method='GET',body,headers={}}={}){
 }
 function formulario(id,fn){$(id).addEventListener('submit',async e=>{e.preventDefault();const b=e.submitter;if(b)b.disabled=true;try{await fn(e)}catch(err){aviso(err.message,true)}finally{if(b)b.disabled=false}})}
 function accion(id,fn){$(id).addEventListener('click',async()=>{const b=$(id);b.disabled=true;try{await fn()}catch(e){aviso(e.message,true)}finally{b.disabled=false}})}
-function modo(r){registro=r;$('nombre-wrap').hidden=!r;$('nombre').required=r;$('titulo-acceso').textContent=r?'Comienza tu registro':'Bienvenido a RutaAlerta';$('submit-acceso').textContent=r?'Crear cuenta e ingresar':'Ingresar';$('modo-ingreso').className=r?'':'active';$('modo-registro').className=r?'active':'';$('clave').autocomplete=r?'new-password':'current-password'}
+function modo(r){registro=r;$('modalidad-wrap').hidden=!r;$('nombre-wrap').hidden=!r;$('nombre').required=r;$('titulo-acceso').textContent=r?'Comienza tu registro':'Bienvenido a RutaAlerta';$('submit-acceso').textContent=r?'Crear cuenta e ingresar':'Ingresar';$('modo-ingreso').className=r?'':'active';$('modo-registro').className=r?'active':'';$('clave').autocomplete=r?'new-password':'current-password'}
 $('modo-ingreso').onclick=()=>modo(false);$('modo-registro').onclick=()=>modo(true);
 formulario('form-acceso',async()=>{const correo=$('correo').value,clave=$('clave').value;
- const nueva=registro;if(nueva){await api('/cuentas',{method:'POST',body:{correo,clave,nombre_visible:$('nombre').value}});modo(false);}
+ const nueva=registro;if(nueva){await api('/cuentas',{method:'POST',body:{correo,clave,nombre_visible:$('nombre').value,modalidad_ciudadana:$('modalidad').value}});modo(false);}
  let login=await api('/sesiones',{method:'POST',body:{correo,clave}});
  if(login.requiere_mfa){const codigo=window.prompt('Ingresa el código del autenticador o un código de recuperación:');if(!codigo)throw new Error('Ingreso cancelado.');login=await api('/sesiones/mfa',{method:'POST',body:{id_desafio:login.id_desafio,codigo:codigo.trim()}});}
  token=login.token;$('clave').value='';
@@ -64,7 +64,7 @@ formulario('form-acceso',async()=>{const correo=$('correo').value,clave=$('clave
 accion('salir',async()=>{try{await api('/sesiones/cerrar',{method:'POST'})}finally{limpiarAlta();token='';perfil=null;$('panel').hidden=true;$('acceso').hidden=false;$('salir').hidden=true;$('administracion').hidden=true;RutaMapa.limpiar()}});
 accion('actualizar',cargar);
 async function cargar(){
- perfil=await api('/mi-perfil');const estado=await api('/identidad/mi-estado');await prepararCatalogo();const vehiculos=await api('/vehiculos');const casos=await api('/mis-casos');
+ perfil=await api('/mi-perfil');await cargarTestigos();const estado=await api('/identidad/mi-estado');await prepararCatalogo();const vehiculos=await api('/vehiculos');const casos=await api('/mis-casos');
  $('alta-totp').hidden=estado.transporte_correo!=='smtp'||!estado.correo_verificado||estado.mfa_activo;
  if(estado.transporte_correo==='smtp'){
   $('pedir-correo').textContent='Enviar código por correo';
@@ -85,7 +85,7 @@ formulario('form-correo',async()=>{await api('/identidad/correo/confirmar',{meth
 accion('pedir-sms',async()=>{const r=await api('/identidad/telefono/solicitar',{method:'POST',body:{telefono:$('telefono').value}});desafio=r.id_desafio;$('codigo-sms').value=r.codigo_demo||'';$('sms-demo').textContent='Código beta: '+r.codigo_demo+'. No se envió un SMS.';$('sms-demo').hidden=false});
 formulario('form-telefono',async()=>{if(!desafio)throw new Error('Primero solicita un código.');await api('/identidad/telefono/confirmar',{method:'POST',body:{id_desafio:desafio,codigo:$('codigo-sms').value}});desafio=null;$('codigo-sms').value='';$('sms-demo').hidden=true;await cargar();aviso('Pasos beta completados. Ya puedes registrar vehículos y reportes.')});
 formulario('form-vehiculo',async e=>{const d=Object.fromEntries(new FormData(e.target));d.anio=Number(d.anio);d.patente=d.patente.toUpperCase().replace(/[ .-]/g,'');const formato=catalogoVehicular.formatos[d.tipo_vehiculo==='motocicleta'?'motocicleta':'cuatro_ruedas'];if(!new RegExp('^'+formato+'$').test(d.patente)){vehiculo.patente.setCustomValidity('Revisa la patente para este tipo de vehículo.');vehiculo.patente.reportValidity();return;}await api('/vehiculos',{method:'POST',body:d});e.target.reset();opcionesVehiculo();await cargar();aviso('Vehículo guardado. Vínculo pendiente de revisión.')});
-formulario('form-caso',async e=>{const d={id_vehiculo:Number($('vehiculo-caso').value),id_organizacion:1,fecha_hecho:new Date($('fecha-caso').value).toISOString(),zona:$('zona-caso').value,descripcion:$('descripcion').value,latitud:Number($('latitud').value),longitud:Number($('longitud').value)};
+formulario('form-caso',async e=>{const d={id_vehiculo:Number($('vehiculo-caso').value),id_organizacion:Number($('org-caso').value),fecha_hecho:new Date($('fecha-caso').value).toISOString(),zona:$('zona-caso').value,descripcion:$('descripcion').value,latitud:Number($('latitud').value),longitud:Number($('longitud').value)};
  // Un fallo de red conserva la clave para no duplicar el mismo envío.
  const firma=JSON.stringify(d);if(!envioCaso||envioCaso.firma!==firma)envioCaso={firma,clave:crypto.randomUUID()};
  const r=await api('/casos',{method:'POST',body:d,headers:{'Idempotency-Key':envioCaso.clave}});envioCaso=null;e.target.reset();RutaMapa.quitarSeleccion();await cargar();aviso('Reporte guardado: '+r.folio+'. Está pendiente de revisión.')});
@@ -101,4 +101,29 @@ formulario('form-nueva-clave',async()=>{
  await api('/cuentas/recuperacion/confirmar',{method:'POST',body:{token:$('token-recuperacion').value,nueva_clave:$('nueva-clave').value}});
  token='';perfil=null;$('token-recuperacion').value='';$('nueva-clave').value='';
  aviso('Contraseña actualizada. Inicia sesión con tu nueva contraseña.');
+});
+
+let intentoTestigo;
+async function cargarTestigos(){
+ const [orgs,mios]=await Promise.all([api('/organizaciones'),api('/mis-avisos-testigo')]);
+ for(const select of [$('org-caso'),$('form-testigo').elements.id_organizacion]){
+   const previo=select.value;
+   select.replaceChildren(new Option('Selecciona…',''),...orgs.map(o=>new Option(o.nombre,String(o.id_organizacion))));
+   select.value=previo;
+ }
+ $('form-modalidad').elements.modalidad_ciudadana.value=perfil.modalidad_ciudadana;
+ $('mis-avisos').textContent=mios.length?'':'Aún no has enviado avisos.';
+ for(const a of mios){const row=document.createElement('p');row.textContent=a.zona+' · '+a.estado+' · Comprobante '+a.id_aviso;$('mis-avisos').append(row);}
+}
+formulario('form-modalidad',async e=>{
+ const modalidad=e.target.elements.modalidad_ciudadana.value;
+ await api('/mi-perfil/modalidad',{method:'PUT',body:{modalidad_ciudadana:modalidad}});perfil.modalidad_ciudadana=modalidad;aviso('Preferencia guardada.');
+});
+formulario('form-testigo',async e=>{
+ const data=Object.fromEntries(new FormData(e.target));data.observado_en=new Date(data.observado_en).toISOString();
+ data.id_organizacion=Number(data.id_organizacion);data.patente_observada=data.patente_observada.trim()||null;
+ const firma=JSON.stringify(data);
+ if(intentoTestigo?.firma!==firma)intentoTestigo={firma,clave:crypto.randomUUID()};
+ const r=await api('/avisos-testigo',{method:'POST',body:data,headers:{'Idempotency-Key':intentoTestigo.clave}});
+ intentoTestigo=null;e.target.reset();aviso('Aviso recibido. Comprobante '+r.id_aviso);await cargarTestigos();
 });

@@ -1,3 +1,9 @@
+# RutaAlerta · Beta 0.11.0
+
+Alta ciudadana con modalidad de colaboración, aviso privado de pasajero o testigo sin vehículo ni patente, y revisión del aviso en el escritorio. La ficha institucional incorpora responsable, gestiones internas y renovación de publicaciones. Cámaras admite inventario y reproducción local de clips autorizados. La migración 07 amplía el esquema a 66 tablas. El documento alcance_mvp_0110.md en las evidencias del servidor detalla prioridades y pruebas de cierre.
+
+## Historial
+
 # RutaAlerta · Beta 0.10.0
 
 ## Registro ciudadano y vehículos

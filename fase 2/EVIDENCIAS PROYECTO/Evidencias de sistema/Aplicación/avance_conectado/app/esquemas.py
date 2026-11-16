@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field, field_validator
 
 
 class RegistroEntrada(BaseModel):
+    modalidad_ciudadana: Literal['colaborador','con_vehiculo'] = 'colaborador'
     nombre_visible: str = Field(min_length=2, max_length=100)
     correo: str = Field(min_length=5, max_length=254)
     clave: str = Field(min_length=8, max_length=128)

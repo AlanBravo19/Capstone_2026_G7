@@ -40,7 +40,12 @@ class Session extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> login(String email, String password, {String? name}) async {
+  Future<void> login(
+    String email,
+    String password, {
+    String? name,
+    String modalidad = 'colaborador',
+  }) async {
     if (name != null) {
       await api.request(
         '/cuentas',
@@ -49,6 +54,7 @@ class Session extends ChangeNotifier {
           'correo': email.trim(),
           'clave': password,
           'nombre_visible': name.trim(),
+          'modalidad_ciudadana': modalidad,
         },
       );
     }

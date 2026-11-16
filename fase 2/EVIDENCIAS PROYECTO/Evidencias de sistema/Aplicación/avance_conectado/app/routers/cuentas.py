@@ -26,9 +26,9 @@ def registrar(datos: RegistroEntrada, request: Request, conn=Depends(obtener_con
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Falta el rol 'ciudadano' en la base")
     try:
         cur.execute(
-            """INSERT INTO usuario(nombre_visible, correo, password_hash, estado)
-               VALUES (%s, %s, %s, 'pendiente') RETURNING id_usuario, nombre_visible, estado""",
-            (datos.nombre_visible, datos.correo, cifrar_clave(datos.clave)),
+            """INSERT INTO usuario(nombre_visible, correo, password_hash, estado,modalidad_ciudadana)
+               VALUES (%s, %s, %s, 'pendiente',%s) RETURNING id_usuario, nombre_visible, estado""",
+            (datos.nombre_visible, datos.correo, cifrar_clave(datos.clave),datos.modalidad_ciudadana),
         )
     except ErrorBD as e:
         if "ck_usuario_1" in str(e):
