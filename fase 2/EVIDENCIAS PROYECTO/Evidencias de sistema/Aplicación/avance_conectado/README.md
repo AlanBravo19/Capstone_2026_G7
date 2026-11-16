@@ -1,3 +1,11 @@
+# RutaAlerta · Beta 0.12.0
+
+En Android cualquier persona puede crear una cuenta ciudadana. Desde Inicio puede buscar vehículos con solicitud activa, informar como testigo o reportar el robo de un vehículo propio. Mapa, Colaborar y Cuenta están en la barra inferior.
+
+El escritorio de operaciones admite cuentas personales previamente habilitadas. La administración asigna la organización y el rol de operador o supervisor por un canal interno. El servidor comprueba la cuenta activa y la membresía al ingresar y al confirmar el segundo factor, si está configurado. El dominio del correo no concede permisos. Las solicitudes de acceso se dirigen a la administración de la institución. La beta utiliza una organización de ensayo.
+
+## Historial
+
 # RutaAlerta · Beta 0.11.0
 
 Alta ciudadana con modalidad de colaboración, aviso privado de pasajero o testigo sin vehículo ni patente, y revisión del aviso en el escritorio. La ficha institucional incorpora responsable, gestiones internas y renovación de publicaciones. Cámaras admite inventario y reproducción local de clips autorizados. La migración 07 amplía el esquema a 66 tablas. El documento alcance_mvp_0110.md en las evidencias del servidor detalla prioridades y pruebas de cierre.

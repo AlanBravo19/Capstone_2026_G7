@@ -273,23 +273,35 @@ class _MobileShellState extends State<MobileShell> {
         ),
       ],
     ),
-    bottomNavigationBar: NavigationBar(
-      selectedIndex: [0, 4, 3, 5].contains(index)
-          ? [0, 4, 3, 5].indexOf(index)
-          : 0,
-      onDestinationSelected: (tab) => navigate([0, 4, 3, 5][tab]),
-      destinations: const [
-        NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Inicio'),
-        NavigationDestination(
-          icon: Icon(Icons.groups_outlined),
-          label: 'Colaborar',
-        ),
-        NavigationDestination(icon: Icon(Icons.map_outlined), label: 'Mapa'),
-        NavigationDestination(
-          icon: Icon(Icons.person_outline),
-          label: 'Cuenta',
-        ),
-      ],
+    bottomNavigationBar: GlassDock(
+      child: NavigationBar(
+        selectedIndex: [0, 4, 3, 5].contains(index)
+            ? [0, 4, 3, 5].indexOf(index)
+            : 0,
+        onDestinationSelected: (tab) => navigate([0, 4, 3, 5][tab]),
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home_rounded),
+            label: 'Inicio',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.groups_outlined),
+            selectedIcon: Icon(Icons.groups_rounded),
+            label: 'Colaborar',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.map_outlined),
+            selectedIcon: Icon(Icons.map_rounded),
+            label: 'Mapa',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.person_outline),
+            selectedIcon: Icon(Icons.person_rounded),
+            label: 'Cuenta',
+          ),
+        ],
+      ),
     ),
   );
 }

@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 from ..db import fila_dict, obtener_conexion, ErrorBD
 from ..esquemas import (CuentaSalida, RecuperacionConfirmar, RecuperacionEntrada, RecuperacionSalida,
                         RegistroEntrada, SesionEntrada, SesionSalida)
-from ..seguridad import cifrar_clave, emitir_token, huella, verificar_clave
+from ..seguridad import cifrar_clave, emitir_token, exigir_ingreso_institucional, huella, verificar_clave
 from ..antifraude import limitar, limitar_ip
 
 router = APIRouter(tags=["cuentas"])
@@ -43,6 +43,15 @@ def registrar(datos: RegistroEntrada, request: Request, conn=Depends(obtener_con
 
 @router.post("/sesiones", response_model=SesionSalida, status_code=status.HTTP_201_CREATED)
 def iniciar_sesion(datos: SesionEntrada, request: Request, conn=Depends(obtener_conexion)):
+    return autenticar(datos, request, conn, institucional=False)
+
+
+@router.post("/institucional/sesiones", response_model=SesionSalida, status_code=201)
+def iniciar_sesion_institucional(datos: SesionEntrada, request: Request, conn=Depends(obtener_conexion)):
+    return autenticar(datos, request, conn, institucional=True)
+
+
+def autenticar(datos, request, conn, *, institucional):
     limitar_ip(conn,request,'login',30)
     limitar(conn,'login:'+datos.correo.strip().lower(),10)
     cur = conn.cursor()
@@ -51,6 +60,8 @@ def iniciar_sesion(datos: SesionEntrada, request: Request, conn=Depends(obtener_
     fila = cur.fetchone()
     if fila is None or not verificar_clave(datos.clave, fila[1]) or fila[2] in ("suspendido", "anonimizado"):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Credenciales inválidas")
+    if institucional:
+        exigir_ingreso_institucional(cur, fila[0], fila[2])
     cur.execute('SELECT 1 FROM autenticador_totp WHERE id_usuario=%s AND activo',(fila[0],))
     if cur.fetchone():
         desafio=str(uuid.uuid4())

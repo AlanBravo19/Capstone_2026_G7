@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from ..antifraude import SECRET, limitar, limitar_ip
 from ..db import obtener_conexion, fila_dict
-from ..seguridad import usuario_actual, verificar_clave, cifrar_clave, emitir_token, huella
+from ..seguridad import usuario_actual, verificar_clave, cifrar_clave, emitir_token, exigir_ingreso_institucional, huella
 from ..config import config
 
 router=APIRouter(tags=['seguridad de cuenta'])
@@ -96,11 +96,21 @@ def activar(datos:Factor,usuario=Depends(usuario_actual),conn=Depends(obtener_co
 
 @router.post('/sesiones/mfa',status_code=201)
 def completar(datos:Desafio,request:Request,conn=Depends(obtener_conexion)):
+    return completar_factor(datos, request, conn, institucional=False)
+
+@router.post('/institucional/sesiones/mfa', status_code=201)
+def completar_institucional(datos:Desafio,request:Request,conn=Depends(obtener_conexion)):
+    return completar_factor(datos, request, conn, institucional=True)
+
+def completar_factor(datos, request, conn, *, institucional):
     limitar_ip(conn,request,'mfa',30)
     cur=conn.cursor();cur.execute('SELECT id_usuario FROM desafio_mfa WHERE id_desafio=%s',(str(datos.id_desafio),));row=cur.fetchone()
     if not row:raise HTTPException(400,'Desafío inválido o vencido')
     uid=row[0];cur.execute('SELECT estado FROM usuario WHERE id_usuario=%s FOR UPDATE',(uid,))
-    if cur.fetchone()[0] in ('suspendido','anonimizado'):raise HTTPException(403,'Cuenta restringida')
+    estado = cur.fetchone()[0]
+    if institucional:
+        exigir_ingreso_institucional(cur, uid, estado)
+    if estado in ('suspendido','anonimizado'):raise HTTPException(403,'Cuenta restringida')
     cur.execute('''UPDATE desafio_mfa SET intentos=intentos+1 WHERE id_desafio=%s AND consumido_en IS NULL AND vence_en>CURRENT_TIMESTAMP AND intentos<5 RETURNING intentos''',(str(datos.id_desafio),))
     if not cur.fetchone():raise HTTPException(400,'Desafío inválido, vencido o agotado')
     if not validar_factor(cur,uid,datos.codigo):

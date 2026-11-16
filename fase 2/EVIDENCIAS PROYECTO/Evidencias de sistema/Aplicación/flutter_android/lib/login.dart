@@ -111,8 +111,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         color: navy,
                       ),
                     ),
-                    const Spacer(),
-                    const StateChip('Beta'),
                   ],
                 ),
                 gap(32),

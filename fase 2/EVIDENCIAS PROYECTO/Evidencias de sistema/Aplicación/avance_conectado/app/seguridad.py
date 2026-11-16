@@ -72,3 +72,8 @@ def organizaciones_del_operador(cur, id_usuario: int) -> list[int]:
         (id_usuario,),
     )
     return [r[0] for r in cur.fetchall()]
+
+
+def exigir_ingreso_institucional(cur, uid, estado):
+    if estado != "activo" or not organizaciones_del_operador(cur, uid):
+        raise HTTPException(401, "Credenciales inválidas")

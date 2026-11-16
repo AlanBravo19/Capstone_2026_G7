@@ -19,45 +19,32 @@ class HomeScreen extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          SectionTitle('Hola, $name', eyebrow: 'Inicio'),
-          Container(
-            padding: const EdgeInsets.all(24),
-            margin: const EdgeInsets.only(bottom: 20),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [navy, Color(0xff244e8c)]),
-              borderRadius: BorderRadius.circular(26),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Icon(
-                  Icons.shield_outlined,
-                  color: Color(0xffb6d0ff),
-                  size: 40,
-                ),
-                gap(),
-                const Text(
-                  '¿Viste un vehículo reportado?',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 25,
-                    height: 1.15,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                gap(12),
-                const Text(
-                  'Consulta solicitudes de tu zona y envía un avistamiento, aunque no tengas vehículo.',
-                  style: TextStyle(color: Color(0xffccdfff)),
-                ),
-                gap(18),
-                FilledButton.tonalIcon(
-                  onPressed: () => navigate(4),
-                  icon: const Icon(Icons.add_location_alt_outlined),
-                  label: const Text('Vi un vehículo'),
-                ),
-              ],
-            ),
+          WelcomeBanner(name: name.toString()),
+          ActionGroup(
+            title: 'Informar y colaborar',
+            children: [
+              ActionRow(
+                icon: Icons.visibility_outlined,
+                title: 'Vi un vehículo',
+                detail: 'Busca una patente con solicitud activa.',
+                onTap: () => navigate(4),
+              ),
+              ActionRow(
+                icon: Icons.forum_outlined,
+                title: 'Presencié un incidente',
+                detail: 'Envía un aviso como pasajero o testigo.',
+                onTap: () =>
+                    openScreen(context, WitnessScreen(session: session)),
+              ),
+              ActionRow(
+                icon: Icons.directions_car_outlined,
+                title: 'Reportar el robo de mi vehículo',
+                detail: session.vehicles.isEmpty
+                    ? 'Registra primero tu vehículo.'
+                    : 'Selecciona uno de tus vehículos.',
+                onTap: () => navigate(session.vehicles.isEmpty ? 1 : 2),
+              ),
+            ],
           ),
           if (!session.canReport)
             Panel(
@@ -112,78 +99,39 @@ class HomeScreen extends StatelessWidget {
                 ],
               ),
             ),
-          Panel(
-            child: ListTile(
-              leading: const Icon(Icons.record_voice_over_outlined),
-              title: const Text('Presencié un incidente'),
-              subtitle: const Text('Iba como pasajero o lo vi desde fuera.'),
-              onTap: () => openScreen(context, WitnessScreen(session: session)),
-            ),
-          ),
-          const SectionTitle('Mis trayectos'),
-          Panel(
-            child: Column(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.alt_route),
-                  title: const Text('Planificar una ruta'),
-                  subtitle: const Text('Casa, trabajo y lugares guardados'),
-                  onTap: () =>
-                      openScreen(context, PlacesRoutesScreen(session: session)),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.navigation_outlined),
-                  title: const Text('Iniciar modo trayecto'),
-                  onTap: () =>
-                      openScreen(context, TripScreen(session: session)),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.article_outlined),
-                  title: const Text('Antecedentes de mi zona'),
-                  onTap: () => openScreen(
-                    context,
-                    HistoricalNewsScreen(session: session),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          SectionTitle(
-            session.profile?['modalidad_ciudadana'] == 'con_vehiculo'
-                ? 'Mis vehículos y reportes'
-                : 'Si también tienes vehículo',
-          ),
-          Panel(
-            child: Column(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.directions_car_outlined),
-                  title: const Text('Mis vehículos'),
-                  subtitle: const Text('Opcional para colaborar'),
-                  onTap: () => navigate(1),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.add_location_alt_outlined),
-                  title: const Text('Reportar el robo de mi vehículo'),
-                  onTap: () => navigate(session.vehicles.isEmpty ? 1 : 2),
-                ),
-              ],
-            ),
-          ),
-          Panel(
-            child: ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.map_outlined, color: teal, size: 32),
-              title: const Text(
-                'Tu territorio, en contexto',
-                style: TextStyle(fontWeight: FontWeight.w700),
+          ActionGroup(
+            title: 'Mis trayectos',
+            children: [
+              ActionRow(
+                icon: Icons.route_outlined,
+                title: 'Planificar una ruta',
+                detail: 'Casa, trabajo y lugares guardados',
+                onTap: () =>
+                    openScreen(context, PlacesRoutesScreen(session: session)),
               ),
-              subtitle: const Text(
-                'Ubica un incidente y consulta tus reportes.',
+              ActionRow(
+                icon: Icons.navigation_outlined,
+                title: 'Iniciar modo trayecto',
+                onTap: () => openScreen(context, TripScreen(session: session)),
               ),
-              trailing: const Icon(Icons.arrow_forward_rounded),
-              onTap: () => navigate(3),
-            ),
+              ActionRow(
+                icon: Icons.layers_outlined,
+                title: 'Antecedentes de mi zona',
+                onTap: () =>
+                    openScreen(context, HistoricalNewsScreen(session: session)),
+              ),
+            ],
+          ),
+          ActionGroup(
+            title: 'Mi garaje',
+            children: [
+              ActionRow(
+                icon: Icons.garage_outlined,
+                title: 'Mis vehículos',
+                detail: 'Administra los vehículos que has registrado.',
+                onTap: () => navigate(1),
+              ),
+            ],
           ),
           const SectionTitle(
             'Últimos reportes',
@@ -232,6 +180,99 @@ class HomeScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+class WelcomeBanner extends StatelessWidget {
+  final String name;
+  const WelcomeBanner({super.key, required this.name});
+  @override
+  Widget build(BuildContext context) => Container(
+    margin: const EdgeInsets.only(bottom: 20),
+    clipBehavior: Clip.antiAlias,
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(24),
+      gradient: const LinearGradient(
+        colors: [Color(0xff112d51), Color(0xff205a91)],
+      ),
+    ),
+    child: Stack(
+      children: [
+        const Positioned(
+          right: -16,
+          top: 0,
+          bottom: 0,
+          width: 124,
+          child: ExcludeSemantics(child: CustomPaint(painter: _RoutePattern())),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 18, 70, 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Inicio',
+                style: TextStyle(
+                  color: Color(0xffc5e4ff),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                name.isEmpty ? 'Te damos la bienvenida' : 'Hola, $name',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 26,
+                  fontWeight: FontWeight.w700,
+                  height: 1.15,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _RoutePattern extends CustomPainter {
+  const _RoutePattern();
+  @override
+  void paint(Canvas canvas, Size size) {
+    final lines = Paint()
+      ..color = const Color(0x294bdcff)
+      ..strokeWidth = 1.3;
+    for (double x = -size.height; x < size.width; x += 23) {
+      canvas.drawLine(
+        Offset(x, 0),
+        Offset(x + size.height, size.height),
+        lines,
+      );
+      canvas.drawLine(
+        Offset(x, size.height),
+        Offset(x + size.height, 0),
+        lines,
+      );
+    }
+    final dot = Offset(size.width * .48, size.height * .52);
+    final route = Path()
+      ..moveTo(size.width, size.height * .2)
+      ..lineTo(size.width * .72, size.height * .2)
+      ..lineTo(dot.dx, dot.dy)
+      ..lineTo(size.width * .48, size.height);
+    canvas.drawPath(
+      route,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeJoin = StrokeJoin.round
+        ..strokeWidth = 3
+        ..color = const Color(0xaa8dd8ff),
+    );
+    canvas.drawCircle(dot, 11, Paint()..color = const Color(0x5076cfff));
+    canvas.drawCircle(dot, 5, Paint()..color = const Color(0xffe1f7ff));
+  }
+
+  @override
+  bool shouldRepaint(_RoutePattern oldDelegate) => false;
 }
 
 class ContactsDialog extends StatefulWidget {

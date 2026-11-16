@@ -47,8 +47,8 @@ async function handle(button,work){button.disabled=true;try{await work();}catch(
 for(const id of ['login','mfa'])el(id).onsubmit=e=>{
   e.preventDefault();const f=e.currentTarget.elements;
   handle(e.submitter,async()=>{
-    if(id==='login'){const result=await api('/sesiones',{correo:f.correo.value.trim(),clave:f.clave.value});f.clave.value='';await signin(result);}
-    else{const result=await api('/sesiones/mfa',{id_desafio:challenge,codigo:f.codigo.value.trim()});f.codigo.value='';await signin(result);}
+    if(id==='login'){const result=await api('/institucional/sesiones',{correo:f.correo.value.trim(),clave:f.clave.value});f.clave.value='';await signin(result);}
+    else{const result=await api('/institucional/sesiones/mfa',{id_desafio:challenge,codigo:f.codigo.value.trim()});f.codigo.value='';await signin(result);}
   });
 };
 el('back').onclick=reset;

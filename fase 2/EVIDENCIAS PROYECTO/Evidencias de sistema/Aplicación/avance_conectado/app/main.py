@@ -25,7 +25,7 @@ if os.getenv('VERCEL'):
 
 app = FastAPI(
     title="RutaAlerta API",
-    version="0.11.0-beta",
+    version="0.12.0-beta",
     description="Beta colaborativa: TOTP, seguimiento, publicación revisada y fotos privadas. Correo y SMS dependen de la configuración de proveedores.",
 )
 app.include_router(cuentas.router)
@@ -90,4 +90,4 @@ def health(request:Request,conn=Depends(obtener_conexion)):
     return {"estado": "ok", "postgis": postgis, "tablas": tablas}
 
 @app.get("/version",include_in_schema=False)
-def version_beta():return {"version":"0.11.0-beta","modelo_tablas":66,"cliente":"Flutter Android","panel":"/operaciones"}
+def version_beta():return {"version":"0.12.0-beta","modelo_tablas":66,"cliente":"Flutter Android","panel":"/operaciones"}
