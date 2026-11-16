@@ -303,202 +303,178 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
     }
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            children: [
-              Expanded(
-                child: FilledButton.tonalIcon(
-                  onPressed: requestingGps ? null : locate,
-                  icon: const Icon(Icons.my_location),
-                  label: Text(
-                    requestingGps ? 'Solicitando permiso…' : 'Mi ubicación',
-                  ),
-                ),
-              ),
-              if (gps)
-                TextButton(
-                  onPressed: () => setState(() {
-                    gps = false;
-                    currentLocation = null;
-                    follow = false;
-                  }),
-                  child: const Text('Ocultar GPS'),
-                ),
-            ],
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
-          child: Text(
-            gpsStatus(),
-            style: const TextStyle(color: muted, fontSize: 11),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-          child: Row(
-            children: [
-              const Expanded(
-                child: Text(
-                  'Tu ciudad en perspectiva',
-                  style: TextStyle(
-                    fontSize: 19,
-                    fontWeight: FontWeight.w800,
-                    color: navy,
-                  ),
-                ),
-              ),
-              FilledButton.tonal(
-                onPressed: controller == null ? null : changeView,
-                child: Text(perspective ? 'Ver en 2D' : 'Ver en 3D'),
-              ),
-            ],
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: controller == null
-                      ? null
-                      : () => fly(-36.827, -73.05),
-                  child: const Text('Concepción'),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: controller == null
-                      ? null
-                      : () => fly(-33.45, -70.66),
-                  child: const Text('Santiago'),
-                ),
-              ),
-              IconButton(
-                tooltip: 'Mis reportes',
-                onPressed: controller == null
-                    ? null
-                    : () {
-                        final c = widget.session.cases
-                            .where(
-                              (c) =>
-                                  c['latitud'] != null && c['longitud'] != null,
-                            )
-                            .firstOrNull;
-                        if (c == null) {
-                          feedback(
-                            context,
-                            'Todavía no tienes reportes ubicados.',
-                          );
-                          return;
-                        }
-                        fly(
-                          (c['latitud'] as num).toDouble(),
-                          (c['longitud'] as num).toDouble(),
-                        );
-                      },
-                icon: const Icon(Icons.center_focus_strong),
-              ),
-            ],
-          ),
-        ),
         Expanded(
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(24),
-              child: Stack(
-                children: [
-                  m.MapLibreMap(
-                    styleString: style,
-                    initialCameraPosition: const m.CameraPosition(
-                      target: m.LatLng(-36.827, -73.05),
-                      zoom: 16,
-                      tilt: 55,
-                      bearing: -20,
-                    ),
-                    myLocationEnabled: gps && widget.active && foreground,
-                    onUserLocationUpdated: receiveLocation,
-                    compassEnabled: true,
-                    tiltGesturesEnabled: true,
-                    rotateGesturesEnabled: true,
-                    trackCameraPosition: true,
-                    onMapCreated: (c) => setState(() => controller = c),
-                    onStyleLoadedCallback: loaded,
-                    onMapClick: (_, p) {
-                      setState(() {
-                        point = LatLng(p.latitude, p.longitude);
-                        follow = false;
-                      });
-                      sync();
-                    },
-                  ),
-                  Positioned(
-                    right: 12,
-                    top: 72,
-                    child: Material(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      elevation: 4,
-                      child: Column(
-                        children: [
-                          IconButton(
-                            tooltip: 'Acercar',
-                            onPressed: () => controller?.animateCamera(
-                              m.CameraUpdate.zoomIn(),
-                            ),
-                            icon: const Icon(Icons.add, color: teal),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              m.MapLibreMap(
+                styleString: style,
+                initialCameraPosition: const m.CameraPosition(
+                  target: m.LatLng(-36.827, -73.05),
+                  zoom: 16,
+                  tilt: 55,
+                  bearing: -20,
+                ),
+                myLocationEnabled: gps && widget.active && foreground,
+                onUserLocationUpdated: receiveLocation,
+                compassEnabled: true,
+                tiltGesturesEnabled: true,
+                rotateGesturesEnabled: true,
+                trackCameraPosition: true,
+                onMapCreated: (c) => setState(() => controller = c),
+                onStyleLoadedCallback: loaded,
+                onMapClick: (_, p) {
+                  setState(() {
+                    point = LatLng(p.latitude, p.longitude);
+                    follow = false;
+                  });
+                  sync();
+                },
+              ),
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Material(
+                  color: const Color(0xf5ffffff),
+                  elevation: 2,
+                  borderRadius: BorderRadius.circular(18),
+                  child: Wrap(
+                    direction: Axis.vertical,
+                    children: [
+                      IconButton(
+                        tooltip: 'Mi ubicación',
+                        onPressed: requestingGps ? null : locate,
+                        icon: Icon(
+                          gps ? Icons.gps_fixed : Icons.my_location,
+                          color: teal,
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: perspective ? 'Ver en 2D' : 'Ver en 3D',
+                        onPressed: controller == null ? null : changeView,
+                        icon: Text(
+                          perspective ? '2D' : '3D',
+                          style: const TextStyle(
+                            color: navy,
+                            fontWeight: FontWeight.bold,
                           ),
-                          IconButton(
-                            tooltip: 'Alejar',
-                            onPressed: () => controller?.animateCamera(
-                              m.CameraUpdate.zoomOut(),
-                            ),
-                            icon: const Icon(Icons.remove, color: teal),
+                        ),
+                      ),
+                      PopupMenuButton<String>(
+                        tooltip: 'Más opciones de mapa',
+                        icon: const Icon(Icons.more_horiz),
+                        onSelected: (value) {
+                          if (value == 'ocultar') {
+                            setState(() {
+                              gps = false;
+                              currentLocation = null;
+                              follow = false;
+                            });
+                            return;
+                          }
+                          if (value == 'gps') {
+                            feedback(context, gpsStatus());
+                            return;
+                          }
+                          setState(() => follow = false);
+                          if (value == 'acercar') {
+                            controller?.animateCamera(m.CameraUpdate.zoomIn());
+                            return;
+                          }
+                          if (value == 'alejar') {
+                            controller?.animateCamera(m.CameraUpdate.zoomOut());
+                            return;
+                          }
+                          if (value == 'reportes') {
+                            final c = widget.session.cases
+                                .where(
+                                  (c) =>
+                                      c['latitud'] != null &&
+                                      c['longitud'] != null,
+                                )
+                                .firstOrNull;
+                            if (c == null) {
+                              feedback(
+                                context,
+                                'Todavía no tienes reportes ubicados.',
+                              );
+                              return;
+                            }
+                            fly(
+                              (c['latitud'] as num).toDouble(),
+                              (c['longitud'] as num).toDouble(),
+                            );
+                            return;
+                          }
+                          final p = {
+                            'Chillán': [-36.606, -72.104],
+                            'Concepción': [-36.827, -73.05],
+                            'Santiago': [-33.45, -70.66],
+                          }[value];
+                          if (p != null) fly(p[0], p[1]);
+                        },
+                        itemBuilder: (_) => [
+                          for (final city in [
+                            'Chillán',
+                            'Concepción',
+                            'Santiago',
+                          ])
+                            PopupMenuItem(value: city, child: Text(city)),
+                          const PopupMenuItem(
+                            value: 'reportes',
+                            child: Text('Mis reportes'),
                           ),
+                          const PopupMenuItem(
+                            value: 'acercar',
+                            child: Text('Acercar'),
+                          ),
+                          const PopupMenuItem(
+                            value: 'alejar',
+                            child: Text('Alejar'),
+                          ),
+                          const PopupMenuItem(
+                            value: 'gps',
+                            child: Text('Estado del GPS'),
+                          ),
+                          if (gps)
+                            const PopupMenuItem(
+                              value: 'ocultar',
+                              child: Text('Ocultar GPS'),
+                            ),
                         ],
                       ),
-                    ),
+                    ],
                   ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        Container(
-          margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(22),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                point == null
-                    ? 'Toca un lugar para ubicar el incidente.'
-                    : '${point!.latitude.toStringAsFixed(5)}, ${point!.longitude.toStringAsFixed(5)}',
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
-              gap(10),
-              FilledButton.icon(
-                onPressed: point == null
-                    ? null
-                    : () {
-                        widget.session.selectPoint(point!);
-                        widget.usePoint();
-                      },
-                icon: const Icon(Icons.check),
-                label: const Text('Usar esta ubicación'),
-              ),
-              const Note(
-                'Punto GPS: este teléfono · Marcador: lugar del incidente. El GPS no cambia el reporte automáticamente.',
+                ),
               ),
             ],
+          ),
+        ),
+        Material(
+          color: Colors.white,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              children: [
+                const Icon(Icons.place_outlined, color: teal),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    point == null
+                        ? 'Toca el mapa para marcar el incidente.'
+                        : 'Lugar del incidente seleccionado.',
+                  ),
+                ),
+                if (point != null)
+                  FilledButton(
+                    onPressed: () {
+                      widget.session.selectPoint(point!);
+                      widget.usePoint();
+                    },
+                    child: const Text('Usar punto'),
+                  ),
+              ],
+            ),
           ),
         ),
       ],

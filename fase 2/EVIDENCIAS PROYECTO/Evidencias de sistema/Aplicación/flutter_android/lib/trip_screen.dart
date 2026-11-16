@@ -132,103 +132,90 @@ class _TripScreenState extends State<TripScreen> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final running = status['running'] == true;
-    return ListView(
-      padding: const EdgeInsets.all(20),
-      children: [
-        const SectionTitle(
-          'Modo trayecto',
-          eyebrow: 'Android · ubicación y antecedentes',
-        ),
-        Panel(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Container(
-                height: 145,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [navy, teal]),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Icon(
-                  Icons.route_rounded,
-                  color: Colors.white,
-                  size: 75,
-                ),
-              ),
-              gap(20),
-              Row(
+    return Scaffold(
+      appBar: AppBar(title: const Text('Modo trayecto')),
+      body: SafeArea(
+        top: false,
+        child: ListView(
+          padding: const EdgeInsets.all(20),
+          children: [
+            Panel(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Expanded(
-                    child: Text(
-                      running
-                          ? 'Trayecto activo'
-                          : 'Tú decides cuándo comenzar',
-                      style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                        color: navy,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          running ? 'Trayecto activo' : 'Listo para salir',
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            color: navy,
+                          ),
+                        ),
                       ),
+                      StateChip(running ? 'Activo' : 'Detenido'),
+                    ],
+                  ),
+                  gap(),
+                  const Text(
+                    'Puedes abrir Waze mientras el servicio de ubicación de RutaAlerta permanece activo. Detén el trayecto cuando termines.',
+                    style: TextStyle(color: muted),
+                  ),
+                  gap(),
+                  FilledButton.icon(
+                    onPressed: busy
+                        ? null
+                        : running
+                        ? stop
+                        : start,
+                    icon: Icon(
+                      running
+                          ? Icons.stop_circle_outlined
+                          : Icons.play_arrow_rounded,
+                    ),
+                    label: Text(
+                      busy
+                          ? 'Espera…'
+                          : running
+                          ? 'Detener trayecto'
+                          : 'Iniciar trayecto',
                     ),
                   ),
-                  StateChip(running ? 'Activo' : 'Detenido'),
+                  if (running)
+                    Note(
+                      'Antecedentes descargados: ${status['noticeCount'] ?? 0}. ${((status['noticeCount'] ?? 0) as num) == 0 ? 'No hay avisos disponibles para este trayecto.' : 'Se avisará al acercarte a un sector revisado mientras el caché esté vigente.'}',
+                    ),
+                  if (status['lat'] != null)
+                    Note(
+                      'Última ubicación del dispositivo: ${(status['lat'] as num).toStringAsFixed(5)}, ${(status['lng'] as num).toStringAsFixed(5)}. Precisión aproximada: ${status['accuracy']} m.',
+                    ),
+                  if (running && status['lat'] == null)
+                    const Note(
+                      'Esperando una posición del dispositivo. El GPS puede tardar o no estar disponible en interiores.',
+                    ),
+                  if (status['error'] != null) Note('${status['error']}'),
                 ],
               ),
-              gap(),
-              const Text(
-                'Puedes abrir Waze mientras el servicio de ubicación de RutaAlerta permanece activo. Detén el trayecto cuando termines.',
-                style: TextStyle(color: muted),
+            ),
+            const Panel(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Avisos durante el trayecto',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
+                  ),
+                  Note(
+                    'Los avisos se basan sólo en antecedentes revisados descargados al iniciar: no son delitos en curso ni predicción. El caché vence en un máximo de dos horas; fuera del área descargada pueden faltar antecedentes. No lee Waze ni rastrea vehículos. Depende del GPS, permisos y batería.',
+                  ),
+                ],
               ),
-              gap(),
-              FilledButton.icon(
-                onPressed: busy
-                    ? null
-                    : running
-                    ? stop
-                    : start,
-                icon: Icon(
-                  running
-                      ? Icons.stop_circle_outlined
-                      : Icons.play_arrow_rounded,
-                ),
-                label: Text(
-                  busy
-                      ? 'Espera…'
-                      : running
-                      ? 'Detener trayecto'
-                      : 'Iniciar trayecto',
-                ),
-              ),
-              if (running)
-                Note(
-                  'Antecedentes descargados: ${status['noticeCount'] ?? 0}. ${((status['noticeCount'] ?? 0) as num) == 0 ? 'No hay avisos disponibles para este trayecto.' : 'Se avisará al acercarte a un sector revisado mientras el caché esté vigente.'}',
-                ),
-              if (status['lat'] != null)
-                Note(
-                  'Última ubicación del dispositivo: ${(status['lat'] as num).toStringAsFixed(5)}, ${(status['lng'] as num).toStringAsFixed(5)}. Precisión aproximada: ${status['accuracy']} m.',
-                ),
-              if (running && status['lat'] == null)
-                const Note(
-                  'Esperando una posición del dispositivo. El GPS puede tardar o no estar disponible en interiores.',
-                ),
-              if (status['error'] != null) Note('${status['error']}'),
-            ],
-          ),
+            ),
+          ],
         ),
-        const Panel(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Qué incluye esta versión',
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
-              ),
-              Note(
-                'Los avisos se basan sólo en antecedentes revisados descargados al iniciar: no son delitos en curso ni predicción. El caché vence en un máximo de dos horas; fuera del área descargada pueden faltar antecedentes. No lee Waze ni rastrea vehículos. Depende del GPS, permisos y batería.',
-              ),
-            ],
-          ),
-        ),
-      ],
+      ),
     );
   }
 }

@@ -171,46 +171,17 @@ class _PlacesRoutesScreenState extends State<PlacesRoutesScreen> {
       child: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          const SectionTitle(
-            'Tus destinos de cada día',
-            eyebrow: 'Privados en tu cuenta',
-          ),
-          for (final type in ['casa', 'trabajo', 'favorito'])
-            Panel(
-              child: ListTile(
-                leading: Icon(
-                  type == 'casa'
-                      ? Icons.home_outlined
-                      : type == 'trabajo'
-                      ? Icons.work_outline
-                      : Icons.star_outline,
-                  color: teal,
-                ),
-                title: Text(
-                  places
-                          .where((p) => p['tipo'] == type)
-                          .firstOrNull?['nombre'] ??
-                      type,
-                ),
-                subtitle: Text(
-                  places
-                          .where((p) => p['tipo'] == type)
-                          .firstOrNull?['direccion'] ??
-                      'Agregar dirección o seleccionar en el mapa',
-                ),
-                onTap: () => edit(type),
-                trailing: IconButton(
-                  tooltip: 'Editar lugar',
-                  onPressed: () => edit(type),
-                  icon: const Icon(Icons.edit_outlined),
-                ),
-              ),
-            ),
           Panel(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SectionTitle('¿A dónde vas?'),
+                if (places.isEmpty)
+                  TextButton.icon(
+                    onPressed: () => edit('casa'),
+                    icon: const Icon(Icons.add_location_alt_outlined),
+                    label: const Text('Guardar mi primer destino'),
+                  ),
                 DropdownButtonFormField<String>(
                   isExpanded: true,
                   decoration: const InputDecoration(
@@ -325,6 +296,26 @@ class _PlacesRoutesScreenState extends State<PlacesRoutesScreen> {
               ),
             Note('${result!['nota']}'),
           ],
+          ActionGroup(
+            title: 'Lugares guardados',
+            children: [
+              for (final entry in {
+                'casa': ('Casa', Icons.home_outlined),
+                'trabajo': ('Trabajo', Icons.work_outline),
+                'favorito': ('Favorito', Icons.star_outline),
+              }.entries)
+                ActionRow(
+                  icon: entry.value.$2,
+                  title: entry.value.$1,
+                  detail:
+                      places
+                          .where((p) => p['tipo'] == entry.key)
+                          .firstOrNull?['nombre'] ??
+                      'Agregar lugar',
+                  onTap: () => edit(entry.key),
+                ),
+            ],
+          ),
         ],
       ),
     ),

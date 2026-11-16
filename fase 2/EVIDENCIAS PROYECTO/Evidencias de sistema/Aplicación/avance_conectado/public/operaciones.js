@@ -2,7 +2,7 @@
 const el=id=>document.getElementById(id);
 const content=el('content');
 const h=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const names={cases:'Bandeja de casos',witness:'Avisos de testigos',sources:'Fuentes territoriales',cameras:'Cámaras autorizadas'};
+const names={pending:'Avistamientos pendientes',cases:'Bandeja de casos',witness:'Avisos de testigos',sources:'Fuentes territoriales',cameras:'Cámaras autorizadas'};
 const states={reportado:'Reportado',en_revision:'En revisión',en_gestion:'En gestión',cerrado:'Cerrado'};
 const date=value=>value?new Date(value).toLocaleString('es-CL',{dateStyle:'short',timeStyle:'short'}):'—';
 const badge=value=>`<span class="badge">${h(states[value]||String(value).replaceAll('_',' '))}</span>`;
@@ -75,8 +75,9 @@ function detail(c,contributions,equipo){
     action('Asignar prioridad',base+'/prioridad',selector('prioridad','Prioridad',{normal:'Normal',alta:'Alta',baja:'Baja'})+motives,'Guardar prioridad')+
     (c.colaboracion_consentida_en&&c.estado!=='reportado'&&!equipo.publicacion?action('Publicar solicitud de colaboración',base+'/publicacion','<label>Sector público<input name="zona" required minlength="3" maxlength="200"></label><label>Texto para la ciudadanía<textarea name="texto" required minlength="15" maxlength="1500"></textarea></label>'+motives):'')+
     (equipo.publicacion?'<p>Solicitud vigente hasta '+h(date(equipo.publicacion.vence_en))+'</p>'+action('Renovar solicitud',base+'/renovacion','<input type="hidden" name="id_solicitud_colaboracion" value="'+Number(equipo.publicacion.id_solicitud_colaboracion)+'">'+numberField('horas','Nuevo plazo contado desde ahora (horas)',1,72)+motives)+action('Retirar solicitud de colaboración',base+'/retirar',motives):'')+
+    action('Notificar al afectado',base+'/mensaje','<input type="hidden" name="clave_envio" value="'+crypto.randomUUID()+'"><label>Mensaje para su bandeja privada<textarea name="mensaje" required minlength="10" maxlength="500"></textarea></label>','Enviar notificación')+
     action('Cerrar caso',base+'/cerrar',selector('motivo_cierre','Resultado',{recuperado:'Recuperado',duplicado:'Duplicado',informacion_insuficiente:'Información insuficiente',otro:'Otro'})+'<label>ID de evidencia aceptada (si fue recuperado)<input type="number" min="1" name="id_evidencia"></label><label>ID del caso principal (si fue duplicado)<input type="number" min="1" name="id_caso_principal"></label>'+motives):'';
-  const sightings=contributions.map(a=>`<div class="record"><strong>${h(a.zona)}</strong> ${badge(a.estado_revision)}<p>${h(a.descripcion)}</p><p class="muted">${h(date(a.observado_en))}</p>${open?action('Evaluar aporte',`/gestion/aportes/${Number(a.id_avistamiento)}/revision`,selector('decision','Decisión',{aceptado:'Aceptar',requiere_aclaracion:'Pedir aclaración',rechazado:'Rechazar'})+motives+'<label>Resumen que podrá ver el afectado si se acepta<textarea name="resumen" maxlength="500"></textarea></label>'):''}</div>`).join('');
+  const sightings=contributions.map(a=>`<div class="record"><strong>${h(a.zona)}</strong> ${badge(a.estado_revision)}<p>${h(a.descripcion)}</p><p class="muted">${h(date(a.observado_en))}</p>${(a.fotos||[]).map(id=>`<button data-photo="${Number(id)}">Ver foto del avistamiento #${Number(id)}</button>`).join('')}${open?action('Evaluar aporte',`/gestion/aportes/${Number(a.id_avistamiento)}/revision`,selector('decision','Decisión',{aceptado:'Aceptar',requiere_aclaracion:'Pedir aclaración',rechazado:'Rechazar'})+motives+'<label>Resumen que podrá ver el afectado si se acepta<textarea name="resumen" maxlength="500"></textarea></label>'):''}</div>`).join('');
   const evidence=(c.evidencias||[]).map(e=>`<div class="record"><button data-photo="${Number(e.id_evidencia)}">Ver foto #${Number(e.id_evidencia)}</button> ${badge(e.estado_revision)}${open?action('Revisar evidencia',`/gestion/evidencias/${Number(e.id_evidencia)}/revision`,selector('decision','Decisión',{aceptada:'Aceptar',rechazada:'Rechazar'})+motives):''}</div>`).join('');
   return header+statement+management+"</section>"+equipoCaso(c,equipo)+`<section class="card"><h2>Avistamientos</h2>${sightings||empty('Todavía no hay aportes para este caso.')}</section><section class="card"><h2>Evidencias privadas</h2>${evidence||empty('Sin fotos adjuntas.')}</section><section class="card"><h2>Historial compartido con el afectado</h2>${c.historial.map(x=>`<div class="record"><strong>${h(date(x.creada_en))}</strong><p>${h(x.descripcion)}</p></div>`).join('')||empty('Todavía no hay novedades en el seguimiento.')}</section>`;
 }
@@ -100,6 +101,10 @@ async function load(){
     let render;
     if(view==='cases'&&selected){const result=await Promise.all([api('/seguimiento/'+selected),api(`/gestion/casos/${selected}/aportes`),api('/gestion/casos/'+selected+'/equipo')]);render=()=>detail(...result);}
     else if(view==='cases'){const items=await api('/casos');render=()=>queue(items);}
+    else if(view==='pending'){
+      const items=await api('/gestion/aportes/pendientes');
+      render=()=>items.length?items.map(a=>`<article class="card"><div class="row"><h2>${h(a.folio)}</h2>${badge(a.con_foto?'Con foto':'Sin foto')}</div><p>${h(a.zona)} · ${h(date(a.recibido_en))}</p><button data-case="${Number(a.id_caso)}">Revisar en la ficha</button></article>`).join(''):empty('No hay avistamientos pendientes de revisión.');
+    }
     else if(view==='sources'){const items=await api('/gestion/antecedentes');render=()=>sources(items);}
     else if(view==='witness'){const [items,cases]=await Promise.all([api('/gestion/testigos'),api('/casos')]);render=()=>witnessQueue(items,cases);}
     else{const inventory=await api('/gestion/camaras');render=()=>cameraRoom(inventory);}
@@ -113,7 +118,7 @@ async function load(){
 content.onclick=e=>{
   const b=e.target.closest('button');if(!b)return;
   if(b.hasAttribute('data-list')){selected=null;load();}
-  if(b.dataset.case){selected=Number(b.dataset.case);load();}
+  if(b.dataset.case){view='cases';selected=Number(b.dataset.case);load();}
   if(b.dataset.photo)handle(b,async()=>{const epoch=generation;const file=await api(`/evidencias/${Number(b.dataset.photo)}/foto`,undefined,true);if(generation!==epoch)return;const url=URL.createObjectURL(file);photos.push(url);const img=new Image();img.className='photo';img.alt='Evidencia privada del caso';img.src=url;b.replaceWith(img);});
 };
 content.onsubmit=e=>{

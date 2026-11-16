@@ -112,31 +112,7 @@ class _MobileShellState extends State<MobileShell> {
       );
     }
     if (value == 'contributions') {
-      openScreen(
-        context,
-        DataScreen(
-          session: session,
-          title: 'Mis avistamientos',
-          path: '/mis-avistamientos',
-          render: (_, data, _) => Column(
-            children: [
-              if ((data as List).isEmpty)
-                const Panel(
-                  child: Text('Todavía no has enviado avistamientos.'),
-                ),
-              for (final a in data)
-                Panel(
-                  child: ListTile(
-                    title: Text('${a['zona']}'),
-                    subtitle: Text(
-                      '${a['estado_revision']} · ${a['motivo_revision'] ?? 'Pendiente de revisión'}',
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      );
+      openScreen(context, mySightings(session));
     }
   }
 

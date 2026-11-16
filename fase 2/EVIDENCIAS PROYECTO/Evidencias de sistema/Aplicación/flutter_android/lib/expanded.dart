@@ -7,6 +7,7 @@ import 'package:uuid/uuid.dart';
 
 import 'session.dart';
 import 'biometric.dart';
+import 'movilidad.dart' show Mobility;
 import 'ui.dart';
 
 // Formularios acotados: los permisos y reglas se vuelven a comprobar en el servidor.
@@ -700,6 +701,27 @@ class TrustScreen extends StatelessWidget {
   );
 }
 
+Widget mySightings(Session session) => DataScreen(
+  session: session,
+  title: 'Mis avistamientos',
+  path: '/mis-avistamientos',
+  render: (_, data, _) => Column(
+    children: [
+      if ((data as List).isEmpty)
+        const Panel(child: Text('Todavía no has enviado avistamientos.')),
+      for (final a in data)
+        Panel(
+          child: ListTile(
+            title: Text('${a['zona']}'),
+            subtitle: Text(
+              '${a['estado_revision']} · ${a['motivo_revision'] ?? 'Pendiente de revisión'}',
+            ),
+          ),
+        ),
+    ],
+  ),
+);
+
 class InboxScreen extends StatelessWidget {
   final Session session;
   const InboxScreen({super.key, required this.session});
@@ -731,7 +753,9 @@ class InboxScreen extends StatelessWidget {
                   method: 'POST',
                 );
                 reload();
-                if (ctx.mounted && n['id_caso'] != null) {
+                if (ctx.mounted && n['destino'] == 'avistamientos') {
+                  openScreen(ctx, mySightings(session));
+                } else if (ctx.mounted && n['id_caso'] != null) {
                   openScreen(
                     ctx,
                     CaseScreen(session: session, cid: n['id_caso'] as int),
@@ -757,6 +781,15 @@ class _CommunityScreenState extends State<CommunityScreen> {
       lat = TextEditingController(),
       lon = TextEditingController();
   String query = '';
+  Map<String, String> proximity = {};
+  void search([Map<String, String>? area]) {
+    setState(() {
+      if (area != null) proximity = area;
+      query = Uri(queryParameters: {...proximity, 'zona': zone.text.trim()})
+          .query;
+    });
+  }
+
   @override
   void dispose() {
     zone.dispose();
@@ -782,10 +815,22 @@ class _CommunityScreenState extends State<CommunityScreen> {
             ),
             IconButton(
               tooltip: 'Buscar',
-              onPressed: () => setState(
-                () => query = Uri(queryParameters: {'zona': zone.text}).query,
-              ),
+              onPressed: () => search(),
               icon: const Icon(Icons.search),
+            ),
+            IconButton(
+              tooltip: 'Buscar a 30 km de mi GPS',
+              icon: const Icon(Icons.my_location),
+              onPressed: () => perform(context, () async {
+                final p = await Mobility.location();
+                if (mounted) {
+                  search({
+                    'lat': (p['lat'] as num).toStringAsFixed(2),
+                    'lon': (p['lon'] as num).toStringAsFixed(2),
+                    'radio_km': '30',
+                  });
+                }
+              }),
             ),
             IconButton(
               tooltip: 'Definir ubicación de búsqueda',
@@ -806,11 +851,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                     double.tryParse(d['lon'] ?? '') == null) {
                   throw Exception('Ingresa coordenadas válidas.');
                 }
-                setState(
-                  () =>
-                      query = Uri(queryParameters: {...d, 'zona': zone.text})
-                          .query,
-                );
+                if (mounted) search(d);
               }),
             ),
           ],
@@ -893,6 +934,22 @@ class _SightingScreenState extends State<SightingScreen> {
       lat = TextEditingController(),
       lon = TextEditingController();
   final key = const Uuid().v4();
+  Uint8List? photo;
+  Future<void> pick(ImageSource source) async {
+    final file = await ImagePicker().pickImage(
+      source: source,
+      maxWidth: 1600,
+      maxHeight: 1600,
+      imageQuality: 82,
+    );
+    if (file == null) return;
+    final bytes = await file.readAsBytes();
+    if (bytes.length > 2097152) {
+      throw Exception('Elige una imagen de hasta 2 MB.');
+    }
+    if (mounted) setState(() => photo = bytes);
+  }
+
   DateTime date = DateTime.now();
   bool busy = false;
   @override
@@ -941,6 +998,19 @@ class _SightingScreenState extends State<SightingScreen> {
           child: Text('Observado: ${date.toLocal()}'),
         ),
         gap(),
+        OutlinedButton.icon(
+          onPressed: busy
+              ? null
+              : () => perform(context, () async {
+                  final p = await Mobility.location();
+                  if (!mounted) return;
+                  lat.text = (p['lat'] as num).toStringAsFixed(5);
+                  lon.text = (p['lon'] as num).toStringAsFixed(5);
+                }),
+          icon: const Icon(Icons.my_location),
+          label: const Text('Usar mi ubicación para el avistamiento'),
+        ),
+        gap(),
         for (final item in [
           (zone, 'Comuna o sector'),
           (description, 'Describe lo observado (mínimo 10 caracteres)'),
@@ -954,6 +1024,39 @@ class _SightingScreenState extends State<SightingScreen> {
           ),
           gap(),
         ],
+        if (photo != null) ...[
+          Image.memory(
+            photo!,
+            height: 112,
+            fit: BoxFit.contain,
+            semanticLabel: 'Foto seleccionada',
+          ),
+          TextButton(
+            onPressed: busy ? null : () => setState(() => photo = null),
+            child: const Text('Quitar foto'),
+          ),
+        ] else
+          Wrap(
+            spacing: 8,
+            children: [
+              OutlinedButton.icon(
+                onPressed: busy
+                    ? null
+                    : () => perform(context, () => pick(ImageSource.camera)),
+                icon: const Icon(Icons.photo_camera_outlined),
+                label: const Text('Tomar foto'),
+              ),
+              TextButton(
+                onPressed: busy
+                    ? null
+                    : () => perform(context, () => pick(ImageSource.gallery)),
+                child: const Text('Elegir de galería'),
+              ),
+            ],
+          ),
+        const Note(
+          'La foto es opcional. Solo el equipo que revisa el caso puede consultarla.',
+        ),
         FilledButton(
           onPressed: busy
               ? null
@@ -975,6 +1078,7 @@ class _SightingScreenState extends State<SightingScreen> {
                         'zona': zone.text,
                         'descripcion': description.text,
                         'observado_en': date.toUtc().toIso8601String(),
+                        if (photo != null) 'foto_base64': base64Encode(photo!),
                         'latitud': la,
                         'longitud': lo,
                       },

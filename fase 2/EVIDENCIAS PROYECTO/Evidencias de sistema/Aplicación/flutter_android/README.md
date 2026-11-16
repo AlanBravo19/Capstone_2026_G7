@@ -1,3 +1,11 @@
+# RutaAlerta · Beta 0.13.0
+
+El mapa móvil concentra los controles de GPS, perspectiva y ciudades junto a la cartografía. El planificador prioriza origen y destino. Modo trayecto dispone de navegación de regreso. En Colaborar se puede buscar a 30 km del GPS o fijar otra zona. Un colaborador puede adjuntar una foto opcional al avistamiento. Texto y foto se guardan en una sola operación.
+
+En el escritorio, Avistamientos pendientes reúne los aportes de la organización. En la ficha se revisa la fotografía privada, se decide sobre el aporte y se puede enviar una actualización al titular. Los mensajes llegan a la bandeja interna. El ensayo de Chillán se reproduce en una base temporal con tests/test_recorrido_chillan.py del servidor.
+
+## Historial
+
 # RutaAlerta · Beta 0.12.0
 
 En Android cualquier persona puede crear una cuenta ciudadana. Desde Inicio puede buscar vehículos con solicitud activa, informar como testigo o reportar el robo de un vehículo propio. Mapa, Colaborar y Cuenta están en la barra inferior.

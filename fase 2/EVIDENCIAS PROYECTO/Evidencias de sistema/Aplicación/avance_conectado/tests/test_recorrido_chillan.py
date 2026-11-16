@@ -1,0 +1,62 @@
+"""Simulación integrada sobre la base temporal, sin avisos públicos ni fotos reales."""
+import uuid
+from datetime import datetime, timezone
+
+from test_beta_colaborativa import foto_payload
+from test_casos import _reporte
+from test_identidad_mvp import activar
+
+
+def test_recorrido_chillan(client, ciudadano, supervisor_org1, operador_org2):
+    op, titular = supervisor_org1, ciudadano["headers"]
+    _, _, colaborador, _ = activar(client)
+    punto = {"latitud": -36.606, "longitud": -72.104}
+    reporte = _reporte(zona="Chillán · ensayo local", **punto)
+    r = client.post("/casos", headers={**titular,"Idempotency-Key":str(uuid.uuid4())}, json=reporte)
+    assert r.status_code == 201
+    cid = r.json()["id_caso"]
+    base = f"/gestion/casos/{cid}"
+    assert client.post(f"/mis-casos/{cid}/colaboracion",headers=titular).status_code == 200
+    assert client.post(base+"/revision",headers=op,json={"estado":"en_revision","motivo":"Revisión supervisada del ejercicio"}).status_code == 200
+    r=client.post(base+"/publicacion",headers=op,json={"zona":"Chillán · simulación","texto":"Vehículo ficticio para la prueba local de colaboración.","motivo":"Ejercicio con consentimiento del titular ficticio"})
+    assert r.status_code == 201
+    sid = r.json()["id_solicitud_colaboracion"]
+    for lat,lon,grupo in [(-36.606,-72.104,"cercanos"),(-33.45,-70.66,"otras_zonas")]:
+        resultado=client.get("/colaboracion",params={"lat":lat,"lon":lon,"radio_km":30,"zona":"Chillán"},headers=colaborador).json()
+        assert any(s["id_solicitud_colaboracion"]==sid for s in resultado[grupo])
+    url=f"/colaboracion/{sid}/avistamientos"
+    h={**colaborador,"Idempotency-Key":str(uuid.uuid4())}
+    datos={**punto,"observado_en":datetime.now(timezone.utc).isoformat(),"zona":"Chillán de ensayo",
+           "descripcion":"Observación ficticia enviada para revisar la foto de prueba."}
+    assert client.post(url,headers=h,json={**datos,"foto_base64":"A"*40}).status_code == 422
+    datos["foto_base64"]=foto_payload()["contenido_base64"]
+    r=client.post(url,headers=h,json=datos)
+    assert r.status_code == 201
+    aid=r.json()["id_avistamiento"]
+    assert client.post(url,headers=h,json=datos).json()["id_avistamiento"]==aid
+    def pendientes(actor):
+        return [p for p in client.get("/gestion/aportes/pendientes",headers=actor).json() if p["id_caso"]==cid]
+    assert len(pendientes(op))==1 and pendientes(op)[0]["con_foto"]
+    assert pendientes(operador_org2)==[]
+    aportes=client.get(base+"/aportes",headers=op).json()
+    assert len(aportes)==1 and len(aportes[0]["fotos"])==1
+    foto=f"/evidencias/{aportes[0]['fotos'][0]}/foto"
+    assert client.get(foto,headers=op).content[:2] == bytes.fromhex("ffd8")
+    assert client.get(foto,headers=titular).status_code==403
+    assert client.get(foto,headers=operador_org2).status_code==403
+    resumen="Se recibió un antecedente ficticio y el operador revisó la fotografía."
+    assert client.post(f"/gestion/aportes/{aid}/revision",headers=op,json={"decision":"aceptado","motivo":"Aporte revisado en el ensayo","resumen":resumen}).status_code==200
+    assert not pendientes(op)
+    seguimiento=client.get(f"/seguimiento/{cid}",headers=titular).json()
+    assert seguimiento["aportes"][0]["resumen_para_afectado"]==resumen
+    mensaje={"mensaje":"Actualización privada del ejercicio en Chillán.","clave_envio":str(uuid.uuid4())}
+    assert client.post(base+"/mensaje",headers=operador_org2,json=mensaje).status_code==403
+    for _ in range(2):
+        assert client.post(base+"/mensaje",headers=op,json=mensaje).status_code==204
+    notificaciones=client.get("/notificaciones",headers=titular).json()
+    recibidas=[n for n in notificaciones if n["mensaje"]==mensaje["mensaje"]]
+    assert len(recibidas)==1
+    assert client.post(f"/notificaciones/{recibidas[0]['id_notificacion']}/leer",headers=titular).status_code==204
+    decisiones=[n for n in client.get("/notificaciones",headers=colaborador).json() if n["titulo"]=="Avistamiento revisado"]
+    assert len(decisiones)==1 and decisiones[0]["destino"]=="avistamientos" and decisiones[0]["id_caso"] is None
+

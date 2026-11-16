@@ -29,7 +29,8 @@ def bloquear_participante(cur,uid):
     if not cur.fetchone():raise HTTPException(403,'Cuenta restringida: revisa correo y autenticador')
 
 def aviso(cur,uid,cid,titulo,texto,clave):
-    cur.execute('''INSERT INTO notificacion(id_usuario,id_caso,tipo,titulo,mensaje,clave_deduplicacion) VALUES(%s,%s,'caso',%s,%s,%s) ON CONFLICT(id_usuario,clave_deduplicacion) DO NOTHING''',(uid,cid,titulo,texto,clave))
+    tipo='general' if cid is None else 'caso'
+    cur.execute('''INSERT INTO notificacion(id_usuario,id_caso,tipo,titulo,mensaje,clave_deduplicacion) VALUES(%s,%s,%s,%s,%s,%s) ON CONFLICT(id_usuario,clave_deduplicacion) DO NOTHING''',(uid,cid,tipo,titulo,texto,clave))
 def bitacora(cur,cid,uid,accion,texto,visible='afectado',anterior=None,nuevo=None):
     cur.execute('''INSERT INTO gestion_caso(id_caso,id_usuario,accion,descripcion,visibilidad,estado_anterior,estado_nuevo) VALUES(%s,%s,%s,%s,%s,%s,%s)''',(cid,uid,accion,texto,visible,anterior,nuevo))
 
@@ -101,16 +102,21 @@ def listado(lat:float|None=Query(None,ge=-90,le=90),lon:float|None=Query(None,ge
     if (lat is None)!=(lon is None):raise HTTPException(422,'Envía latitud y longitud juntas')
     cur=conn.cursor()
     cur.execute('''SELECT s.id_solicitud_colaboracion,s.zona_publicable,s.texto_aprobado,s.vence_en,v.patente,v.color,ma.nombre AS marca,m.nombre AS modelo,
-        CASE WHEN %s::float IS NOT NULL THEN round((ST_Distance(s.centro_publico,ST_SetSRID(ST_Point(%s,%s),4326)::geography)/1000)::numeric,0) END AS distancia_km
+        CASE WHEN %s::float IS NOT NULL THEN ST_Distance(s.centro_publico,ST_SetSRID(ST_Point(%s,%s),4326)::geography)/1000 END AS distancia_km
         FROM solicitud_colaboracion s JOIN caso c USING(id_caso) JOIN vehiculo v USING(id_vehiculo) JOIN modelo m USING(id_modelo) JOIN marca ma USING(id_marca)
         WHERE s.estado='publicada' AND s.inicio<=CURRENT_TIMESTAMP AND s.vence_en>CURRENT_TIMESTAMP AND c.estado<>'cerrado' AND s.zona_publicable ILIKE %s
         ORDER BY distancia_km ASC NULLS LAST,s.inicio DESC LIMIT 100''',(lat,lon,lat,'%'+zona+'%'))
     found=rows(cur)
-    return {'cercanos':[r for r in found if r['distancia_km'] is not None and r['distancia_km']<=radio_km],
-      'otras_zonas':[r for r in found if r['distancia_km'] is None or r['distancia_km']>radio_km],
-      'nota':'Distancias aproximadas al sector de publicación, no ubicación actual del vehículo.'}
+    resultado={'cercanos':[], 'otras_zonas':[], 'nota':'Distancias aproximadas al sector de publicación, no ubicación actual del vehículo.'}
+    for fila in found:
+        km=fila['distancia_km']
+        grupo='cercanos' if km is not None and km<=radio_km else 'otras_zonas'
+        fila['distancia_km']=round(km) if km is not None else None
+        resultado[grupo].append(fila)
+    return resultado
 
 class AvistamientoEntrada(BaseModel):
+    foto_base64:str|None=Field(default=None,min_length=16,max_length=2800000)
     observado_en:datetime
     zona:str=Field(min_length=3,max_length=200)
     descripcion:str=Field(min_length=10,max_length=3000)
@@ -134,7 +140,10 @@ def aportar(sid:int,datos:AvistamientoEntrada,response:Response,idempotency_key:
     cur.execute("SELECT 1 FROM solicitud_colaboracion WHERE id_solicitud_colaboracion=%s AND estado='publicada' AND inicio<=CURRENT_TIMESTAMP AND vence_en>CURRENT_TIMESTAMP",(sid,))
     if not cur.fetchone():raise HTTPException(409,'La publicación ya no está vigente')
     cur.execute('''INSERT INTO avistamiento(id_solicitud_colaboracion,id_caso,id_usuario_autor,observado_en,zona,descripcion,ubicacion,clave_envio) VALUES(%s,%s,%s,%s,%s,%s,ST_SetSRID(ST_Point(%s,%s),4326)::geography,%s) RETURNING id_avistamiento''',(sid,cid,uid,fecha,datos.zona,datos.descripcion,datos.longitud,datos.latitud,str(idempotency_key)))
-    return {'id_avistamiento':cur.fetchone()[0],'estado':'pendiente','mensaje':'Aporte recibido para revisión humana. No sigas ni confrontes a nadie.'}
+    aid=cur.fetchone()[0]
+    if datos.foto_base64 is not None:
+        guardar_foto(cur,cid,uid,uuid.uuid4(),datos.foto_base64,aid)
+    return {'id_avistamiento':aid,'estado':'pendiente','mensaje':'Aporte recibido para revisión humana. No sigas ni confrontes a nadie.'}
 
 @router.get('/mis-avistamientos')
 def mis_aportes(usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):
@@ -143,11 +152,26 @@ def mis_aportes(usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):
 @router.get('/gestion/casos/{cid}/aportes')
 def aportes(cid:int,usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):
     cur=conn.cursor();caso_autorizado(cur,cid,usuario,operador=True)
-    cur.execute('''SELECT id_avistamiento,zona,descripcion,observado_en,estado_revision,ST_Y(ubicacion::geometry) AS latitud,ST_X(ubicacion::geometry) AS longitud FROM avistamiento WHERE id_caso=%s ORDER BY recibido_en''',(cid,));return rows(cur)
+    cur.execute('''SELECT a.id_avistamiento,a.zona,a.descripcion,a.observado_en,a.estado_revision,
+        ST_Y(a.ubicacion::geometry) AS latitud, ST_X(a.ubicacion::geometry) AS longitud,
+        ARRAY(SELECT e.id_evidencia FROM evidencia e WHERE e.id_avistamiento=a.id_avistamiento ORDER BY e.id_evidencia) AS fotos
+        FROM avistamiento a WHERE a.id_caso=%s ORDER BY a.recibido_en DESC''',(cid,));return rows(cur)
 
 class Revision(Motivo):
     decision:Literal['aceptado','rechazado','requiere_aclaracion']
     resumen:str=Field(default='',max_length=500)
+
+@router.get('/gestion/aportes/pendientes')
+def pendientes(usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):
+    cur=conn.cursor()
+    orgs=organizaciones_del_operador(cur,usuario['id_usuario'])
+    if not orgs:raise HTTPException(403,'Se requiere acceso institucional')
+    cur.execute("""SELECT c.id_caso,c.folio,a.zona,a.recibido_en,
+            EXISTS(SELECT 1 FROM evidencia e WHERE e.id_avistamiento=a.id_avistamiento) AS con_foto
+        FROM avistamiento a JOIN caso c USING(id_caso)
+        WHERE c.id_organizacion=ANY(%s) AND c.estado<>'cerrado' AND a.estado_revision='pendiente'
+        ORDER BY a.recibido_en, a.id_avistamiento LIMIT 100""",(orgs,))
+    return rows(cur)
 @router.post('/gestion/aportes/{aid}/revision')
 def revisar(aid:int,datos:Revision,usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):
     cur=conn.cursor();cur.execute('SELECT id_caso,id_usuario_autor FROM avistamiento WHERE id_avistamiento=%s',(aid,));row=cur.fetchone()
@@ -158,6 +182,8 @@ def revisar(aid:int,datos:Revision,usuario=Depends(usuario_actual),conn=Depends(
     cur.execute('SELECT revisar_avistamiento(%s,%s,%s,%s)',(aid,usuario['id_usuario'],datos.decision,datos.motivo))
     resumen=datos.resumen.strip() if datos.decision=='aceptado' else None
     cur.execute('UPDATE avistamiento SET resumen_para_afectado=%s WHERE id_avistamiento=%s',(resumen or None,aid))
+    aviso(cur,autor,None,'Avistamiento revisado',
+          'Consulta la decisión en Cuenta → Mis avistamientos.',f'revision:{aid}:{datos.decision}')
     if resumen:
         bitacora(cur,cid,usuario['id_usuario'],'aporte_revisado',resumen)
         aviso(cur,c['id_usuario_reportante'],cid,'Nuevo antecedente revisado','Hay un antecedente disponible en el seguimiento de tu caso.',f'aporte:{aid}:{uuid.uuid4()}')
@@ -166,6 +192,28 @@ def revisar(aid:int,datos:Revision,usuario=Depends(usuario_actual),conn=Depends(
 class Foto(BaseModel):
     contenido_base64:str=Field(min_length=16,max_length=2800000)
     clave_envio:uuid.UUID
+
+class MensajeCaso(BaseModel):
+    mensaje:str=Field(min_length=10,max_length=500)
+    clave_envio:uuid.UUID
+
+@router.post('/gestion/casos/{cid}/mensaje',status_code=204)
+def comunicar(cid:int,datos:MensajeCaso,usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):
+    cur=conn.cursor()
+    caso=caso_autorizado(cur,cid,usuario,operador=True)
+    if caso['estado']=='cerrado':raise HTTPException(409,'Caso cerrado')
+    clave=f"mensaje:{cid}:{usuario['id_usuario']}:{datos.clave_envio}"
+    texto=datos.mensaje.strip()
+    if len(texto)<10:raise HTTPException(422,'Escribe una actualización de al menos diez caracteres')
+    cur.execute('SELECT mensaje FROM notificacion WHERE id_usuario=%s AND clave_deduplicacion=%s',
+                (caso['id_usuario_reportante'],clave))
+    anterior=cur.fetchone()
+    if anterior:
+        if anterior[0]!=texto:raise HTTPException(409,'Esta actualización ya fue enviada con otro texto')
+        return
+    aviso(cur,caso['id_usuario_reportante'],cid,'Novedad del caso '+caso['folio'],texto,clave)
+    bitacora(cur,cid,usuario['id_usuario'],'mensaje_al_afectado',texto,'interna')
+
 @router.post('/casos/{cid}/fotos',status_code=201)
 def foto(cid:int,datos:Foto,response:Response,usuario=Depends(participante),conn=Depends(obtener_conexion)):
     uid=usuario['id_usuario'];limitar(conn,f'foto:{uid}',10);cur=conn.cursor();bloquear_participante(cur,uid);c=caso_autorizado(cur,cid,usuario,propietario=True)
@@ -174,10 +222,14 @@ def foto(cid:int,datos:Foto,response:Response,usuario=Depends(participante),conn
     if prev:
         if prev[1]!=cid:raise HTTPException(409,'Clave utilizada en otro caso')
         response.status_code=200;return {'id_evidencia':prev[0]}
-    cur.execute('SELECT count(*) FROM archivo_evidencia f JOIN evidencia e USING(id_evidencia) WHERE e.id_caso=%s',(cid,))
+    cur.execute('SELECT count(*) FROM archivo_evidencia f JOIN evidencia e USING(id_evidencia) WHERE e.id_caso=%s AND e.id_avistamiento IS NULL',(cid,))
     if cur.fetchone()[0]>=5:raise HTTPException(409,'Máximo cinco fotos por caso en esta beta')
+    eid=guardar_foto(cur,cid,uid,datos.clave_envio,datos.contenido_base64)
+    return {'id_evidencia':eid,'estado_revision':'pendiente','mensaje':'Foto privada recibida para revisión.'}
+
+def guardar_foto(cur,cid,uid,clave,contenido,aid=None):
     try:
-        raw=base64.b64decode(datos.contenido_base64,validate=True)
+        raw=base64.b64decode(contenido,validate=True)
         if len(raw)>2097152:raise ValueError()
         with Image.open(io.BytesIO(raw)) as im:
             if im.format not in ('JPEG','PNG','WEBP') or im.width*im.height>16000000:raise ValueError()
@@ -186,16 +238,16 @@ def foto(cid:int,datos:Foto,response:Response,usuario=Depends(participante),conn
     except (ValueError,binascii.Error,UnidentifiedImageError,OSError,Image.DecompressionBombError):
         raise HTTPException(422,'Foto inválida. Usa JPEG, PNG o WebP de hasta 2 MB y 16 megapíxeles.') from None
     key=f'privado/{uid}/{uuid.uuid4()}.jpg'
-    cur.execute('''INSERT INTO evidencia(id_caso,id_usuario_autor,tipo,origen,clave_objeto,mime,tamano_bytes,sha256,estado_carga,clave_envio,recibida_en)
-      VALUES(%s,%s,'foto','archivo_adjuntado',%s,'image/jpeg',%s,%s,'recibido',%s,CURRENT_TIMESTAMP) RETURNING id_evidencia''',(cid,uid,key,len(clean),hashlib.sha256(clean).digest(),str(datos.clave_envio)));eid=cur.fetchone()[0]
+    cur.execute('''INSERT INTO evidencia(id_caso,id_avistamiento,id_usuario_autor,tipo,origen,clave_objeto,mime,tamano_bytes,sha256,estado_carga,clave_envio,recibida_en)
+      VALUES(%s,%s,%s,'foto','archivo_adjuntado',%s,'image/jpeg',%s,%s,'recibido',%s,CURRENT_TIMESTAMP) RETURNING id_evidencia''',(cid,aid,uid,key,len(clean),hashlib.sha256(clean).digest(),str(clave)));eid=cur.fetchone()[0]
     cur.execute('INSERT INTO archivo_evidencia(id_evidencia,contenido) VALUES(%s,%s)',(eid,clean))
-    return {'id_evidencia':eid,'estado_revision':'pendiente','mensaje':'Foto privada recibida; se eliminan metadatos de ubicación. No acredita por sí sola la veracidad del reporte.'}
+    return eid
 
 @router.get('/evidencias/{eid}/foto')
 def descargar(eid:int,usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):
-    cur=conn.cursor();cur.execute('SELECT id_caso FROM evidencia WHERE id_evidencia=%s',(eid,));row=cur.fetchone()
+    cur=conn.cursor();cur.execute('SELECT id_caso,id_avistamiento FROM evidencia WHERE id_evidencia=%s',(eid,));row=cur.fetchone()
     if not row:raise HTTPException(404,'Foto no disponible')
-    caso_autorizado(cur,row[0],usuario)
+    caso_autorizado(cur,row[0],usuario,operador=row[1] is not None)
     cur.execute('SELECT contenido FROM archivo_evidencia WHERE id_evidencia=%s',(eid,));row=cur.fetchone()
     if not row:raise HTTPException(404,'Foto no disponible')
     return Response(bytes(row[0]),media_type='image/jpeg',headers={'Cache-Control':'no-store','Content-Disposition':'inline; filename="evidencia.jpg"'})
@@ -253,7 +305,7 @@ def revocar(cid:int,aid:int,usuario=Depends(usuario_actual),conn=Depends(obtener
 
 @router.get('/notificaciones')
 def notificaciones(usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):
-    cur=conn.cursor();cur.execute('''SELECT id_notificacion,id_caso,titulo,mensaje,creada_en,leida_en FROM notificacion WHERE id_usuario=%s ORDER BY creada_en DESC LIMIT 100''',(usuario['id_usuario'],));return rows(cur)
+    cur=conn.cursor();cur.execute('''SELECT id_notificacion,id_caso,titulo,mensaje,creada_en,leida_en,CASE WHEN clave_deduplicacion LIKE 'revision:%%' THEN 'avistamientos' ELSE 'caso' END AS destino FROM notificacion WHERE id_usuario=%s ORDER BY creada_en DESC LIMIT 100''',(usuario['id_usuario'],));return rows(cur)
 @router.post('/notificaciones/{nid}/leer',status_code=204)
 def leer(nid:int,usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):
     conn.cursor().execute('UPDATE notificacion SET leida_en=COALESCE(leida_en,CURRENT_TIMESTAMP) WHERE id_notificacion=%s AND id_usuario=%s',(nid,usuario['id_usuario']))
