@@ -20,6 +20,7 @@ class HomeScreen extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         children: [
           WelcomeBanner(name: name.toString()),
+          if (session.storageNotice != null) Note(session.storageNotice!),
           if (!session.canReport)
             Panel(
               child: Column(

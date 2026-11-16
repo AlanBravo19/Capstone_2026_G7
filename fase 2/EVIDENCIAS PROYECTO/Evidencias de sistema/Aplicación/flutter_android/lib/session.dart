@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:uuid/uuid.dart';
 
@@ -18,12 +19,56 @@ class Session extends ChangeNotifier {
   String? mfaChallenge;
   String? avisoAlta;
   bool showEmailStep = false;
+  static const device = MethodChannel('cl.rutaalerta/sesion');
+  bool rememberPhone = true;
+  bool restoring = false;
+  String? restoreError;
+  String? storageNotice;
+
+  Future<void> restore() async {
+    restoring = true;
+    restoreError = null;
+    notifyListeners();
+    try {
+      final saved = api.token.isNotEmpty
+          ? api.token
+          : await device.invokeMethod<String>('read');
+      if (saved != null && saved.isNotEmpty) {
+        api.token = saved;
+        await refresh();
+      }
+    } catch (e) {
+      if (e is! ApiError || e.status != 401) {
+        restoreError = 'No se pudo recuperar tu sesión. Revisa la conexión y vuelve a intentar.';
+      }
+    } finally {
+      restoring = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> saveValidated(String token) async {
+    api.token = token;
+    try {
+      if (rememberPhone) {
+        await device.invokeMethod<void>('save', {'token': token});
+      } else {
+        await device.invokeMethod<void>('clear');
+      }
+    } catch (_) {
+      storageNotice = 'La sesión está abierta. Android no pudo guardar el acceso para la próxima vez.';
+    }
+  }
+
   Session(this.api) {
     api.onExpired = clear;
   }
   bool get signedIn => profile != null;
   bool get canReport => identity['puede_participar'] == true;
   void clear({bool forgetBiometric = true}) {
+    unawaited(device.invokeMethod<void>('clear').catchError((Object _) {}));
+    restoreError = null;
+    storageNotice = null;
     if (forgetBiometric) {
       unawaited(BiometricAccess.clear().catchError((Object _) {}));
     }
@@ -101,14 +146,21 @@ class Session extends ChangeNotifier {
     final response = await api.request(
       '/sesiones/mfa',
       method: 'POST',
-      body: {'id_desafio': mfaChallenge, 'codigo': code.trim()},
+      body: {
+        'id_desafio': mfaChallenge,
+        'codigo': code.trim(),
+        'recordar_telefono': rememberPhone,
+      },
     );
-    api.token = response['token'] as String;
+    await saveValidated(response['token'] as String);
     mfaChallenge = null;
     try {
       await refresh();
     } catch (_) {
-      clear();
+      if (api.token.isNotEmpty) {
+        restoreError = 'No se pudo cargar tu cuenta. Vuelve a intentar.';
+        notifyListeners();
+      }
       rethrow;
     }
   }
@@ -139,6 +191,7 @@ class Session extends ChangeNotifier {
       throw const ApiError('Primero ingresa con tu cuenta.');
     }
     await BiometricAccess.save(api.token, profile!['id_usuario'] as int);
+    await device.invokeMethod<void>('clear');
   }
 
   void lockLocally() {

@@ -63,6 +63,8 @@ void main() {
     final messenger =
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
     var attempts = 0;
+    messenger.setMockMethodCallHandler(Session.device, (_) async => null);
+    addTearDown(() => messenger.setMockMethodCallHandler(Session.device, null));
     messenger.setMockMethodCallHandler(BiometricAccess.channel, (c) async {
       if (c.method == 'status') {
         return {'available': true, 'saved': attempts == 2};
@@ -100,6 +102,10 @@ void main() {
       var prepared = 0, attempts = 0;
       final messenger =
           TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      messenger.setMockMethodCallHandler(Session.device, (_) async => null);
+      addTearDown(
+        () => messenger.setMockMethodCallHandler(Session.device, null),
+      );
       messenger.setMockMethodCallHandler(
         BiometricAccess.channel,
         (_) async => {'available': false, 'saved': false},
@@ -114,7 +120,12 @@ void main() {
             var status = 200;
             switch (req.url.path) {
               case '/seguridad/estado':
-                data = {'mfa_activo': false};
+                data = {'mfa_activo': attempts >= 2};
+              case '/mi-perfil':
+                data = {'id_usuario': 1};
+              case '/vehiculos':
+              case '/mis-casos':
+                data = [];
               case '/seguridad/totp/preparar':
                 prepared++;
                 data = {
@@ -129,6 +140,7 @@ void main() {
                 } else {
                   data = {
                     'codigos_recuperacion': ['RECUPERACION-FICTICIA'],
+                    'token': 'sesion-renovada',
                   };
                 }
             }
@@ -157,7 +169,12 @@ void main() {
       await t.tap(find.text('Activar'));
       await t.pumpAndSettle();
       expect(prepared, 1);
+      expect(s.api.token, 'sesion-renovada');
       expect(find.text('RECUPERACION-FICTICIA'), findsOneWidget);
+      await t.tap(find.text('Ya los guardé'));
+      await t.pumpAndSettle();
+      expect(s.signedIn, isTrue);
+      expect(find.text('Configurar autenticador'), findsNothing);
     },
   );
 }

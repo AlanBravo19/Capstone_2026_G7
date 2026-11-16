@@ -215,9 +215,13 @@ class SecurityScreen extends StatelessWidget {
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Text(
-                                'Guárdalos por si pierdes el autenticador. Al continuar volverás a ingresar con contraseña y un código nuevo de tu autenticador. Después podrás activar la huella.',
+                              Text(
+                                r['token'] is String
+                                    ? 'Guárdalos por si pierdes tu autenticador. Tu sesión sigue abierta.'
+                                    : 'Guárdalos por si pierdes tu autenticador. Inicia sesión para continuar.',
                               ),
+                              if (session.storageNotice != null)
+                                Text(session.storageNotice!),
                               gap(),
                               SelectableText(
                                 (r['codigos_recuperacion'] as List).join('\n'),
@@ -233,7 +237,12 @@ class SecurityScreen extends StatelessWidget {
                         ],
                       ),
                     );
-                    session.clear();
+                    if (r['token'] is! String) {
+                      session.clear();
+                    } else {
+                      await session.refresh();
+                      if (ctx.mounted) reload();
+                    }
                   }),
                 ),
               if (data['mfa_activo'] == true)
@@ -373,8 +382,15 @@ class _TotpSetupState extends State<_TotpSetup> {
       final r = await widget.session.api.request(
         '/seguridad/totp/activar',
         method: 'POST',
-        body: {'codigo': code.text},
+        body: {
+          'codigo': code.text,
+          'continuar_sesion': true,
+          'recordar_telefono': widget.session.rememberPhone,
+        },
       );
+      if (r['token'] is String) {
+        await widget.session.saveValidated(r['token'] as String);
+      }
       if (mounted) Navigator.pop(context, Map<String, dynamic>.from(r as Map));
     } catch (e) {
       if (mounted) setState(() => error = e.toString());
@@ -424,6 +440,16 @@ class _TotpSetupState extends State<_TotpSetup> {
           ),
           const Note(
             '2. Vuelve aquí y escribe el código de RutaAlerta. La configuración vence en diez minutos.',
+          ),
+          CheckboxListTile(
+            value: widget.session.rememberPhone,
+            title: const Text('Recordar este teléfono'),
+            subtitle: const Text('Hasta 30 días en tu cuenta ciudadana.'),
+            onChanged: busy
+                ? null
+                : (value) => setState(
+                    () => widget.session.rememberPhone = value == true,
+                  ),
           ),
           TextField(
             controller: code,

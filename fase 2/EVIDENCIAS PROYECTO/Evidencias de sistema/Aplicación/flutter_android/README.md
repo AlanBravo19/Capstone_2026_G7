@@ -1,3 +1,9 @@
+# RutaAlerta · Beta 0.15.0
+
+Al activar el autenticador, el servidor revoca las sesiones anteriores y entrega una nueva al cliente que presentó el código. La opción «Recordar este teléfono» conserva el acceso ciudadano hasta 30 días después de verificar el segundo factor. Android cifra el acceso en el dispositivo. Si se usa huella, se requiere el desbloqueo biométrico. La app revalida la sesión al abrir y ofrece reintento si falta conexión. Las cuentas con membresía institucional conservan su plazo habitual.
+
+## Historial
+
 # RutaAlerta · Android 0.14.0
 
 La entrega móvil se compila en modo release con el mismo identificador y certificado de la beta anterior. La API compatible continúa en 0.13.0.

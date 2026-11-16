@@ -35,12 +35,12 @@ formulario('preparar-totp',async e=>{
  e.target.reset();$('clave-totp').textContent=r.secreto;$('activar-totp').hidden=false;
 });
 formulario('activar-totp',async e=>{
- const r=await api('/seguridad/totp/activar',{method:'POST',body:{codigo:e.target.elements.codigo.value.trim()}});
- limpiarAlta();token='';$('codigos-recuperacion').textContent=r.codigos_recuperacion.join('\n');
+ const r=await api('/seguridad/totp/activar',{method:'POST',body:{codigo:e.target.elements.codigo.value.trim(),continuar_sesion:true}});
+ limpiarAlta();token=r.token||'';$('codigos-recuperacion').textContent=r.codigos_recuperacion.join('\n');
  $('resguardo').showModal();
 });
 $('resguardo').oncancel=e=>e.preventDefault();
-$('volver-ingreso').onclick=()=>{limpiarAlta();location.reload();};
+$('volver-ingreso').onclick=async()=>{limpiarAlta();$('resguardo').close();if(!token){location.reload();return;}try{await cargar();}catch(e){aviso(e.message,true);}};
 function aviso(texto,error=false){$('mensaje').textContent=texto;$('mensaje').className=error?'error':'';$('mensaje').hidden=false;clearTimeout(mensajeTimer);mensajeTimer=setTimeout(()=>$('mensaje').hidden=true,11000)}
 async function api(ruta,{method='GET',body,headers={}}={}){
  const h={...headers};if(token)h.Authorization='Bearer '+token;

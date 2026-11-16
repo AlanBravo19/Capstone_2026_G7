@@ -19,6 +19,8 @@ class MainActivity : FlutterActivity() {
         super.configureFlutterEngine(flutterEngine)
         vault=BiometricVault(this)
         navigation=NavigationBridge(this)
+        val deviceSession = DeviceSession(this)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger,"cl.rutaalerta/sesion").setMethodCallHandler(deviceSession::handle)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger,"cl.rutaalerta/biometria").setMethodCallHandler { call,result -> vault.handle(call,result) }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger,"cl.rutaalerta/movilidad").setMethodCallHandler { call,result -> navigation.handle(call,result) }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "cl.rutaalerta/trayecto").setMethodCallHandler { call, result ->

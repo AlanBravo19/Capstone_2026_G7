@@ -25,6 +25,7 @@ void main() {
       rootNavigator.currentState?.popUntil((route) => route.isFirst);
       unawaited(TripService.stop().catchError((Object _) {}));
     };
+  unawaited(session.restore());
   runApp(RutaAlertaApp(session: session));
 }
 
@@ -39,7 +40,41 @@ class RutaAlertaApp extends StatelessWidget {
     theme: appTheme(),
     home: ListenableBuilder(
       listenable: session,
-      builder: (_, _) => session.signedIn
+      builder: (_, _) => session.restoring || session.restoreError != null
+          ? Scaffold(
+              body: SafeArea(
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: session.restoring
+                        ? const CircularProgressIndicator()
+                        : Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(session.restoreError ?? ''),
+                              FilledButton(
+                                onPressed: session.restore,
+                                child: const Text('Reintentar'),
+                              ),
+                              TextButton(
+                                onPressed: () async {
+                                  try {
+                                    await session.logout();
+                                  } on ApiError {
+                                    // El cierre local se completa aunque no haya conexión.
+                                  }
+                                },
+                                child: const Text(
+                                  'Cerrar sesión en este teléfono',
+                                ),
+                              ),
+                            ],
+                          ),
+                  ),
+                ),
+              ),
+            )
+          : session.signedIn
           ? MobileShell(key: const ValueKey('authenticated'), session: session)
           : LoginScreen(session: session),
     ),

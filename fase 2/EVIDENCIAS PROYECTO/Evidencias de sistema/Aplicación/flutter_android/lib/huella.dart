@@ -37,7 +37,9 @@ class _HuellaPanelState extends State<HuellaPanel> with WidgetsBindingObserver {
 
   Future<void> refresh() async {
     try {
-      final s = await BiometricAccess.status().timeout(const Duration(seconds:5));
+      final s = await BiometricAccess.status().timeout(
+        const Duration(seconds: 5),
+      );
       if (mounted) setState(() => status = s);
     } catch (_) {
       if (mounted) {
@@ -60,6 +62,9 @@ class _HuellaPanelState extends State<HuellaPanel> with WidgetsBindingObserver {
     try {
       if (remove) {
         await BiometricAccess.clear();
+        if (widget.session.rememberPhone) {
+          await widget.session.saveValidated(widget.session.api.token);
+        }
       } else {
         await widget.session.enableBiometric();
       }

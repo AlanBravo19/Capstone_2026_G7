@@ -242,6 +242,19 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             validator: requiredText,
                           ),
+                          CheckboxListTile(
+                            value: widget.session.rememberPhone,
+                            title: const Text('Recordar este teléfono'),
+                            subtitle: const Text(
+                              'Hasta 30 días en tu cuenta ciudadana.',
+                            ),
+                            onChanged: busy
+                                ? null
+                                : (value) => setState(
+                                    () => widget.session.rememberPhone =
+                                        value == true,
+                                  ),
+                          ),
                           TextButton(
                             onPressed: busy
                                 ? null

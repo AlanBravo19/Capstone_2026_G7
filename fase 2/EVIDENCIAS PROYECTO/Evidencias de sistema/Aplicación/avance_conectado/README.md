@@ -1,3 +1,9 @@
+# RutaAlerta · Beta 0.15.0
+
+Al activar el autenticador, el servidor revoca las sesiones anteriores y entrega una nueva al cliente que presentó el código. La opción «Recordar este teléfono» conserva el acceso ciudadano hasta 30 días después de verificar el segundo factor. Android cifra el acceso en el dispositivo. Si se usa huella, se requiere el desbloqueo biométrico. La app revalida la sesión al abrir y ofrece reintento si falta conexión. Las cuentas con membresía institucional conservan su plazo habitual.
+
+## Historial
+
 # RutaAlerta · Beta 0.13.0
 
 El mapa móvil concentra los controles de GPS, perspectiva y ciudades junto a la cartografía. El planificador prioriza origen y destino. Modo trayecto dispone de navegación de regreso. En Colaborar se puede buscar a 30 km del GPS o fijar otra zona. Un colaborador puede adjuntar una foto opcional al avistamiento. Texto y foto se guardan en una sola operación.

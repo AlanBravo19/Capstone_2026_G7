@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from ..antifraude import SECRET, limitar, limitar_ip
 from ..db import obtener_conexion, fila_dict
-from ..seguridad import usuario_actual, verificar_clave, cifrar_clave, emitir_token, exigir_ingreso_institucional, huella
+from ..seguridad import usuario_actual, verificar_clave, cifrar_clave, emitir_token, exigir_ingreso_institucional, organizaciones_del_operador, huella
 from ..config import config
 
 router=APIRouter(tags=['seguridad de cuenta'])
@@ -46,7 +46,13 @@ class Clave(BaseModel):
     clave:str=Field(min_length=1,max_length=128)
 class Factor(BaseModel):
     codigo:str=Field(min_length=6,max_length=80)
-class Desafio(Factor):
+class Dispositivo(Factor):
+    recordar_telefono: bool = False
+
+class Alta(Dispositivo):
+    continuar_sesion: bool = False
+
+class Desafio(Dispositivo):
     id_desafio:uuid.UUID
 class Desactivar(Clave,Factor):pass
 class CambiarClave(Clave):
@@ -75,7 +81,7 @@ def preparar(datos:Clave,usuario=Depends(usuario_actual),conn=Depends(obtener_co
     return {'secreto':secret,'uri':f'otpauth://totp/{quote("RutaAlerta:"+str(uid))}?secret={secret}&issuer=RutaAlerta&digits=6&period=30','mensaje':'Guarda la clave en tu aplicación autenticadora y confirma un código. No compartas esta clave.'}
 
 @router.post('/seguridad/totp/activar')
-def activar(datos:Factor,usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):
+def activar(datos:Alta,usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):
     uid=usuario['id_usuario'];limitar(conn,f'totp-confirmar:{uid}',5)
     cur=conn.cursor();cur.execute('SELECT estado FROM usuario WHERE id_usuario=%s FOR UPDATE',(uid,))
     if cur.fetchone()[0] in ('suspendido','anonimizado'):raise HTTPException(403,'Cuenta restringida')
@@ -92,7 +98,18 @@ def activar(datos:Factor,usuario=Depends(usuario_actual),conn=Depends(obtener_co
     cur.execute('UPDATE recuperacion_mfa SET consumido_en=CURRENT_TIMESTAMP WHERE id_usuario=%s AND consumido_en IS NULL',(uid,))
     for code in codes:cur.execute('INSERT INTO recuperacion_mfa(id_usuario,codigo_hash) VALUES(%s,%s)',(uid,huella(code)))
     cur.execute("UPDATE token_acceso SET revocado_en=CURRENT_TIMESTAMP WHERE id_usuario=%s AND proposito='sesion' AND revocado_en IS NULL",(uid,))
+    cur.execute('UPDATE desafio_mfa SET consumido_en=CURRENT_TIMESTAMP WHERE id_usuario=%s AND consumido_en IS NULL',(uid,))
+    if datos.continuar_sesion:
+        nueva = sesion_validada(cur, uid, datos.recordar_telefono)
+        return {**nueva, 'codigos_recuperacion': codes, 'mensaje': 'Segundo factor activado.'}
     return {'codigos_recuperacion':codes,'mensaje':'Segundo factor activado. Guarda estos códigos una sola vez y vuelve a ingresar. Cada código permite un acceso.'}
+
+def sesion_validada(cur, uid, recordar):
+    horas = config.sesion_horas
+    if recordar and not organizaciones_del_operador(cur, uid):
+        horas = 24 * 30
+    token, vence = emitir_token(cur, uid, 'sesion', horas * 60)
+    return {'token': token, 'vence_en': vence, 'requiere_mfa': False}
 
 @router.post('/sesiones/mfa',status_code=201)
 def completar(datos:Desafio,request:Request,conn=Depends(obtener_conexion)):
@@ -116,8 +133,7 @@ def completar_factor(datos, request, conn, *, institucional):
     if not validar_factor(cur,uid,datos.codigo):
         conn.commit();raise HTTPException(400,'Código incorrecto, utilizado o vencido')
     cur.execute('UPDATE desafio_mfa SET consumido_en=CURRENT_TIMESTAMP WHERE id_desafio=%s',(str(datos.id_desafio),))
-    token,vence=emitir_token(cur,uid,'sesion',config.sesion_horas*60)
-    return {'token':token,'vence_en':vence,'requiere_mfa':False}
+    return sesion_validada(cur, uid, datos.recordar_telefono and not institucional)
 
 @router.post('/seguridad/totp/desactivar',status_code=204)
 def desactivar(datos:Desactivar,usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):
