@@ -6,11 +6,18 @@ import 'expanded.dart';
 import 'movilidad.dart';
 import 'trip_screen.dart';
 import 'testigos.dart';
+import 'panorama.dart';
 
 class HomeScreen extends StatelessWidget {
   final Session session;
   final void Function(int) navigate;
-  const HomeScreen({super.key, required this.session, required this.navigate});
+  final bool active;
+  const HomeScreen({
+    super.key,
+    required this.session,
+    required this.navigate,
+    this.active = true,
+  });
   @override
   Widget build(BuildContext context) {
     final name = session.profile?['nombre_visible'] ?? '';
@@ -23,6 +30,12 @@ class HomeScreen extends StatelessWidget {
             name: name.toString(),
             onCollaborate: () => navigate(4),
           ),
+          if (active)
+            PanoramaZonal(
+              session: session,
+              compacto: true,
+              ampliar: () => navigate(3),
+            ),
           if (session.storageNotice != null) Note(session.storageNotice!),
           if (!session.canReport)
             Panel(

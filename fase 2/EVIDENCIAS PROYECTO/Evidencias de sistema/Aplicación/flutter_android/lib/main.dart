@@ -10,6 +10,7 @@ import 'home.dart';
 import 'vehicles.dart';
 import 'report.dart';
 import 'map_screen.dart';
+import 'panorama.dart';
 import 'trip.dart';
 import 'expanded.dart';
 import 'biometric.dart';
@@ -119,12 +120,14 @@ class _MobileShellState extends State<MobileShell> {
   }
 
   int index = 0;
+  bool mapaDetallado = false;
   final visited = <int>{0};
-  void navigate(int i) {
+  void navigate(int i, {bool seleccionarPunto = false}) {
     if (i == index) return;
     setState(() {
       visited.add(i);
       index = i;
+      if (i == 3) mapaDetallado = seleccionarPunto;
     });
   }
 
@@ -236,25 +239,58 @@ class _MobileShellState extends State<MobileShell> {
     body: IndexedStack(
       index: index,
       children: [
-        HomeScreen(session: widget.session, navigate: navigate),
+        HomeScreen(
+          session: widget.session,
+          navigate: navigate,
+          active: index == 0,
+        ),
         if (visited.contains(1))
           VehiclesScreen(session: widget.session)
         else
           const SizedBox.shrink(),
         if (visited.contains(2))
-          ReportScreen(session: widget.session, openMap: () => navigate(3))
+          ReportScreen(
+            session: widget.session,
+            openMap: () => navigate(3, seleccionarPunto: true),
+          )
         else
           const SizedBox.shrink(),
-        if (visited.contains(3))
-          MapScreen(
-            session: widget.session,
-            active: index == 3,
-            usePoint: () => navigate(2),
+        if (index == 3 && !mapaDetallado)
+          ListView(
+            padding: const EdgeInsets.all(12),
+            children: [
+              PanoramaZonal(session: widget.session),
+              OutlinedButton.icon(
+                onPressed: () => setState(() => mapaDetallado = true),
+                icon: const Icon(Icons.layers),
+                label: const Text('Mapa 3D y ubicación del reporte'),
+              ),
+            ],
+          )
+        else if (visited.contains(3) && mapaDetallado)
+          Column(
+            children: [
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: () => setState(() => mapaDetallado = false),
+                  icon: const Icon(Icons.arrow_back),
+                  label: const Text('Mapa zonal'),
+                ),
+              ),
+              Expanded(
+                child: MapScreen(
+                  session: widget.session,
+                  active: index == 3,
+                  usePoint: () => navigate(2),
+                ),
+              ),
+            ],
           )
         else
           const SizedBox.shrink(),
         if (visited.contains(4))
-          CommunityScreen(session: widget.session)
+          CommunityScreen(session: widget.session, active: index == 4)
         else
           const SizedBox.shrink(),
         ListView(

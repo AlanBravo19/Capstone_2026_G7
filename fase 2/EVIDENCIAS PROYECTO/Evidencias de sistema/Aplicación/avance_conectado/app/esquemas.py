@@ -60,6 +60,8 @@ class RecuperacionConfirmar(BaseModel):
 
 
 class CasoEntrada(BaseModel):
+    foto_base64: str | None = Field(default=None, min_length=16, max_length=2800000)
+    solicitar_colaboracion: bool = False
     id_vehiculo: int
     id_organizacion: int | None = None
     fecha_hecho: datetime

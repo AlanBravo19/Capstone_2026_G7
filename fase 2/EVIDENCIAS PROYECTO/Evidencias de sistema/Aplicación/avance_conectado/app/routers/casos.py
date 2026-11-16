@@ -68,6 +68,16 @@ def reportar_caso(datos: CasoEntrada, response: Response, idempotency_key: str =
                               recibido_en=previo["creado_en"], reintento=True)
         raise
     caso = fila_dict(cur, cur.fetchone())
+    if datos.foto_base64:
+        from .colaboracion import guardar_foto
+        guardar_foto(cur, caso["id_caso"], usuario["id_usuario"], uuid.uuid4(), datos.foto_base64)
+    if datos.solicitar_colaboracion:
+        if datos.id_organizacion is None:
+            raise HTTPException(422, "Selecciona una organización para solicitar colaboración.")
+        from .colaboracion import bitacora
+        cur.execute("UPDATE caso SET colaboracion_consentida_en=CURRENT_TIMESTAMP WHERE id_caso=%s",(caso["id_caso"],))
+        bitacora(cur, caso["id_caso"], usuario["id_usuario"], "solicitar_colaboracion",
+                 "El titular solicitó colaboración al crear el reporte. Pendiente de revisión humana.")
     # Evento en la misma transacción (cola transaccional): el trabajador avisará al panel.
     cur.execute(
         """INSERT INTO evento_salida(tipo, agregado_tipo, agregado_id, clave_evento, payload)

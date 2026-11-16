@@ -12,9 +12,20 @@ def test_recorrido_chillan(client, ciudadano, supervisor_org1, operador_org2):
     _, _, colaborador, _ = activar(client)
     punto = {"latitud": -36.606, "longitud": -72.104}
     reporte = _reporte(zona="Chillán · ensayo local", **punto)
-    r = client.post("/casos", headers={**titular,"Idempotency-Key":str(uuid.uuid4())}, json=reporte)
+    cabecera={**titular,"Idempotency-Key":str(uuid.uuid4())}
+    reporte["solicitar_colaboracion"]=True
+    assert client.post("/casos", headers=cabecera,json={**reporte,"foto_base64":"A"*40}).status_code==422
+    reporte["foto_base64"]=foto_payload()["contenido_base64"]
+    r = client.post("/casos", headers=cabecera, json=reporte)
     assert r.status_code == 201
     cid = r.json()["id_caso"]
+    assert client.post("/casos",headers=cabecera,json=reporte).json()["id_caso"]==cid
+    ficha=client.get(f"/seguimiento/{cid}",headers=titular).json()
+    assert ficha["estado_colaboracion"]=="Pendiente de publicación por el operador"
+    assert len(ficha["evidencias"])==1
+    evidencia=f"/evidencias/{ficha['evidencias'][0]['id_evidencia']}/foto"
+    assert client.get(evidencia,headers=op).status_code==200
+    assert client.get(evidencia,headers=colaborador).status_code==403
     mapa = "/gestion/mapa?id_organizacion=1"
     assert client.get(mapa, headers=colaborador).status_code == 403
     assert client.get(mapa, headers=operador_org2).status_code == 403
@@ -27,11 +38,16 @@ def test_recorrido_chillan(client, ciudadano, supervisor_org1, operador_org2):
     assert abs(ubicados[0]["latitud"] - punto["latitud"]) < 1e-6
     assert abs(ubicados[0]["longitud"] - punto["longitud"]) < 1e-6
     base = f"/gestion/casos/{cid}"
-    assert client.post(f"/mis-casos/{cid}/colaboracion",headers=titular).status_code == 200
     assert client.post(base+"/revision",headers=op,json={"estado":"en_revision","motivo":"Revisión supervisada del ejercicio"}).status_code == 200
     r=client.post(base+"/publicacion",headers=op,json={"zona":"Chillán · simulación","texto":"Vehículo ficticio para la prueba local de colaboración.","motivo":"Ejercicio con consentimiento del titular ficticio"})
     assert r.status_code == 201
     sid = r.json()["id_solicitud_colaboracion"]
+    assert client.get(f"/seguimiento/{cid}",headers=titular).json()["estado_colaboracion"]=="Publicada en Colaborar"
+    panorama=client.get("/territorio/panorama?lat=-36.606&lon=-72.104",headers=colaborador).json()
+    ficha_publica=next(s for s in panorama["solicitudes"] if s["id_solicitud_colaboracion"]==sid)
+    assert abs(ficha_publica["latitud_sector"]-(-36.60))<0.00001
+    assert abs(ficha_publica["longitud_sector"]-(-72.10))<0.00001
+    assert "evidencias" not in ficha_publica and "descripcion_privada" not in ficha_publica
     for lat,lon,grupo in [(-36.606,-72.104,"cercanos"),(-33.45,-70.66,"otras_zonas")]:
         resultado=client.get("/colaboracion",params={"lat":lat,"lon":lon,"radio_km":30,"zona":"Chillán"},headers=colaborador).json()
         assert any(s["id_solicitud_colaboracion"]==sid for s in resultado[grupo])

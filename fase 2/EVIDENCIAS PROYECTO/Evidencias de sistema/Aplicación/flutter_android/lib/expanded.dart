@@ -1,3 +1,5 @@
+import 'foto_aporte.dart';
+
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -530,7 +532,9 @@ class CaseScreen extends StatelessWidget {
                 ),
 
                 FilledButton.icon(
-                  onPressed: d['estado'] == 'cerrado'
+                  onPressed:
+                      d['estado'] == 'cerrado' ||
+                          d['colaboracion_consentida_en'] != null
                       ? null
                       : () => perform(ctx, () async {
                           final confirm = await showDialog<bool>(
@@ -564,10 +568,12 @@ class CaseScreen extends StatelessWidget {
                   label: Text(
                     d['colaboracion_consentida_en'] == null
                         ? 'Solicitar colaboración'
-                        : 'Renovar solicitud de revisión',
+                        : 'Colaboración autorizada',
                   ),
                 ),
                 gap(),
+                if (d['estado_colaboracion'] != null)
+                  Note('Portal colaborativo: ${d['estado_colaboracion']}'),
                 OutlinedButton.icon(
                   onPressed: d['estado'] == 'cerrado'
                       ? null
@@ -813,12 +819,26 @@ class InboxScreen extends StatelessWidget {
 
 class CommunityScreen extends StatefulWidget {
   final Session session;
-  const CommunityScreen({super.key, required this.session});
+  final bool active;
+  const CommunityScreen({super.key, required this.session, this.active = true});
   @override
   State<CommunityScreen> createState() => _CommunityScreenState();
 }
 
 class _CommunityScreenState extends State<CommunityScreen> {
+  int revision = 0;
+  DateTime consultado = DateTime.now();
+  @override
+  void didUpdateWidget(covariant CommunityScreen anterior) {
+    super.didUpdateWidget(anterior);
+    if (widget.active &&
+        !anterior.active &&
+        DateTime.now().difference(consultado).inSeconds >= 15) {
+      revision++;
+      consultado = DateTime.now();
+    }
+  }
+
   final zone = TextEditingController(),
       lat = TextEditingController(),
       lon = TextEditingController();
@@ -901,7 +921,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
       ),
       Expanded(
         child: DataScreen(
-          key: ValueKey(query),
+          key: ValueKey((query, revision)),
           session: widget.session,
           title: 'Colaborar',
           path: '/colaboracion?$query',
@@ -911,12 +931,41 @@ class _CommunityScreenState extends State<CommunityScreen> {
               const Note(
                 'Sólo aparecen solicitudes revisadas y vigentes. No sigas vehículos ni confrontes a nadie.',
               ),
-              for (final group in ['cercanos', 'otras_zonas']) ...[
-                SectionTitle(
-                  group == 'cercanos' ? 'Cerca de tu búsqueda' : 'Otras zonas',
+              if ((data['cercanos'] as List).isEmpty &&
+                  (data['otras_zonas'] as List).isEmpty)
+                Panel(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Sin solicitudes vigentes para esta búsqueda',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const Text(
+                        'El titular debe autorizar la colaboración y un operador debe publicar el caso. Puedes cambiar el sector o actualizar la lista.',
+                      ),
+                      OutlinedButton.icon(
+                        icon: const Icon(Icons.add_a_photo_outlined),
+                        label: const Text(
+                          'Probar con el vehículo ficticio DEMO01',
+                        ),
+                        onPressed: () => openScreen(
+                          ctx,
+                          SightingScreen(session: widget.session, sid: null),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                if ((data[group] as List).isEmpty)
-                  const Panel(child: Text('Sin solicitudes en este grupo.')),
+              for (final group in ['cercanos', 'otras_zonas']) ...[
+                if ((data[group] as List).isNotEmpty)
+                  SectionTitle(
+                    group == 'cercanos'
+                        ? 'Dentro de 30 km'
+                        : proximity.isEmpty
+                        ? 'Solicitudes publicadas'
+                        : 'Otras zonas',
+                  ),
                 for (final s in data[group])
                   Panel(
                     child: Column(
@@ -964,7 +1013,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
 
 class SightingScreen extends StatefulWidget {
   final Session session;
-  final int sid;
+  final int? sid;
   const SightingScreen({super.key, required this.session, required this.sid});
   @override
   State<SightingScreen> createState() => _SightingScreenState();
@@ -977,19 +1026,14 @@ class _SightingScreenState extends State<SightingScreen> {
       lon = TextEditingController();
   final key = const Uuid().v4();
   Uint8List? photo;
-  Future<void> pick(ImageSource source) async {
-    final file = await ImagePicker().pickImage(
-      source: source,
-      maxWidth: 1600,
-      maxHeight: 1600,
-      imageQuality: 82,
-    );
-    if (file == null) return;
-    final bytes = await file.readAsBytes();
-    if (bytes.length > 2097152) {
-      throw Exception('Elige una imagen de hasta 2 MB.');
+  @override
+  void initState() {
+    super.initState();
+    if (widget.sid == null) {
+      zone.text = 'Chillán · ensayo';
+      lat.text = '-36.606';
+      lon.text = '-72.104';
     }
-    if (mounted) setState(() => photo = bytes);
   }
 
   DateTime date = DateTime.now();
@@ -1004,11 +1048,19 @@ class _SightingScreenState extends State<SightingScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Aportar avistamiento')),
+    appBar: AppBar(
+      title: Text(
+        widget.sid == null ? 'Ensayo · DEMO01' : 'Aportar avistamiento',
+      ),
+    ),
     body: ListView(
       padding: const EdgeInsets.all(24),
       children: [
         const SectionTitle('Lo que observaste'),
+        if (widget.sid == null)
+          const Note(
+            'Simulación local. Puedes practicar con una foto de prueba. El ejercicio se descarta al salir.',
+          ),
         const Note(
           'Indica una observación real y su lugar. Nunca es una orden de búsqueda o persecución.',
         ),
@@ -1066,36 +1118,11 @@ class _SightingScreenState extends State<SightingScreen> {
           ),
           gap(),
         ],
-        if (photo != null) ...[
-          Image.memory(
-            photo!,
-            height: 112,
-            fit: BoxFit.contain,
-            semanticLabel: 'Foto seleccionada',
-          ),
-          TextButton(
-            onPressed: busy ? null : () => setState(() => photo = null),
-            child: const Text('Quitar foto'),
-          ),
-        ] else
-          Wrap(
-            spacing: 8,
-            children: [
-              OutlinedButton.icon(
-                onPressed: busy
-                    ? null
-                    : () => perform(context, () => pick(ImageSource.camera)),
-                icon: const Icon(Icons.photo_camera_outlined),
-                label: const Text('Tomar foto'),
-              ),
-              TextButton(
-                onPressed: busy
-                    ? null
-                    : () => perform(context, () => pick(ImageSource.gallery)),
-                child: const Text('Elegir de galería'),
-              ),
-            ],
-          ),
+        FotoAporte(
+          foto: photo,
+          ocupado: busy,
+          cambiar: (v) => setState(() => photo = v),
+        ),
         const Note(
           'La foto es opcional. Solo el equipo que revisa el caso puede consultarla.',
         ),
@@ -1107,10 +1134,40 @@ class _SightingScreenState extends State<SightingScreen> {
                   try {
                     final la = double.tryParse(lat.text),
                         lo = double.tryParse(lon.text);
-                    if (la == null || lo == null) {
+                    if (la == null ||
+                        lo == null ||
+                        !la.isFinite ||
+                        !lo.isFinite ||
+                        la.abs() > 90 ||
+                        lo.abs() > 180) {
                       throw Exception(
                         'Indica las coordenadas del lugar observado.',
                       );
+                    }
+                    if (zone.text.trim().length < 3 ||
+                        description.text.trim().length < 10) {
+                      throw Exception(
+                        'Completa el sector y describe lo observado en al menos 10 caracteres.',
+                      );
+                    }
+                    if (widget.sid == null) {
+                      await showDialog<void>(
+                        context: context,
+                        builder: (d) => AlertDialog(
+                          title: const Text('Ensayo completado'),
+                          content: Text(
+                            '${zone.text} · ${photo == null ? 'Sin foto' : 'Con foto'}. Este aporte de práctica quedó fuera de los casos publicados.',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(d),
+                              child: const Text('Listo'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (context.mounted) Navigator.pop(context);
+                      return;
                     }
                     await widget.session.api.request(
                       '/colaboracion/${widget.sid}/avistamientos',
@@ -1136,7 +1193,13 @@ class _SightingScreenState extends State<SightingScreen> {
                     if (mounted) setState(() => busy = false);
                   }
                 }),
-          child: Text(busy ? 'Enviando…' : 'Enviar para revisión'),
+          child: Text(
+            busy
+                ? 'Procesando…'
+                : widget.sid == null
+                ? 'Completar ensayo'
+                : 'Enviar para revisión',
+          ),
         ),
       ],
     ),

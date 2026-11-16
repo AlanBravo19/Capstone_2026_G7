@@ -1,4 +1,9 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+
+import 'foto_aporte.dart';
 
 import 'session.dart';
 import 'movilidad.dart' show Mobility;
@@ -27,6 +32,8 @@ class _ReportScreenState extends State<ReportScreen> {
   Future<List<dynamic>> loadRecipients() async =>
       await widget.session.api.request('/organizaciones') as List<dynamic>;
   bool busy = false;
+  Uint8List? foto;
+  bool colaborar = false;
   LatLng? appliedPoint;
   DateTime date = DateTime.now();
   @override
@@ -98,6 +105,8 @@ class _ReportScreenState extends State<ReportScreen> {
         'fecha_hecho': date.toUtc().toIso8601String(),
         'zona': zone.text.trim(),
         'descripcion': description.text.trim(),
+        if (foto != null) 'foto_base64': base64Encode(foto!),
+        'solicitar_colaboracion': colaborar,
         'latitud': double.parse(latitude.text.replaceAll(',', '.')),
         'longitud': double.parse(longitude.text.replaceAll(',', '.')),
       });
@@ -106,11 +115,19 @@ class _ReportScreenState extends State<ReportScreen> {
       description.clear();
       latitude.clear();
       longitude.clear();
+      final conSolicitud = colaborar;
       setState(() {
+        foto = null;
+        colaborar = false;
         vehicle = null;
         date = DateTime.now();
       });
-      feedback(context, 'Reporte $folio guardado y pendiente de revisión.');
+      feedback(
+        context,
+        conSolicitud
+            ? 'Reporte $folio recibido. El operador revisará tu solicitud de publicación.'
+            : 'Reporte privado $folio recibido.',
+      );
       try {
         await widget.session.refresh();
       } catch (_) {
@@ -296,6 +313,30 @@ class _ReportScreenState extends State<ReportScreen> {
                     : 'Agrega antecedentes del incidente',
               ),
               gap(12),
+              const Text(
+                'Foto del reporte',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              FotoAporte(
+                foto: foto,
+                ocupado: busy,
+                cambiar: (v) => setState(() => foto = v),
+              ),
+              const Text(
+                'Opcional. La foto queda como evidencia privada.',
+                style: TextStyle(color: muted),
+              ),
+              CheckboxListTile(
+                value: colaborar,
+                onChanged: busy
+                    ? null
+                    : (v) => setState(() => colaborar = v == true),
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Solicitar colaboración ciudadana'),
+                subtitle: const Text(
+                  'Autorizo que el operador publique la descripción del vehículo y el sector tras la revisión.',
+                ),
+              ),
               FilledButton.icon(
                 onPressed:
                     busy || !widget.session.canReport || organization == null

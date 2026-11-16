@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field, field_validator
 from ..db import obtener_conexion,fila_dict
 from ..seguridad import usuario_actual,organizaciones_del_operador
 from ..antifraude import limitar
-from .colaboracion import rows
+from .colaboracion import rows, listado
 
 router=APIRouter(tags=['movilidad y antecedentes'])
 class Punto(BaseModel):
@@ -126,6 +126,13 @@ def avisos(lat:float=Query(...,ge=-90,le=90),lon:float=Query(...,ge=-180,le=180)
  AND ST_DWithin(centro,ST_SetSRID(ST_Point(%s,%s),4326)::geography,%s) ORDER BY fecha_publicacion DESC LIMIT 50''',(lon,lat,radio_km*1000))
  return {'avisos':rows(cur),'cache_hasta':datetime.now(timezone.utc)+timedelta(hours=2),'nota':'Antecedentes de prensa revisados; no indican delitos en curso ni frecuencia estadística. Ubicaciones aproximadas.'}
 
+
+@router.get('/territorio/panorama')
+def panorama(lat:float=Query(...,ge=-90,le=90), lon:float=Query(...,ge=-180,le=180),
+             usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):
+    solicitudes=listado(lat,lon,30,'',usuario,conn)
+    antecedentes=avisos(lat,lon,30,usuario,conn)
+    return {'solicitudes':solicitudes['cercanos'], 'antecedentes':antecedentes['avisos']}
 
 @router.get('/territorio/noticias')
 def noticias(usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):

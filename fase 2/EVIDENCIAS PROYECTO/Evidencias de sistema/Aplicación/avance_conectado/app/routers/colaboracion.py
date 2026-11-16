@@ -53,6 +53,16 @@ def seguimiento(cid:int,usuario=Depends(usuario_actual),conn=Depends(obtener_con
     cur.execute('''SELECT c.id_caso,c.folio,c.estado,c.zona,c.denuncia_estado,c.motivo_cierre,c.fecha_hecho,c.creado_en,c.colaboracion_consentida_en,v.patente FROM caso c JOIN vehiculo v USING(id_vehiculo) WHERE c.id_caso=%s''',(cid,));c=fila_dict(cur,cur.fetchone())
     cur.execute("SELECT accion,descripcion,creada_en,estado_nuevo FROM gestion_caso WHERE id_caso=%s AND visibilidad='afectado' ORDER BY creada_en,id_gestion_caso",(cid,));timeline=rows(cur)
     c['es_propietario']=own;c['es_operador']=org;c['historial']=timeline
+    if own or org:
+        cur.execute("""SELECT estado,vence_en>CURRENT_TIMESTAMP AS vigente FROM solicitud_colaboracion
+            WHERE id_caso=%s ORDER BY id_solicitud_colaboracion DESC LIMIT 1""",(cid,))
+        ultima=cur.fetchone()
+        if c['estado']=='cerrado': paso='Caso cerrado'
+        elif ultima and ultima[0]=='publicada' and ultima[1]: paso='Publicada en Colaborar'
+        elif ultima: paso='Publicación retirada o vencida'
+        elif c['colaboracion_consentida_en']: paso='Pendiente de publicación por el operador'
+        else: paso='Pendiente de autorización del titular'
+        c['estado_colaboracion']=paso
     if org:
         cur.execute('SELECT descripcion_privada FROM caso WHERE id_caso=%s',(cid,))
         c['relato_para_revision']=cur.fetchone()[0]
@@ -102,6 +112,7 @@ def listado(lat:float|None=Query(None,ge=-90,le=90),lon:float|None=Query(None,ge
     if (lat is None)!=(lon is None):raise HTTPException(422,'Envía latitud y longitud juntas')
     cur=conn.cursor()
     cur.execute('''SELECT s.id_solicitud_colaboracion,s.zona_publicable,s.texto_aprobado,s.vence_en,v.patente,v.color,ma.nombre AS marca,m.nombre AS modelo,
+        ST_Y(s.centro_publico::geometry) AS latitud_sector, ST_X(s.centro_publico::geometry) AS longitud_sector,
         CASE WHEN %s::float IS NOT NULL THEN ST_Distance(s.centro_publico,ST_SetSRID(ST_Point(%s,%s),4326)::geography)/1000 END AS distancia_km
         FROM solicitud_colaboracion s JOIN caso c USING(id_caso) JOIN vehiculo v USING(id_vehiculo) JOIN modelo m USING(id_modelo) JOIN marca ma USING(id_marca)
         WHERE s.estado='publicada' AND s.inicio<=CURRENT_TIMESTAMP AND s.vence_en>CURRENT_TIMESTAMP AND c.estado<>'cerrado' AND s.zona_publicable ILIKE %s

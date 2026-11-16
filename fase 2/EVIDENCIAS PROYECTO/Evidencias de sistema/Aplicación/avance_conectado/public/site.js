@@ -27,6 +27,7 @@ async function prepararCatalogo(){
  vehiculo.anio.max=new Date().getFullYear()+1;
 }
 function limpiarAlta(){
+ if($('aporte-web')){cerrarAporte();}
  $('clave-totp').textContent='';$('codigos-recuperacion').textContent='';$('activar-totp').hidden=true;
  $('preparar-totp').reset();$('activar-totp').reset();
 }
@@ -78,6 +79,7 @@ async function cargar(){
  $('vehiculo-caso').innerHTML='<option value="">Selecciona tu vehículo</option>'+vehiculos.map(v=>`<option value="${Number(v.id_vehiculo)}">${esc(v.patente)} · ${esc(v.modelo)}</option>`).join('');
  $('lista-casos').innerHTML=casos.length?casos.map(c=>`<article class="item"><b>${esc(c.folio)} · ${esc(c.patente)}</b><p>${esc(c.zona)} · ${esc(new Date(c.fecha_hecho).toLocaleString('es-CL'))}</p><span class="pill">${esc(c.estado.replaceAll('_',' '))}</span><p>Antecedentes de denuncia: ${esc(c.denuncia_estado.replaceAll('_',' '))}. Sin publicación automática.</p></article>`).join(''):'<p class="empty">Tus reportes aparecerán aquí después de registrarlos.</p>';
  const admin=perfil.roles.includes('administrador');$('administracion').hidden=!admin;
+ await solicitudesCiudadanas(estado.puede_participar);
 
 }
 accion('pedir-correo',async()=>{const r=await api('/identidad/correo/solicitar',{method:'POST'});correoCanal=r.canal||'prueba';if(r.token_demo){$('token-correo').value=r.token_demo;$('correo-demo').textContent='Código beta preparado. No se envió un correo.';$('correo-demo').hidden=false}else {$('correo-demo').textContent=r.mensaje;$('correo-demo').hidden=false;aviso(r.mensaje)}});
@@ -87,6 +89,8 @@ formulario('form-telefono',async()=>{if(!desafio)throw new Error('Primero solici
 formulario('form-vehiculo',async e=>{const d=Object.fromEntries(new FormData(e.target));d.anio=Number(d.anio);d.patente=d.patente.toUpperCase().replace(/[ .-]/g,'');const formato=catalogoVehicular.formatos[d.tipo_vehiculo==='motocicleta'?'motocicleta':'cuatro_ruedas'];if(!new RegExp('^'+formato+'$').test(d.patente)){vehiculo.patente.setCustomValidity('Revisa la patente para este tipo de vehículo.');vehiculo.patente.reportValidity();return;}await api('/vehiculos',{method:'POST',body:d});e.target.reset();opcionesVehiculo();await cargar();aviso('Vehículo guardado. Vínculo pendiente de revisión.')});
 formulario('form-caso',async e=>{const d={id_vehiculo:Number($('vehiculo-caso').value),id_organizacion:Number($('org-caso').value),fecha_hecho:new Date($('fecha-caso').value).toISOString(),zona:$('zona-caso').value,descripcion:$('descripcion').value,latitud:Number($('latitud').value),longitud:Number($('longitud').value)};
  // Un fallo de red conserva la clave para no duplicar el mismo envío.
+ d.solicitar_colaboracion=$('autoriza-caso').checked;
+ const foto=await imagenPrivada($('foto-caso'));if(foto)d.foto_base64=foto;
  const firma=JSON.stringify(d);if(!envioCaso||envioCaso.firma!==firma)envioCaso={firma,clave:crypto.randomUUID()};
  const r=await api('/casos',{method:'POST',body:d,headers:{'Idempotency-Key':envioCaso.clave}});envioCaso=null;e.target.reset();RutaMapa.quitarSeleccion();await cargar();aviso('Reporte guardado: '+r.folio+'. Está pendiente de revisión.')});
 formulario('form-sancion',async e=>{await api('/moderacion/usuarios/'+Number($('usuario-sancion').value)+'/sanciones',{method:'POST',body:{accion:'suspension',motivo:$('motivo-sancion').value}});e.target.reset();aviso('Cuenta suspendida y sesiones revocadas. Acción registrada.')});
@@ -126,4 +130,44 @@ formulario('form-testigo',async e=>{
  if(intentoTestigo?.firma!==firma)intentoTestigo={firma,clave:crypto.randomUUID()};
  const r=await api('/avisos-testigo',{method:'POST',body:data,headers:{'Idempotency-Key':intentoTestigo.clave}});
  intentoTestigo=null;e.target.reset();aviso('Aviso recibido. Comprobante '+r.id_aviso);await cargarTestigos();
+});
+let solicitudElegida=null, intentoAporte=null, participacion=false, consultaSolicitudes=0;
+function cerrarAporte(){
+ solicitudElegida=null;intentoAporte=null;
+ $('aporte-web').reset();$('aporte-web').hidden=true;
+}
+async function imagenPrivada(input){
+ const file=input.files[0];if(!file)return null;
+ if(file.size>2097152)throw Error('La imagen supera 2 MB.');
+ return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onerror=()=>reject(Error('No se pudo leer la imagen.'));reader.onload=()=>resolve(String(reader.result).split(',')[1]);reader.readAsDataURL(file);});
+}
+async function solicitudesCiudadanas(permitido){
+ participacion=permitido;const actual=token, turno=++consultaSolicitudes;
+ const d=await api('/colaboracion');
+ if(actual!==token||turno!==consultaSolicitudes)return;
+ const items=[...d.cercanos,...d.otras_zonas];
+ $('solicitudes-ciudadanas').innerHTML=items.length?items.map(s=>`<article class="item"><b>${esc(s.patente)} · ${esc(s.marca)} ${esc(s.modelo)}</b><p>${esc(s.color)} · ${esc(s.zona_publicable)}</p><p>${esc(s.texto_aprobado)}</p><button type="button" data-solicitud="${Number(s.id_solicitud_colaboracion)}" data-patente="${esc(s.patente)}" ${permitido?'':'disabled'}>Aportar información y foto</button></article>`).join(''):'<p class="empty">Sin solicitudes vigentes. Aquí aparecen los vehículos que el titular autorizó y el operador publicó.</p>';
+ if(!permitido&&items.length)$('solicitudes-ciudadanas').insertAdjacentHTML('beforeend','<p>Verifica tu cuenta para enviar avistamientos.</p>');
+ if(solicitudElegida&&!items.some(s=>s.id_solicitud_colaboracion===solicitudElegida))cerrarAporte();
+}
+accion('actualizar-solicitudes',()=>solicitudesCiudadanas(participacion));
+$('solicitudes-ciudadanas').onclick=e=>{
+ const b=e.target.closest('button[data-solicitud]');if(!b)return;
+ cerrarAporte();solicitudElegida=Number(b.dataset.solicitud);$('vehiculo-observado').textContent='Avistamiento · '+b.dataset.patente;
+ $('aporte-web').hidden=false;$('aporte-web').elements.zona.focus();
+};
+accion('gps-aporte',async()=>{
+ const sesion=token,sid=solicitudElegida;
+ const p=await new Promise((res,rej)=>navigator.geolocation.getCurrentPosition(res,rej,{enableHighAccuracy:true,timeout:15000,maximumAge:0}));
+ if(sesion!==token||sid!==solicitudElegida)return;
+ const f=$('aporte-web').elements;f.lat.value=p.coords.latitude;f.lon.value=p.coords.longitude;
+});
+formulario('aporte-web',async e=>{
+ const f=e.target.elements;
+ const sid=solicitudElegida;if(!sid)return;
+ const d={zona:f.zona.value,observado_en:new Date(f.fecha.value).toISOString(),descripcion:f.descripcion.value,latitud:Number(f.lat.value),longitud:Number(f.lon.value)};
+ const foto=await imagenPrivada(f.foto);if(foto)d.foto_base64=foto;
+ const firma=sid+JSON.stringify(d);if(intentoAporte?.firma!==firma)intentoAporte={firma,clave:crypto.randomUUID()};
+ await api('/colaboracion/'+sid+'/avistamientos',{method:'POST',body:d,headers:{'Idempotency-Key':intentoAporte.clave}});
+ cerrarAporte();aviso('Avistamiento recibido para revisión.');
 });

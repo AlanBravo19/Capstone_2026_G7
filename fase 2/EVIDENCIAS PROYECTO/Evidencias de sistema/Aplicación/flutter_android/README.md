@@ -1,4 +1,8 @@
-# RutaAlerta · Beta 0.16.0
+# RutaAlerta · Beta 0.17.0
+
+En **Reportar** puedes adjuntar una foto y autorizar que el operador publique una solicitud. En **Colaborar** selecciona el vehículo para informar dónde y cuándo lo viste y adjuntar una imagen. Desde el mapa de **Inicio** puedes consultar los vehículos publicados y antecedentes históricos del sector. **Simular alerta de proximidad** permite ensayar el aviso dentro de la app.
+
+## Beta 0.16.0
 
 El panel institucional abre el mapa de casos abiertos de la organización. Se distinguen reportes y avistamientos aceptados y se puede abrir el folio para revisarlo. En Inicio de Android se accede a Vi un vehículo, Mensajes del caso y Mis avistamientos.
 

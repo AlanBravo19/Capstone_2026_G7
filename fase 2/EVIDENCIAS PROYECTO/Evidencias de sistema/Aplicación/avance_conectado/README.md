@@ -1,4 +1,10 @@
-# RutaAlerta · Beta 0.16.0
+# RutaAlerta · Beta 0.17.0
+
+El titular puede adjuntar una foto al reporte y autorizar la colaboración. Al publicar el operador, el vehículo aparece en el portal ciudadano y Android. Los colaboradores pueden enviar un avistamiento con una segunda foto privada.
+
+[Mapa ciudadano, estados de publicación y pruebas](evidencias/Portal_y_mapa_0170.md)
+
+## Beta 0.16.0
 
 El panel institucional abre el mapa de casos abiertos de la organización. Se distinguen reportes y avistamientos aceptados y se puede abrir el folio para revisarlo. En Inicio de Android se accede a Vi un vehículo, Mensajes del caso y Mis avistamientos.
 

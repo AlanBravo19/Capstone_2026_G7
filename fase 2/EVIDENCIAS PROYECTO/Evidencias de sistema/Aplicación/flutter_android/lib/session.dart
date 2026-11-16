@@ -15,6 +15,8 @@ class Session extends ChangeNotifier {
   Map<String, dynamic> identity = {};
   List<Map<String, dynamic>> vehicles = [], cases = [];
   LatLng? selectedPoint;
+  LatLng? centroZonal;
+  String nombreZona = 'Chillán';
   String? _caseSignature, _caseKey;
   String? mfaChallenge;
   String? avisoAlta;
@@ -82,6 +84,8 @@ class Session extends ChangeNotifier {
     vehicles = [];
     cases = [];
     selectedPoint = null;
+    centroZonal = null;
+    nombreZona = 'Chillán';
     _caseKey = null;
     _caseSignature = null;
     notifyListeners();
