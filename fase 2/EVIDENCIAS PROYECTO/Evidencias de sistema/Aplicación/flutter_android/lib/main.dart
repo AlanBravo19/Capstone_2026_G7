@@ -11,9 +11,7 @@ import 'vehicles.dart';
 import 'report.dart';
 import 'map_screen.dart';
 import 'trip.dart';
-import 'trip_screen.dart';
 import 'expanded.dart';
-import 'movilidad.dart';
 import 'biometric.dart';
 
 final rootNavigator = GlobalKey<NavigatorState>();
@@ -69,9 +67,91 @@ class _MobileShellState extends State<MobileShell> {
     }
   }
 
+  void accountAction(String value) {
+    final session = widget.session;
+    if (value == 'security') {
+      openScreen(context, SecurityScreen(session: session));
+    }
+    if (value == 'lock') {
+      perform(context, () async {
+        final s = await BiometricAccess.status();
+        if (s['saved'] != true) {
+          throw Exception('Activa primero la biometría en Seguridad.');
+        }
+        session.lockLocally();
+      });
+    }
+    if (value == 'shared') {
+      openScreen(
+        context,
+        DataScreen(
+          session: session,
+          title: 'Casos compartidos conmigo',
+          path: '/seguimiento/compartidos',
+          render: (ctx, data, _) => Column(
+            children: [
+              if ((data as List).isEmpty)
+                const Panel(
+                  child: Text('No tienes accesos compartidos vigentes.'),
+                ),
+              for (final c in data)
+                Panel(
+                  child: ListTile(
+                    title: Text('${c['folio']}'),
+                    subtitle: Text('${c['zona']} · ${c['estado']}'),
+                    onTap: () => openScreen(
+                      ctx,
+                      CaseScreen(session: session, cid: c['id_caso'] as int),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      );
+    }
+    if (value == 'contributions') {
+      openScreen(
+        context,
+        DataScreen(
+          session: session,
+          title: 'Mis avistamientos',
+          path: '/mis-avistamientos',
+          render: (_, data, _) => Column(
+            children: [
+              if ((data as List).isEmpty)
+                const Panel(
+                  child: Text('Todavía no has enviado avistamientos.'),
+                ),
+              for (final a in data)
+                Panel(
+                  child: ListTile(
+                    title: Text('${a['zona']}'),
+                    subtitle: Text(
+                      '${a['estado_revision']} · ${a['motivo_revision'] ?? 'Pendiente de revisión'}',
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      );
+    }
+  }
+
+  Widget accountEntry(String key, IconData icon, String name) => ListTile(
+    leading: Icon(icon),
+    title: Text(name),
+    trailing: const Icon(Icons.chevron_right),
+    onTap: () => accountAction(key),
+  );
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
+      leading: index == 1 || index == 2
+          ? BackButton(onPressed: () => navigate(0))
+          : null,
       title: const Row(
         children: [
           Icon(Icons.radar_rounded, color: teal),
@@ -89,155 +169,6 @@ class _MobileShellState extends State<MobileShell> {
           onPressed: () =>
               openScreen(context, InboxScreen(session: widget.session)),
         ),
-        PopupMenuButton<String>(
-          tooltip: 'Más opciones',
-          onSelected: (value) {
-            final session = widget.session;
-            if (value == 'security') {
-              openScreen(context, SecurityScreen(session: session));
-            }
-            if (value == 'history') {
-              openScreen(context, HistoricalNewsScreen(session: session));
-            }
-            if (value == 'trip') {
-              openScreen(context, TripScreen(session: session));
-            }
-            if (value == 'routes') {
-              openScreen(context, PlacesRoutesScreen(session: session));
-            }
-            if (value == 'sources') {
-              openScreen(context, HistoricalReviewScreen(session: session));
-            }
-            if (value == 'lock') {
-              perform(context, () async {
-                final s = await BiometricAccess.status();
-                if (s['saved'] != true) {
-                  throw Exception('Activa primero la biometría en Seguridad.');
-                }
-                session.lockLocally();
-              });
-            }
-            if (value == 'operator') {
-              openScreen(context, OperatorScreen(session: session));
-            }
-            if (value == 'shared') {
-              openScreen(
-                context,
-                DataScreen(
-                  session: session,
-                  title: 'Casos compartidos conmigo',
-                  path: '/seguimiento/compartidos',
-                  render: (ctx, data, _) => Column(
-                    children: [
-                      if ((data as List).isEmpty)
-                        const Panel(
-                          child: Text(
-                            'No tienes accesos compartidos vigentes.',
-                          ),
-                        ),
-                      for (final c in data)
-                        Panel(
-                          child: ListTile(
-                            title: Text('${c['folio']}'),
-                            subtitle: Text('${c['zona']} · ${c['estado']}'),
-                            onTap: () => openScreen(
-                              ctx,
-                              CaseScreen(
-                                session: session,
-                                cid: c['id_caso'] as int,
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              );
-            }
-            if (value == 'contributions') {
-              openScreen(
-                context,
-                DataScreen(
-                  session: session,
-                  title: 'Mis avistamientos',
-                  path: '/mis-avistamientos',
-                  render: (_, data, _) => Column(
-                    children: [
-                      if ((data as List).isEmpty)
-                        const Panel(
-                          child: Text('Todavía no has enviado avistamientos.'),
-                        ),
-                      for (final a in data)
-                        Panel(
-                          child: ListTile(
-                            title: Text('${a['zona']}'),
-                            subtitle: Text(
-                              '${a['estado_revision']} · ${a['motivo_revision'] ?? 'Pendiente de revisión'}',
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              );
-            }
-          },
-          itemBuilder: (_) => [
-            const PopupMenuItem(
-              value: 'routes',
-              child: Text('Mi casa, trabajo y rutas'),
-            ),
-            const PopupMenuItem(
-              value: 'lock',
-              child: Text('Bloquear con biometría'),
-            ),
-            if ((widget.session.profile?['organizaciones'] as List? ?? [])
-                .isNotEmpty)
-              const PopupMenuItem(
-                value: 'sources',
-                child: Text('Revisar fuentes y avisos'),
-              ),
-            const PopupMenuItem(
-              value: 'history',
-              child: Text('Antecedentes territoriales'),
-            ),
-            const PopupMenuItem(
-              value: 'security',
-              child: Text('Seguridad y segundo factor'),
-            ),
-            const PopupMenuItem(
-              value: 'contributions',
-              child: Text('Mis avistamientos'),
-            ),
-            const PopupMenuItem(
-              value: 'shared',
-              child: Text('Casos compartidos conmigo'),
-            ),
-            const PopupMenuItem(value: 'trip', child: Text('Modo trayecto')),
-            if ((widget.session.profile?['organizaciones'] as List? ?? [])
-                .isNotEmpty)
-              const PopupMenuItem(
-                value: 'operator',
-                child: Text('Gestión institucional'),
-              ),
-          ],
-        ),
-        IconButton(
-          tooltip: 'Actualizar',
-          onPressed: () async {
-            try {
-              await widget.session.refresh();
-            } catch (e) {
-              if (context.mounted) feedback(context, e);
-            }
-          },
-          icon: const Icon(Icons.refresh_rounded),
-        ),
-        IconButton(
-          tooltip: 'Cerrar sesión',
-          onPressed: logout,
-          icon: const Icon(Icons.logout_rounded),
-        ),
       ],
     ),
     body: IndexedStack(
@@ -252,28 +183,63 @@ class _MobileShellState extends State<MobileShell> {
           usePoint: () => navigate(2),
         ),
         CommunityScreen(session: widget.session),
+        ListView(
+          padding: const EdgeInsets.all(20),
+          children: [
+            SectionTitle(
+              widget.session.profile?['nombre_visible'] ?? 'Mi cuenta',
+              eyebrow: 'Mi cuenta',
+            ),
+            Panel(
+              child: Column(
+                children: [
+                  accountEntry(
+                    'security',
+                    Icons.security,
+                    'Seguridad y segundo factor',
+                  ),
+                  accountEntry(
+                    'lock',
+                    Icons.fingerprint,
+                    'Bloquear con biometría',
+                  ),
+                  accountEntry(
+                    'contributions',
+                    Icons.visibility_outlined,
+                    'Mis avistamientos',
+                  ),
+                  accountEntry(
+                    'shared',
+                    Icons.group_outlined,
+                    'Casos compartidos conmigo',
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.logout),
+                    title: const Text('Cerrar sesión'),
+                    onTap: logout,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ],
     ),
     bottomNavigationBar: NavigationBar(
-      selectedIndex: index,
-      onDestinationSelected: navigate,
+      selectedIndex: [0, 4, 3, 5].contains(index)
+          ? [0, 4, 3, 5].indexOf(index)
+          : 0,
+      onDestinationSelected: (tab) => navigate([0, 4, 3, 5][tab]),
       destinations: const [
-        NavigationDestination(
-          icon: Icon(Icons.grid_view_rounded),
-          label: 'Inicio',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.directions_car_outlined),
-          label: 'Vehículos',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.add_circle_outline_rounded),
-          label: 'Reportar',
-        ),
-        NavigationDestination(icon: Icon(Icons.map_outlined), label: 'Mapa'),
+        NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Inicio'),
         NavigationDestination(
           icon: Icon(Icons.groups_outlined),
           label: 'Colaborar',
+        ),
+        NavigationDestination(icon: Icon(Icons.map_outlined), label: 'Mapa'),
+        NavigationDestination(
+          icon: Icon(Icons.person_outline),
+          label: 'Cuenta',
         ),
       ],
     ),

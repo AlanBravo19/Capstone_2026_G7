@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'session.dart';
 import 'ui.dart';
 import 'expanded.dart';
+import 'movilidad.dart';
+import 'trip_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   final Session session;
@@ -16,7 +18,7 @@ class HomeScreen extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          SectionTitle('Hola, $name', eyebrow: 'Tu comunidad, conectada'),
+          SectionTitle('Hola, $name', eyebrow: 'Inicio'),
           Container(
             padding: const EdgeInsets.all(24),
             margin: const EdgeInsets.only(bottom: 20),
@@ -34,7 +36,7 @@ class HomeScreen extends StatelessWidget {
                 ),
                 gap(),
                 const Text(
-                  'Información que ayuda\na dar el siguiente paso.',
+                  '¿Viste un vehículo reportado?',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 25,
@@ -44,36 +46,63 @@ class HomeScreen extends StatelessWidget {
                 ),
                 gap(12),
                 const Text(
-                  'Registra antecedentes y consulta el estado de tus reportes privados.',
+                  'Consulta solicitudes de tu zona y envía un avistamiento, aunque no tengas vehículo.',
                   style: TextStyle(color: Color(0xffccdfff)),
                 ),
                 gap(18),
                 FilledButton.tonalIcon(
-                  onPressed: () => navigate(2),
+                  onPressed: () => navigate(4),
                   icon: const Icon(Icons.add_location_alt_outlined),
-                  label: const Text('Nuevo reporte'),
+                  label: const Text('Vi un vehículo'),
                 ),
               ],
             ),
           ),
-          Row(
-            children: [
-              Expanded(
-                child: _Metric(
-                  'Vehículos',
-                  session.vehicles.length,
-                  Icons.directions_car_outlined,
+          const SectionTitle('Mis trayectos'),
+          Panel(
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.alt_route),
+                  title: const Text('Planificar una ruta'),
+                  subtitle: const Text('Casa, trabajo y lugares guardados'),
+                  onTap: () =>
+                      openScreen(context, PlacesRoutesScreen(session: session)),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _Metric(
-                  'Reportes',
-                  session.cases.length,
-                  Icons.description_outlined,
+                ListTile(
+                  leading: const Icon(Icons.navigation_outlined),
+                  title: const Text('Iniciar modo trayecto'),
+                  onTap: () =>
+                      openScreen(context, TripScreen(session: session)),
                 ),
-              ),
-            ],
+                ListTile(
+                  leading: const Icon(Icons.article_outlined),
+                  title: const Text('Antecedentes de mi zona'),
+                  onTap: () => openScreen(
+                    context,
+                    HistoricalNewsScreen(session: session),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SectionTitle('Mis vehículos y reportes'),
+          Panel(
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.directions_car_outlined),
+                  title: const Text('Mis vehículos'),
+                  subtitle: const Text('Opcional para colaborar'),
+                  onTap: () => navigate(1),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.add_location_alt_outlined),
+                  title: const Text('Reportar el robo de mi vehículo'),
+                  onTap: () => navigate(session.vehicles.isEmpty ? 1 : 2),
+                ),
+              ],
+            ),
           ),
           Panel(
             child: Column(
@@ -173,32 +202,6 @@ class HomeScreen extends StatelessWidget {
       ),
     );
   }
-}
-
-class _Metric extends StatelessWidget {
-  final String title;
-  final int count;
-  final IconData icon;
-  const _Metric(this.title, this.count, this.icon);
-  @override
-  Widget build(BuildContext context) => Panel(
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, color: teal),
-        gap(8),
-        Text(
-          '$count',
-          style: const TextStyle(
-            fontSize: 30,
-            fontWeight: FontWeight.w800,
-            color: navy,
-          ),
-        ),
-        Text(title, style: const TextStyle(color: muted)),
-      ],
-    ),
-  );
 }
 
 class ContactsDialog extends StatefulWidget {

@@ -18,11 +18,16 @@ class _ReportScreenState extends State<ReportScreen> {
       latitude = TextEditingController(),
       longitude = TextEditingController();
   int? vehicle;
+  int? organization;
+  late Future<List<dynamic>> recipients;
+  Future<List<dynamic>> loadRecipients() async =>
+      await widget.session.api.request('/organizaciones') as List<dynamic>;
   bool busy = false;
   DateTime date = DateTime.now();
   @override
   void initState() {
     super.initState();
+    recipients = loadRecipients();
     syncPoint();
   }
 
@@ -83,7 +88,7 @@ class _ReportScreenState extends State<ReportScreen> {
     try {
       final folio = await widget.session.report({
         'id_vehiculo': vehicle,
-        'id_organizacion': 1,
+        'id_organizacion': organization,
         'fecha_hecho': date.toUtc().toIso8601String(),
         'zona': zone.text.trim(),
         'descripcion': description.text.trim(),
@@ -158,6 +163,41 @@ class _ReportScreenState extends State<ReportScreen> {
                 validator: (v) => v == null ? 'Selecciona tu vehículo' : null,
               ),
               gap(),
+              FutureBuilder<List<dynamic>>(
+                future: recipients,
+                builder: (context, result) {
+                  if (result.hasError) {
+                    return TextButton(
+                      onPressed: () => setState(() {
+                        recipients = loadRecipients();
+                      }),
+                      child: const Text('Reintentar carga de organizaciones'),
+                    );
+                  }
+                  if (!result.hasData) return const LinearProgressIndicator();
+                  return DropdownButtonFormField<int>(
+                    initialValue: organization,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Organización que recibirá el reporte',
+                    ),
+                    items: [
+                      for (final org in result.data!)
+                        DropdownMenuItem<int>(
+                          value: org['id_organizacion'] as int,
+                          child: Text(org['nombre'] as String),
+                        ),
+                    ],
+                    onChanged: busy
+                        ? null
+                        : (v) => setState(() => organization = v),
+                    validator: (v) => v == null
+                        ? 'Selecciona quién revisará tu reporte'
+                        : null,
+                  );
+                },
+              ),
+              gap(),
               OutlinedButton.icon(
                 onPressed: busy ? null : chooseDate,
                 icon: const Icon(Icons.schedule_rounded),
@@ -223,7 +263,10 @@ class _ReportScreenState extends State<ReportScreen> {
               ),
               gap(12),
               FilledButton.icon(
-                onPressed: busy || !widget.session.canReport ? null : save,
+                onPressed:
+                    busy || !widget.session.canReport || organization == null
+                    ? null
+                    : save,
                 icon: const Icon(Icons.send_outlined),
                 label: Text(busy ? 'Guardando…' : 'Registrar reporte privado'),
               ),

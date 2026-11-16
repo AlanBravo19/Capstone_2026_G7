@@ -52,6 +52,9 @@ def seguimiento(cid:int,usuario=Depends(usuario_actual),conn=Depends(obtener_con
     cur.execute('''SELECT c.id_caso,c.folio,c.estado,c.zona,c.denuncia_estado,c.motivo_cierre,c.fecha_hecho,c.creado_en,c.colaboracion_consentida_en,v.patente FROM caso c JOIN vehiculo v USING(id_vehiculo) WHERE c.id_caso=%s''',(cid,));c=fila_dict(cur,cur.fetchone())
     cur.execute("SELECT accion,descripcion,creada_en,estado_nuevo FROM gestion_caso WHERE id_caso=%s AND visibilidad='afectado' ORDER BY creada_en,id_gestion_caso",(cid,));timeline=rows(cur)
     c['es_propietario']=own;c['es_operador']=org;c['historial']=timeline
+    if org:
+        cur.execute('SELECT descripcion_privada FROM caso WHERE id_caso=%s',(cid,))
+        c['relato_para_revision']=cur.fetchone()[0]
     if own or org:
         cur.execute('''SELECT a.id_avistamiento,a.zona,a.observado_en,a.estado_revision,a.resumen_para_afectado FROM avistamiento a WHERE a.id_caso=%s AND a.estado_revision='aceptado' AND a.resumen_para_afectado IS NOT NULL ORDER BY observado_en DESC''',(cid,));c['aportes']=rows(cur)
         cur.execute('SELECT id_evidencia,estado_revision,mime,tamano_bytes FROM evidencia WHERE id_caso=%s AND id_avistamiento IS NULL ORDER BY creada_en DESC',(cid,));c['evidencias']=rows(cur)

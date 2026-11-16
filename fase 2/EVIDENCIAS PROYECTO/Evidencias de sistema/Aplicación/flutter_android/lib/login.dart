@@ -118,7 +118,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 gap(32),
                 const Text(
-                  'Un reporte.\nUn punto de partida\npara colaborar.',
+                  'RutaAlerta ciudadana',
                   style: TextStyle(
                     fontSize: 34,
                     height: 1.12,
@@ -129,7 +129,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 gap(12),
                 const Text(
-                  'Tus vehículos, reportes y ubicaciones en un mismo lugar.',
+                  'Consulta avisos de tu zona o informa un avistamiento, con o sin vehículo.',
                   style: TextStyle(color: muted, fontSize: 15),
                 ),
                 gap(28),

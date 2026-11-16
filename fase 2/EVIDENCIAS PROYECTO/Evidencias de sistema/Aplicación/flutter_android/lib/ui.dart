@@ -56,7 +56,7 @@ class Panel extends StatelessWidget {
       borderRadius: BorderRadius.circular(22),
       border: Border.all(color: const Color(0xffdce4f0)),
     ),
-    child: child,
+    child: Material(type: MaterialType.transparency, child: child),
   );
 }
 

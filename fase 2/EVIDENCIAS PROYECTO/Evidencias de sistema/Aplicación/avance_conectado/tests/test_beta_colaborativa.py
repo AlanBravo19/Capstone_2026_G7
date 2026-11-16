@@ -56,6 +56,13 @@ def test_publicacion_consentimiento_ambito_y_campos_minimos(client,ciudadano,sup
  for private in ['latitud','longitud','id_usuario_reportante','descripcion_privada','direccion_privada']:assert private not in row
  assert row['distancia_km'] is not None
 
+def test_relato_institucional_no_se_comparte(client,ciudadano,supervisor_org1,operador_org2):
+ cid=caso(client,ciudadano)
+ path=f'/seguimiento/{cid}'
+ assert client.get(path,headers=supervisor_org1).json()['relato_para_revision']==_reporte()['descripcion']
+ assert 'relato_para_revision' not in client.get(path,headers=ciudadano['headers']).json()
+ assert client.get(path,headers=operador_org2).status_code==403
+
 def test_aporte_reintento_revision_y_notificacion(client,ciudadano,supervisor_org1,operador_org2):
  cid=caso(client,ciudadano);sid=publicacion(client,cid,ciudadano['headers'],supervisor_org1)
  _,_,h,_=activar(client)

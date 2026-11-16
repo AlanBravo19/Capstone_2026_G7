@@ -455,32 +455,6 @@ class CaseScreen extends StatelessWidget {
         const Note(
           'Los aportes son antecedentes sujetos a revisión. Este reporte no reemplaza una denuncia.',
         ),
-        if (d['es_operador'] == true)
-          OutlinedButton.icon(
-            onPressed: () => openScreen(
-              ctx,
-              DataScreen(
-                session: session,
-                title: 'Resumen verificable',
-                path: '/gestion/casos/$cid/resumen',
-                render: (_, r, _) => Column(
-                  children: [
-                    Note('${r['metodo']}'),
-                    for (final f in r['hechos'])
-                      Panel(
-                        child: ListTile(
-                          title: Text('${f['texto']}'),
-                          subtitle: Text('Referencia: ${f['fuente']}'),
-                        ),
-                      ),
-                    Note('${r['limites']}'),
-                  ],
-                ),
-              ),
-            ),
-            icon: const Icon(Icons.fact_check_outlined),
-            label: const Text('Resumen con referencias'),
-          ),
         if (d['es_propietario'] == true)
           Panel(
             child: Column(
@@ -603,32 +577,6 @@ class CaseScreen extends StatelessWidget {
                   ctx,
                   PhotoScreen(session: session, id: e['id_evidencia'] as int),
                 ),
-                trailing: d['es_operador'] == true
-                    ? PopupMenuButton<String>(
-                        onSelected: (decision) => perform(ctx, () async {
-                          final r = await ask(ctx, 'Motivo de evaluación', {
-                            'motivo': 'Motivo (mínimo 10 caracteres)',
-                          });
-                          if (r == null) return;
-                          await session.api.request(
-                            '/gestion/evidencias/${e['id_evidencia']}/revision',
-                            method: 'POST',
-                            body: {...r, 'decision': decision},
-                          );
-                          reload();
-                        }),
-                        itemBuilder: (_) => [
-                          const PopupMenuItem(
-                            value: 'aceptada',
-                            child: Text('Aceptar'),
-                          ),
-                          const PopupMenuItem(
-                            value: 'rechazada',
-                            child: Text('Rechazar'),
-                          ),
-                        ],
-                      )
-                    : null,
               ),
             ),
         ],

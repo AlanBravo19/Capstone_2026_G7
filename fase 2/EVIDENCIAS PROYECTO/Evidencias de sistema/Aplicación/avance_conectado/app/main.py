@@ -25,7 +25,7 @@ if os.getenv('VERCEL'):
 
 app = FastAPI(
     title="RutaAlerta API",
-    version="0.8.0-beta",
+    version="0.9.0-beta",
     description="Beta colaborativa: TOTP, seguimiento, publicación revisada y fotos privadas. Correo y SMS dependen de la configuración de proveedores.",
 )
 app.include_router(cuentas.router)
@@ -41,7 +41,7 @@ BASE=Path(__file__).resolve().parents[1]
 @app.middleware('http')
 async def proteger_demo(request:Request,call_next):
     clave=os.getenv('DEMO_ACCESS_KEY','')
-    libre=request.url.path in ('/','/site.css','/site.js','/mapa.js','/mapa-azul.json','/favicon.ico','/version')
+    libre=request.url.path in ('/', '/operaciones', '/ciudadania', '/operaciones.js', '/operaciones.css','/site.css','/site.js','/mapa.js','/mapa-azul.json','/favicon.ico','/version')
     if clave and not libre and not secrets.compare_digest(request.headers.get('x-demo-access',''),clave):
         return JSONResponse({'detail':'Ingresa una clave de invitación válida a la beta.'},status_code=403)
     response=await call_next(request)
@@ -51,7 +51,17 @@ async def proteger_demo(request:Request,call_next):
     return response
 
 @app.get('/',include_in_schema=False)
-def inicio():return FileResponse(BASE/'web/index.html')
+@app.get('/operaciones',include_in_schema=False)
+def inicio():return FileResponse(BASE/'web/operaciones.html')
+
+@app.get('/ciudadania',include_in_schema=False)
+def ciudadania():return FileResponse(BASE/'web/index.html')
+
+@app.get('/operaciones.css',include_in_schema=False)
+def estilos_operaciones():return FileResponse(BASE/'public/operaciones.css',media_type='text/css')
+
+@app.get('/operaciones.js',include_in_schema=False)
+def codigo_operaciones():return FileResponse(BASE/'public/operaciones.js',media_type='text/javascript')
 
 @app.get('/site.css',include_in_schema=False)
 def css():return FileResponse(BASE/'public/site.css',media_type='text/css')
@@ -75,4 +85,4 @@ def health(conn=Depends(obtener_conexion)):
     return {"estado": "ok", "postgis": postgis, "tablas": tablas}
 
 @app.get("/version",include_in_schema=False)
-def version_beta():return {"version":"0.8.0-beta","modelo_tablas":65,"cliente":"Flutter Android"}
+def version_beta():return {"version":"0.9.0-beta","modelo_tablas":65,"cliente":"Flutter Android","panel":"/operaciones"}
