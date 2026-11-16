@@ -7,6 +7,7 @@ import 'package:http/testing.dart';
 import 'package:rutaalerta_movil/api.dart';
 import 'package:rutaalerta_movil/session.dart';
 import 'package:rutaalerta_movil/expanded.dart';
+import 'package:rutaalerta_movil/biometric.dart';
 
 void main() {
   test(
@@ -35,10 +36,7 @@ void main() {
           }),
         ),
       );
-      await session.login(
-        'prueba@example.invalid',
-        'clave-ficticia',
-      );
+      await session.login('prueba@example.invalid', 'clave-ficticia');
       expect(session.signedIn, false);
       expect(session.api.token, isEmpty);
       expect(calls, ['/sesiones']);
@@ -96,6 +94,22 @@ void main() {
         'community' => Scaffold(body: CommunityScreen(session: session)),
         _ => OperatorScreen(session: session),
       };
+      if (page == 'security') {
+        final messenger =
+            TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+        messenger.setMockMethodCallHandler(
+          BiometricAccess.channel,
+          (_) async => {
+            'available': false,
+            'saved': false,
+            'reason': 'Sin lector de prueba',
+          },
+        );
+        addTearDown(
+          () =>
+              messenger.setMockMethodCallHandler(BiometricAccess.channel, null),
+        );
+      }
       await tester.pumpWidget(MaterialApp(home: screen));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);

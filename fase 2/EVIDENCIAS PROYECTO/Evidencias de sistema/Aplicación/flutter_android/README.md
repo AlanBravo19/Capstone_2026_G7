@@ -1,3 +1,22 @@
+# RutaAlerta · Android 0.14.0
+
+La entrega móvil se compila en modo release con el mismo identificador y certificado de la beta anterior. La API compatible continúa en 0.13.0.
+
+## Ubicación y navegación
+
+En Mapa, pulsa el icono de ubicación, concede el permiso y espera una lectura reciente. **Usar mi GPS** lleva las coordenadas al formulario. También puedes usar **Usar mi ubicación actual** directamente desde el reporte o seleccionar otro lugar a mano. El mapa conserva la última perspectiva al cambiar de pestaña. Las pantallas de vehículos, reporte y colaboración cargan sus datos cuando se visitan por primera vez.
+
+## Registro y acceso rápido
+
+1. Crea tu cuenta y confirma el código del correo. Si sales del paso, puedes retomarlo desde Inicio.
+2. Con tu contraseña, prepara el autenticador. Ábrelo desde la app o agrega la clave manual como cuenta basada en tiempo. Vuelve a RutaAlerta y escribe los seis dígitos. Si vence el código, usa uno nuevo en la misma pantalla.
+3. Guarda los códigos de recuperación. Ingresa otra vez con tu contraseña y un código nuevo.
+4. Para habilitar la huella, abre Cuenta → Seguridad y segundo factor → Activar huella. Android confirma la lectura. Bloquear con biometría permite probar el siguiente ingreso. Cerrar sesión elimina el acceso local.
+
+La huella protege una sesión ya verificada en ese teléfono. Cuando el servidor revoca o vence la sesión es necesario autenticarse de nuevo. Al faltar un lector o una huella registrada, la pantalla muestra el motivo y permite abrir los ajustes de Android.
+
+## Historial
+
 # RutaAlerta · Beta 0.13.0
 
 El mapa móvil concentra los controles de GPS, perspectiva y ciudades junto a la cartografía. El planificador prioriza origen y destino. Modo trayecto dispone de navegación de regreso. En Colaborar se puede buscar a 30 km del GPS o fijar otra zona. Un colaborador puede adjuntar una foto opcional al avistamiento. Texto y foto se guardan en una sola operación.

@@ -20,6 +20,61 @@ class HomeScreen extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         children: [
           WelcomeBanner(name: name.toString()),
+          if (!session.canReport)
+            Panel(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.verified_user_outlined, color: teal),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          session.identity['correo_verificado'] == true
+                              ? 'Paso 2 de 2'
+                              : 'Paso 1 de 2',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      StateChip(session.canReport ? 'Completado' : 'Pendiente'),
+                    ],
+                  ),
+                  gap(12),
+                  Text(
+                    session.canReport
+                        ? 'Puedes registrar vehículos y reportes.'
+                        : session.identity['correo_verificado'] == true
+                        ? 'Tu correo ya está confirmado. Activa el segundo factor para poder participar.'
+                        : session.avisoAlta ?? 'Confirma tu correo para poder participar. Luego vincularás tu autenticador.',
+                    style: const TextStyle(color: muted),
+                  ),
+                  gap(12),
+                  OutlinedButton(
+                    onPressed:
+                        session.identity['correo_verificado'] == true &&
+                            session.identity['transporte_correo'] == 'smtp'
+                        ? () => openScreen(
+                            context,
+                            SecurityScreen(session: session),
+                          )
+                        : () => showDialog<void>(
+                            context: context,
+                            builder: (_) => ContactsDialog(session: session),
+                          ),
+                    child: Text(
+                      session.identity['correo_verificado'] == true &&
+                              session.identity['transporte_correo'] == 'smtp'
+                          ? 'Configurar autenticador'
+                          : 'Verificar mi correo',
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ActionGroup(
             title: 'Informar y colaborar',
             children: [
@@ -46,59 +101,6 @@ class HomeScreen extends StatelessWidget {
               ),
             ],
           ),
-          if (!session.canReport)
-            Panel(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.verified_user_outlined, color: teal),
-                      const SizedBox(width: 10),
-                      const Expanded(
-                        child: Text(
-                          'Prepara tu cuenta',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                      StateChip(session.canReport ? 'Completado' : 'Pendiente'),
-                    ],
-                  ),
-                  gap(12),
-                  Text(
-                    session.canReport
-                        ? 'Puedes registrar vehículos y reportes.'
-                        : session.identity['correo_verificado'] == true
-                        ? 'Tu correo ya está confirmado. Activa el segundo factor para poder participar.'
-                        : session.avisoAlta ?? 'Verifica tu correo y configura el autenticador para participar.',
-                    style: const TextStyle(color: muted),
-                  ),
-                  gap(12),
-                  OutlinedButton(
-                    onPressed:
-                        session.identity['correo_verificado'] == true &&
-                            session.identity['transporte_correo'] == 'smtp'
-                        ? () => openScreen(
-                            context,
-                            SecurityScreen(session: session),
-                          )
-                        : () => showDialog<void>(
-                            context: context,
-                            builder: (_) => ContactsDialog(session: session),
-                          ),
-                    child: Text(
-                      session.identity['correo_verificado'] == true &&
-                              session.identity['transporte_correo'] == 'smtp'
-                          ? 'Configurar autenticador'
-                          : 'Verificar mi correo',
-                    ),
-                  ),
-                ],
-              ),
-            ),
           ActionGroup(
             title: 'Mis trayectos',
             children: [
@@ -326,7 +328,17 @@ class _ContactsDialogState extends State<ContactsDialog> {
     );
     await widget.session.refresh();
     emailCode.clear();
-    message = 'Paso de correo completado.';
+    message = 'Correo confirmado.';
+    if (mounted && widget.session.identity['transporte_correo'] == 'smtp') {
+      final session = widget.session;
+      final nav = Navigator.of(context);
+      nav.pop();
+      nav.push(
+        MaterialPageRoute<void>(
+          builder: (_) => SecurityScreen(session: session),
+        ),
+      );
+    }
   }
 
   Future<void> phoneRequest() async {
@@ -361,7 +373,7 @@ class _ContactsDialogState extends State<ContactsDialog> {
     final phoneDone = widget.session.identity['telefono_verificado'] == true;
     final smtp = widget.session.identity['transporte_correo'] == 'smtp';
     return AlertDialog(
-      title: const Text('Verificación de contactos'),
+      title: Text(smtp ? 'Confirmar correo' : 'Verificación de contactos'),
       content: SizedBox(
         width: 360,
         child: SingleChildScrollView(
@@ -370,7 +382,7 @@ class _ContactsDialogState extends State<ContactsDialog> {
             children: [
               Note(
                 smtp
-                    ? 'El código de correo llega a tu buzón. Para participar, activa después el autenticador en Seguridad. No necesitas pagar SMS.'
+                    ? 'Escribe el código del correo de RutaAlerta. Si aún no lo tienes, puedes solicitar otro.'
                     : 'En esta beta los códigos se muestran aquí. No se envían correos ni SMS y no acreditan la titularidad de tus contactos. Utiliza datos de prueba.',
               ),
               Text(
@@ -394,7 +406,7 @@ class _ContactsDialogState extends State<ContactsDialog> {
                 gap(10),
                 FilledButton(
                   onPressed: busy ? null : () => run(emailConfirm),
-                  child: const Text('Confirmar paso'),
+                  child: const Text('Confirmar código'),
                 ),
               ],
               const Divider(height: 32),

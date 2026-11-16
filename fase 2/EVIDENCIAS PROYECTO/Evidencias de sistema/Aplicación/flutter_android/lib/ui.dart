@@ -1,4 +1,4 @@
-import 'dart:ui' as ui;
+import 'package:flutter/services.dart';
 
 import 'package:flutter/material.dart';
 
@@ -100,16 +100,13 @@ class GlassDock extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(12, 5, 12, 5),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(26),
-          child: BackdropFilter(
-            filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: const Color(0xd9ffffff),
-                borderRadius: BorderRadius.circular(26),
-                border: Border.all(color: Colors.white),
-              ),
-              child: child,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: const Color(0xd9ffffff),
+              borderRadius: BorderRadius.circular(26),
+              border: Border.all(color: Colors.white),
             ),
+            child: child,
           ),
         ),
       ),
@@ -251,7 +248,12 @@ class Note extends StatelessWidget {
 void feedback(BuildContext context, Object message) {
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
-      content: Text(message.toString()),
+      content: Text(
+        message is PlatformException
+            ? message.message ??
+                  'Android no pudo completar la operación (${message.code}).'
+            : message.toString(),
+      ),
       behavior: SnackBarBehavior.floating,
     ),
   );

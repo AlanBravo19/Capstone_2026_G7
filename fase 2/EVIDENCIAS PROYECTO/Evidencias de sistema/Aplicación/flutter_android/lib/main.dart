@@ -13,6 +13,7 @@ import 'map_screen.dart';
 import 'trip.dart';
 import 'expanded.dart';
 import 'biometric.dart';
+import 'huella.dart';
 import 'testigos.dart';
 
 final rootNavigator = GlobalKey<NavigatorState>();
@@ -53,8 +54,45 @@ class MobileShell extends StatefulWidget {
 }
 
 class _MobileShellState extends State<MobileShell> {
+  @override
+  void initState() {
+    super.initState();
+    checkRegistration();
+  }
+
+  @override
+  void didUpdateWidget(covariant MobileShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    checkRegistration();
+  }
+
+  void checkRegistration() {
+    final session = widget.session;
+    if (!session.showEmailStep) return;
+    session.showEmailStep = false;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted &&
+          ModalRoute.of(context)?.isCurrent == true &&
+          session.signedIn &&
+          session.identity['correo_verificado'] != true) {
+        showDialog<void>(
+          context: context,
+          builder: (_) => ContactsDialog(session: session),
+        );
+      }
+    });
+  }
+
   int index = 0;
-  void navigate(int i) => setState(() => index = i);
+  final visited = <int>{0};
+  void navigate(int i) {
+    if (i == index) return;
+    setState(() {
+      visited.add(i);
+      index = i;
+    });
+  }
+
   Future<void> logout() async {
     try {
       await TripService.stop();
@@ -77,7 +115,19 @@ class _MobileShellState extends State<MobileShell> {
       perform(context, () async {
         final s = await BiometricAccess.status();
         if (s['saved'] != true) {
-          throw Exception('Activa primero la biometría en Seguridad.');
+          if (mounted) {
+            openScreen(
+              context,
+              Scaffold(
+                appBar: AppBar(title: const Text('Huella')),
+                body: ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [HuellaPanel(session: session)],
+                ),
+              ),
+            );
+          }
+          return;
         }
         session.lockLocally();
       });
@@ -152,14 +202,26 @@ class _MobileShellState extends State<MobileShell> {
       index: index,
       children: [
         HomeScreen(session: widget.session, navigate: navigate),
-        VehiclesScreen(session: widget.session),
-        ReportScreen(session: widget.session, openMap: () => navigate(3)),
-        MapScreen(
-          session: widget.session,
-          active: index == 3,
-          usePoint: () => navigate(2),
-        ),
-        CommunityScreen(session: widget.session),
+        if (visited.contains(1))
+          VehiclesScreen(session: widget.session)
+        else
+          const SizedBox.shrink(),
+        if (visited.contains(2))
+          ReportScreen(session: widget.session, openMap: () => navigate(3))
+        else
+          const SizedBox.shrink(),
+        if (visited.contains(3))
+          MapScreen(
+            session: widget.session,
+            active: index == 3,
+            usePoint: () => navigate(2),
+          )
+        else
+          const SizedBox.shrink(),
+        if (visited.contains(4))
+          CommunityScreen(session: widget.session)
+        else
+          const SizedBox.shrink(),
         ListView(
           padding: const EdgeInsets.all(20),
           children: [

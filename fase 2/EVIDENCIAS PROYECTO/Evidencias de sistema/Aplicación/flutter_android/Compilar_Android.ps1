@@ -41,6 +41,6 @@ if ($LASTEXITCODE -ne 0) { throw 'Corrige el análisis antes de compilar.' }
 & $flutterExe test
 if ($LASTEXITCODE -ne 0) { throw 'Hay pruebas que requieren revisión.' }
 New-Item -ItemType Directory -Path evidencias -Force | Out-Null
-& $flutterExe build apk --debug 2>&1 | Tee-Object -FilePath evidencias/compilacion_apk.txt
+& $flutterExe build apk --release --target lib/main.dart 2>&1 | Tee-Object -FilePath evidencias/compilacion_apk.txt
 if ($LASTEXITCODE -ne 0) { throw 'La compilación falló. Consulta evidencias/compilacion_apk.txt.' }
-Write-Host 'APK disponible en build/app/outputs/flutter-apk/app-debug.apk'
+Write-Host 'APK disponible en build/app/outputs/flutter-apk/app-release.apk'

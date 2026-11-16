@@ -23,6 +23,18 @@ class NavigationBridge(private val activity:Activity) {
  fun close(){finishLocation(null,"cancelled")}
  fun handle(call:MethodCall,result:MethodChannel.Result){
   when(call.method){
+   "openAuthenticator" -> {
+    val uri=Uri.parse(call.argument<String>("uri") ?: "")
+    if(uri.scheme!="otpauth" || uri.host!="totp" || uri.getQueryParameter("issuer")!="RutaAlerta"){
+     result.error("setup","Solicita una nueva configuración del autenticador.",null);return
+    }
+    val intent=Intent(Intent.ACTION_VIEW,uri)
+    if(intent.resolveActivity(activity.packageManager)==null){
+     result.error("no_authenticator","No encontramos un autenticador que abra este enlace. Usa la opción de clave manual en tu aplicación autenticadora.",null);return
+    }
+    try{activity.startActivity(Intent.createChooser(intent,"Elige tu aplicación autenticadora"));result.success(null)}
+    catch(_:Exception){result.error("authenticator","No se pudo abrir el autenticador. Usa la opción de clave manual.",null)}
+   }
    "openNavigation" -> {
     val lat=call.argument<Number>("lat")?.toDouble();val lon=call.argument<Number>("lon")?.toDouble()
     val provider=call.argument<String>("provider")

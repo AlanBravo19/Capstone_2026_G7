@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 
 import 'session.dart';
+import 'movilidad.dart' show Mobility;
+
+import 'package:latlong2/latlong.dart';
+
 import 'ui.dart';
 
 class ReportScreen extends StatefulWidget {
@@ -23,6 +27,7 @@ class _ReportScreenState extends State<ReportScreen> {
   Future<List<dynamic>> loadRecipients() async =>
       await widget.session.api.request('/organizaciones') as List<dynamic>;
   bool busy = false;
+  LatLng? appliedPoint;
   DateTime date = DateTime.now();
   @override
   void initState() {
@@ -39,10 +44,11 @@ class _ReportScreenState extends State<ReportScreen> {
 
   void syncPoint() {
     final p = widget.session.selectedPoint;
-    if (p != null) {
+    if (p != null && !identical(appliedPoint, p)) {
       latitude.text = p.latitude.toStringAsFixed(6);
       longitude.text = p.longitude.toStringAsFixed(6);
     }
+    appliedPoint = p;
   }
 
   @override
@@ -214,6 +220,34 @@ class _ReportScreenState extends State<ReportScreen> {
                     (v?.trim().length ?? 0) >= 2 ? null : 'Indica el sector',
               ),
               gap(),
+              OutlinedButton.icon(
+                onPressed: busy
+                    ? null
+                    : () async {
+                        setState(() => busy = true);
+                        try {
+                          final fix = await Mobility.location();
+                          if (!context.mounted) return;
+                          widget.session.selectPoint(
+                            LatLng(
+                              (fix['lat'] as num).toDouble(),
+                              (fix['lon'] as num).toDouble(),
+                            ),
+                          );
+                          syncPoint();
+                          feedback(
+                            context,
+                            'Se agregó la ubicación actual al reporte.',
+                          );
+                        } catch (e) {
+                          if (context.mounted) feedback(context, e);
+                        } finally {
+                          if (mounted) setState(() => busy = false);
+                        }
+                      },
+                icon: const Icon(Icons.my_location),
+                label: const Text('Usar mi ubicación actual'),
+              ),
               OutlinedButton.icon(
                 onPressed: busy ? null : widget.openMap,
                 icon: const Icon(Icons.add_location_alt_outlined),

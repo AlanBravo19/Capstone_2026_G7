@@ -17,6 +17,7 @@ class Session extends ChangeNotifier {
   String? _caseSignature, _caseKey;
   String? mfaChallenge;
   String? avisoAlta;
+  bool showEmailStep = false;
   Session(this.api) {
     api.onExpired = clear;
   }
@@ -31,6 +32,7 @@ class Session extends ChangeNotifier {
     profile = null;
     mfaChallenge = null;
     avisoAlta = null;
+    showEmailStep = false;
     identity = {};
     vehicles = [];
     cases = [];
@@ -84,7 +86,10 @@ class Session extends ChangeNotifier {
                 'Cuenta creada. Solicita un código desde Verificar mi correo.';
           }
         }
-        if (api.token == newSession) notifyListeners();
+        if (api.token == newSession) {
+          showEmailStep = true;
+          notifyListeners();
+        }
       }
     } catch (_) {
       clear();

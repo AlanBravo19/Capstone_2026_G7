@@ -24,6 +24,8 @@ class MapScreen extends StatefulWidget {
 
 class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   m.MapLibreMapController? controller;
+  m.CameraPosition? lastCamera;
+  late List<Map<String, dynamic>> lastCases;
   bool open = false, ready = false, perspective = true;
   LatLng? point;
   Future<void> updates = Future.value();
@@ -36,9 +38,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    clock = Timer.periodic(const Duration(seconds: 2), (_) {
-      if (mounted && gps && widget.active && foreground) setState(() {});
-    });
+    lastCases = widget.session.cases;
   }
 
   @override
@@ -78,11 +78,16 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   }
 
   Future<void> locate() async {
+    if (requestingGps) return;
     setState(() => requestingGps = true);
     try {
       final allowed = await gpsChannel.invokeMethod<bool>('requestMapLocation');
       if (!mounted) return;
       if (allowed != true) {
+        setState(() {
+          gps = false;
+          currentLocation = null;
+        });
         feedback(
           context,
           'Autoriza la ubicación en los ajustes de Android para ver tu GPS.',
@@ -92,8 +97,10 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
       setState(() {
         gps = true;
         follow = true;
+        point = null;
       });
-      if (currentLocation != null) {
+      sync();
+      if (hasRecentFix) {
         await fly(
           currentLocation!.position.latitude,
           currentLocation!.position.longitude,
@@ -113,11 +120,51 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
   void receiveLocation(m.UserLocation fix) {
     if (!mounted || !gps || !widget.active || !foreground) return;
-    setState(() => currentLocation = fix);
-    final age = DateTime.now().difference(fix.timestamp).inSeconds;
-    if (follow && age >= -5 && age < 30) {
-      controller?.moveCamera(m.CameraUpdate.newLatLng(fix.position));
+    final previous = currentLocation;
+    if (previous != null && !fix.timestamp.isAfter(previous.timestamp)) return;
+    final wasFresh = hasRecentFix;
+    currentLocation = fix;
+    clock?.cancel();
+    if (hasRecentFix) {
+      clock = Timer(
+        fix.timestamp
+            .add(const Duration(seconds: 30))
+            .difference(DateTime.now()),
+        () {
+          if (mounted && gps && widget.active && foreground) setState(() {});
+        },
+      );
+      if (follow && (previous == null || previous.position != fix.position)) {
+        controller?.moveCamera(m.CameraUpdate.newLatLng(fix.position));
+      }
     }
+    if (wasFresh != hasRecentFix || previous == null) setState(() {});
+  }
+
+  bool get hasRecentFix {
+    final fix = currentLocation;
+    if (!gps || !foreground || !widget.active || fix == null) return false;
+    final age = DateTime.now().difference(fix.timestamp);
+    return age >= const Duration(seconds: -5) &&
+        age < const Duration(seconds: 30);
+  }
+
+  void useLocation() {
+    final fix = currentLocation;
+    if (point != null) {
+      widget.session.selectPoint(point!);
+    } else if (hasRecentFix && fix != null) {
+      widget.session.selectPoint(
+        LatLng(fix.position.latitude, fix.position.longitude),
+      );
+    } else {
+      feedback(
+        context,
+        'Estamos esperando una ubicación reciente del teléfono.',
+      );
+      return;
+    }
+    widget.usePoint();
   }
 
   String gpsStatus() {
@@ -138,9 +185,18 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   @override
   void didUpdateWidget(covariant MapScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (!widget.active) currentLocation = null;
+    if (!widget.active && oldWidget.active) {
+      lastCamera = controller?.cameraPosition ?? lastCamera;
+      currentLocation = null;
+      clock?.cancel();
+      ready = false;
+      controller = null;
+    }
     if (widget.active && !oldWidget.active && gps) checkPermission();
-    sync();
+    if (!identical(lastCases, widget.session.cases)) {
+      lastCases = widget.session.cases;
+      if (widget.active) sync();
+    }
   }
 
   Map<String, dynamic> features() {
@@ -194,9 +250,12 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
   }
 
   Future<void> loaded() async {
+    final map = controller;
+    if (map == null || !widget.active) return;
     try {
-      await controller!.addGeoJsonSource('mis-reportes', features());
-      await controller!.addCircleLayer(
+      await map.addGeoJsonSource('mis-reportes', features());
+      if (!mounted || controller != map) return;
+      await map.addCircleLayer(
         'mis-reportes',
         'puntos-privados',
         const m.CircleLayerProperties(
@@ -206,9 +265,12 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
           circleStrokeWidth: 3,
         ),
       );
-      if (mounted) setState(() => ready = true);
+      if (mounted && controller == map) {
+        ready = true;
+        sync();
+      }
     } catch (_) {
-      if (mounted) {
+      if (mounted && controller == map) {
         feedback(
           context,
           'No se pudieron cargar los puntos. Puedes continuar con coordenadas manuales.',
@@ -248,6 +310,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    if (!widget.active) return const SizedBox.shrink();
     if (!open) {
       return ListView(
         padding: const EdgeInsets.all(20),
@@ -309,12 +372,14 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
             children: [
               m.MapLibreMap(
                 styleString: style,
-                initialCameraPosition: const m.CameraPosition(
-                  target: m.LatLng(-36.827, -73.05),
-                  zoom: 16,
-                  tilt: 55,
-                  bearing: -20,
-                ),
+                initialCameraPosition:
+                    lastCamera ??
+                    const m.CameraPosition(
+                      target: m.LatLng(-36.827, -73.05),
+                      zoom: 16,
+                      tilt: 55,
+                      bearing: -20,
+                    ),
                 myLocationEnabled: gps && widget.active && foreground,
                 onUserLocationUpdated: receiveLocation,
                 compassEnabled: true,
@@ -460,18 +525,21 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    point == null
-                        ? 'Toca el mapa para marcar el incidente.'
-                        : 'Lugar del incidente seleccionado.',
+                    point != null
+                        ? 'Lugar marcado en el mapa.'
+                        : gps
+                        ? (hasRecentFix
+                              ? 'Ubicación actual del teléfono.'
+                              : 'Esperando una señal GPS reciente…')
+                        : 'Activa Mi ubicación o marca un punto.',
                   ),
                 ),
-                if (point != null)
+                if (point != null || gps)
                   FilledButton(
-                    onPressed: () {
-                      widget.session.selectPoint(point!);
-                      widget.usePoint();
-                    },
-                    child: const Text('Usar punto'),
+                    onPressed: point != null || hasRecentFix
+                        ? useLocation
+                        : null,
+                    child: Text(point != null ? 'Usar punto' : 'Usar mi GPS'),
                   ),
               ],
             ),

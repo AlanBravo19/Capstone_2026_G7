@@ -136,92 +136,104 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        SegmentedButton<bool>(
-                          segments: const [
-                            ButtonSegment(
-                              value: false,
-                              label: Text('Ingresar'),
-                            ),
-                            ButtonSegment(
-                              value: true,
-                              label: Text('Crear cuenta'),
-                            ),
-                          ],
-                          selected: {register},
-                          onSelectionChanged: busy
-                              ? null
-                              : (s) => setState(() => register = s.first),
-                        ),
-                        gap(22),
-                        if (register) ...[
-                          DropdownButtonFormField<String>(
-                            initialValue: modalidad,
-                            isExpanded: true,
-                            decoration: const InputDecoration(
-                              labelText: '¿Cómo vas a participar?',
-                            ),
-                            items: const [
-                              DropdownMenuItem(
-                                value: 'colaborador',
-                                child: Text('Colaborar sin registrar vehículo'),
+                        if (widget.session.mfaChallenge == null) ...[
+                          SegmentedButton<bool>(
+                            segments: const [
+                              ButtonSegment(
+                                value: false,
+                                label: Text('Ingresar'),
                               ),
-                              DropdownMenuItem(
-                                value: 'con_vehiculo',
-                                child: Text(
-                                  'Registrar mi vehículo y colaborar',
-                                ),
+                              ButtonSegment(
+                                value: true,
+                                label: Text('Crear cuenta'),
                               ),
                             ],
-                            onChanged: busy
+                            selected: {register},
+                            onSelectionChanged: busy
                                 ? null
-                                : (v) => setState(() => modalidad = v!),
+                                : (s) => setState(() => register = s.first),
+                          ),
+                          gap(22),
+                          if (register) ...[
+                            DropdownButtonFormField<String>(
+                              initialValue: modalidad,
+                              isExpanded: true,
+                              decoration: const InputDecoration(
+                                labelText: '¿Cómo vas a participar?',
+                              ),
+                              items: const [
+                                DropdownMenuItem(
+                                  value: 'colaborador',
+                                  child: Text(
+                                    'Colaborar sin registrar vehículo',
+                                  ),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'con_vehiculo',
+                                  child: Text(
+                                    'Registrar mi vehículo y colaborar',
+                                  ),
+                                ),
+                              ],
+                              onChanged: busy
+                                  ? null
+                                  : (v) => setState(() => modalidad = v!),
+                            ),
+                            gap(),
+                            TextFormField(
+                              controller: name,
+                              decoration: const InputDecoration(
+                                labelText: 'Nombre visible',
+                              ),
+                              validator: requiredText,
+                            ),
+                            gap(),
+                          ],
+                          TextFormField(
+                            controller: email,
+                            keyboardType: TextInputType.emailAddress,
+                            autocorrect: false,
+                            autofillHints: const [AutofillHints.email],
+                            decoration: const InputDecoration(
+                              labelText: 'Correo electrónico',
+                            ),
+                            validator: (v) => v != null && v.contains('@')
+                                ? null
+                                : 'Ingresa un correo válido',
                           ),
                           gap(),
                           TextFormField(
-                            controller: name,
-                            decoration: const InputDecoration(
-                              labelText: 'Nombre visible',
-                            ),
-                            validator: requiredText,
-                          ),
-                          gap(),
-                        ],
-                        TextFormField(
-                          controller: email,
-                          keyboardType: TextInputType.emailAddress,
-                          autocorrect: false,
-                          autofillHints: const [AutofillHints.email],
-                          decoration: const InputDecoration(
-                            labelText: 'Correo electrónico',
-                          ),
-                          validator: (v) => v != null && v.contains('@')
-                              ? null
-                              : 'Ingresa un correo válido',
-                        ),
-                        gap(),
-                        TextFormField(
-                          controller: password,
-                          obscureText: obscure,
-                          autocorrect: false,
-                          enableSuggestions: false,
-                          decoration: InputDecoration(
-                            labelText: 'Contraseña',
-                            suffixIcon: IconButton(
-                              onPressed: () =>
-                                  setState(() => obscure = !obscure),
-                              icon: Icon(
-                                obscure
-                                    ? Icons.visibility_outlined
-                                    : Icons.visibility_off_outlined,
+                            controller: password,
+                            obscureText: obscure,
+                            autocorrect: false,
+                            enableSuggestions: false,
+                            decoration: InputDecoration(
+                              labelText: 'Contraseña',
+                              suffixIcon: IconButton(
+                                onPressed: () =>
+                                    setState(() => obscure = !obscure),
+                                icon: Icon(
+                                  obscure
+                                      ? Icons.visibility_outlined
+                                      : Icons.visibility_off_outlined,
+                                ),
                               ),
                             ),
+                            validator: (v) => v != null && v.length >= 8
+                                ? null
+                                : 'Utiliza al menos 8 caracteres',
                           ),
-                          validator: (v) => v != null && v.length >= 8
-                              ? null
-                              : 'Utiliza al menos 8 caracteres',
-                        ),
-                        if (widget.session.mfaChallenge != null) ...[
-                          gap(),
+                        ] else ...[
+                          const Text(
+                            'Verifica tu ingreso',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const Note(
+                            'Abre tu autenticador y escribe el código actual de RutaAlerta. También puedes usar uno de tus códigos de recuperación.',
+                          ),
                           TextFormField(
                             controller: factor,
                             decoration: const InputDecoration(
@@ -267,10 +279,11 @@ class _LoginScreenState extends State<LoginScreen> {
                             icon: const Icon(Icons.fingerprint),
                             label: const Text('Ingresar con biometría'),
                           ),
-                        TextButton(
-                          onPressed: busy ? null : recovery,
-                          child: const Text('Olvidé mi contraseña'),
-                        ),
+                        if (widget.session.mfaChallenge == null)
+                          TextButton(
+                            onPressed: busy ? null : recovery,
+                            child: const Text('Olvidé mi contraseña'),
+                          ),
                       ],
                     ),
                   ),

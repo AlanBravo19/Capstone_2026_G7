@@ -6,7 +6,10 @@ import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 
 import 'session.dart';
-import 'biometric.dart';
+import 'huella.dart';
+
+import 'package:flutter/services.dart' show FilteringTextInputFormatter;
+
 import 'movilidad.dart' show Mobility;
 import 'ui.dart';
 
@@ -161,50 +164,8 @@ class SecurityScreen extends StatelessWidget {
     render: (ctx, data, reload) => Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Panel(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text(
-                'Acceso con huella o biometría',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const Note(
-                'Android protege una sesión ya autenticada. No guardamos tu contraseña ni tus huellas. Si vence la sesión, cambia la biometría o cierras sesión, debes ingresar de nuevo con contraseña y segundo factor.',
-              ),
-              FilledButton.icon(
-                onPressed: () => perform(ctx, () async {
-                  await session.enableBiometric();
-                  if (ctx.mounted) {
-                    feedback(
-                      ctx,
-                      'Acceso biométrico activado en este teléfono.',
-                    );
-                  }
-                }),
-                icon: const Icon(Icons.fingerprint),
-                label: const Text('Activar en este teléfono'),
-              ),
-              TextButton(
-                onPressed: () => perform(ctx, () async {
-                  await BiometricAccess.clear();
-                  if (ctx.mounted) {
-                    feedback(
-                      ctx,
-                      'Acceso biométrico eliminado de este teléfono.',
-                    );
-                  }
-                }),
-                child: const Text('Desactivar acceso biométrico'),
-              ),
-            ],
-          ),
-        ),
-
-        const SectionTitle(
-          'Protege tu acceso',
-          eyebrow: 'Contraseña + autenticador',
-        ),
+        if (data['mfa_activo'] == true) HuellaPanel(session: session),
+        const SectionTitle('Código de seguridad', eyebrow: 'Segundo factor'),
         Panel(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -215,7 +176,7 @@ class SecurityScreen extends StatelessWidget {
                     : 'Segundo factor pendiente',
               ),
               const Note(
-                'Usa una aplicación autenticadora compatible con TOTP. Los códigos cambian cada 30 segundos. Este método funciona sin correo ni SMS y no acredita identidad civil.',
+                'Vincula una aplicación autenticadora. Después de tu contraseña, RutaAlerta te pedirá el código de seis dígitos que aparece en esa aplicación.',
               ),
               if (data['mfa_activo'] != true)
                 FilledButton.icon(
@@ -235,18 +196,16 @@ class SecurityScreen extends StatelessWidget {
                       body: pwd,
                     );
                     if (!ctx.mounted) return;
-                    final confirm = await showDialog<String>(
+                    final r = await showDialog<Map<String, dynamic>>(
                       context: ctx,
-                      builder: (_) =>
-                          _TotpSetup(secret: setup['secreto'] as String),
+                      barrierDismissible: false,
+                      builder: (_) => _TotpSetup(
+                        secret: setup['secreto'] as String,
+                        session: session,
+                        uri: setup['uri'] as String,
+                      ),
                     );
-                    if (confirm == null) return;
-                    final r = await session.api.request(
-                      '/seguridad/totp/activar',
-                      method: 'POST',
-                      body: {'codigo': confirm},
-                    );
-                    if (!ctx.mounted) return;
+                    if (r == null || !ctx.mounted) return;
                     await showDialog<void>(
                       context: ctx,
                       barrierDismissible: false,
@@ -257,7 +216,7 @@ class SecurityScreen extends StatelessWidget {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               const Text(
-                                'Cada código permite un acceso. Guárdalos en un lugar privado; no volverán a mostrarse.',
+                                'Guárdalos por si pierdes el autenticador. Al continuar volverás a ingresar con contraseña y un código nuevo de tu autenticador. Después podrás activar la huella.',
                               ),
                               gap(),
                               SelectableText(
@@ -376,6 +335,7 @@ class SecurityScreen extends StatelessWidget {
             ],
           ),
         ),
+        if (data['mfa_activo'] != true) HuellaPanel(session: session),
       ],
     ),
   );
@@ -383,13 +343,46 @@ class SecurityScreen extends StatelessWidget {
 
 class _TotpSetup extends StatefulWidget {
   final String secret;
-  const _TotpSetup({required this.secret});
+  final String uri;
+  final Session session;
+  const _TotpSetup({
+    required this.secret,
+    required this.uri,
+    required this.session,
+  });
   @override
   State<_TotpSetup> createState() => _TotpSetupState();
 }
 
 class _TotpSetupState extends State<_TotpSetup> {
   final code = TextEditingController();
+  bool busy = false;
+  String? error;
+  Future<void> confirm() async {
+    if (!RegExp(r'^\d{6}$').hasMatch(code.text)) {
+      setState(
+        () => error = 'Escribe los seis dígitos que ves en el autenticador.',
+      );
+      return;
+    }
+    setState(() {
+      busy = true;
+      error = null;
+    });
+    try {
+      final r = await widget.session.api.request(
+        '/seguridad/totp/activar',
+        method: 'POST',
+        body: {'codigo': code.text},
+      );
+      if (mounted) Navigator.pop(context, Map<String, dynamic>.from(r as Map));
+    } catch (e) {
+      if (mounted) setState(() => error = e.toString());
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
   @override
   void dispose() {
     code.dispose();
@@ -398,38 +391,61 @@ class _TotpSetupState extends State<_TotpSetup> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-    title: const Text('Vincular autenticador'),
+    title: const Text('Vincula tu autenticador'),
     content: SingleChildScrollView(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'En tu autenticador elige agregar clave manual. Nombre: RutaAlerta. Tipo: basado en tiempo. Copia esta clave privada:',
+            '1. Abre la aplicación autenticadora que utilizas y guarda la cuenta RutaAlerta.',
           ),
-          gap(),
-          SelectableText(widget.secret),
+          OutlinedButton.icon(
+            onPressed: busy
+                ? null
+                : () => perform(
+                    context,
+                    () => Mobility.channel.invokeMethod<void>(
+                      'openAuthenticator',
+                      {'uri': widget.uri},
+                    ),
+                  ),
+            icon: const Icon(Icons.open_in_new),
+            label: const Text('Abrir mi autenticador'),
+          ),
+          ExpansionTile(
+            title: const Text('Agregar con clave manual'),
+            children: [
+              const Note(
+                'En tu autenticador, elige agregar una cuenta con clave basada en tiempo. Mantén presionada la clave para copiarla.',
+              ),
+              SelectableText(widget.secret),
+            ],
+          ),
           const Note(
-            'No compartas ni fotografíes esta clave. Configuración válida por 10 minutos.',
+            '2. Vuelve aquí y escribe el código de RutaAlerta. La configuración vence en diez minutos.',
           ),
           TextField(
             controller: code,
             keyboardType: TextInputType.number,
             maxLength: 6,
+            enabled: !busy,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             decoration: const InputDecoration(
               labelText: 'Código de seis dígitos',
             ),
           ),
+          if (error != null) Semantics(liveRegion: true, child: Text(error!)),
         ],
       ),
     ),
     actions: [
       TextButton(
-        onPressed: () => Navigator.pop(context),
+        onPressed: busy ? null : () => Navigator.pop(context),
         child: const Text('Cancelar'),
       ),
       FilledButton(
-        onPressed: () => Navigator.pop(context, code.text.trim()),
+        onPressed: busy ? null : confirm,
         child: const Text('Activar'),
       ),
     ],
