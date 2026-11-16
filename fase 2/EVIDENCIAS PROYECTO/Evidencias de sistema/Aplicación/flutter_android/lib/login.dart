@@ -14,9 +14,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final form = GlobalKey<FormState>();
   final email = TextEditingController(), password = TextEditingController();
-  final invitation = TextEditingController(),
-      name = TextEditingController(),
-      factor = TextEditingController();
+  final name = TextEditingController(), factor = TextEditingController();
   bool register = false, busy = false, obscure = true;
   bool savedBiometric = false;
   @override
@@ -47,7 +45,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   void dispose() {
-    for (final c in [email, password, invitation, name, factor]) {
+    for (final c in [email, password, name, factor]) {
       c.dispose();
     }
     super.dispose();
@@ -66,7 +64,6 @@ class _LoginScreenState extends State<LoginScreen> {
         await widget.session.login(
           email.text,
           password.text,
-          invitation.text,
           name: register ? name.text : null,
         );
         password.clear();
@@ -167,18 +164,6 @@ class _LoginScreenState extends State<LoginScreen> {
                           gap(),
                         ],
                         TextFormField(
-                          controller: invitation,
-                          obscureText: true,
-                          autocorrect: false,
-                          enableSuggestions: false,
-                          decoration: const InputDecoration(
-                            labelText: 'Invitación a la beta',
-                            prefixIcon: Icon(Icons.key_rounded),
-                          ),
-                          validator: requiredText,
-                        ),
-                        gap(),
-                        TextFormField(
                           controller: email,
                           keyboardType: TextInputType.emailAddress,
                           autocorrect: false,
@@ -268,7 +253,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const Note(
-                  'Beta cerrada. Verifica tu correo y configura el autenticador para participar. Los reportes requieren revisión y no reemplazan una denuncia.',
+                  'Verifica tu correo y configura el autenticador para participar. Los reportes requieren revisión y no reemplazan una denuncia.',
                 ),
               ],
             ),
@@ -279,11 +264,6 @@ class _LoginScreenState extends State<LoginScreen> {
   );
 
   Future<void> recovery() async {
-    if (invitation.text.trim().isEmpty) {
-      feedback(context, 'Primero completa tu invitación a la beta.');
-      return;
-    }
-    widget.session.api.invitation = invitation.text.trim();
     await showDialog<void>(
       context: context,
       builder: (context) => RecoveryDialog(session: widget.session),

@@ -4,7 +4,7 @@ from test_casos import _reporte
 
 def test_vehiculo_y_caso_conectados_y_aislamiento(client):
     _,_,h,_=activar(client)
-    datos={'marca':'MARCA ENSAYO','modelo':'MODELO ENSAYO','patente':'T'+uuid.uuid4().hex[:8],'color':'gris','anio':2020}
+    datos={'marca':'TOYOTA','modelo':'YARIS','patente':'BC.DF-12','color':'gris','anio':2020}
     r=client.post('/vehiculos',headers=h,json=datos)
     assert r.status_code==201,r.text
     vid=r.json()['id_vehiculo']

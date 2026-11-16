@@ -8,15 +8,12 @@ void main() {
   test(
     'cliente Flutter registra cuenta, vehículo y reporte en Vercel/Supabase',
     () async {
-      final invitation = Platform.environment['RUTA_INVITACION'];
-      expect(invitation, isNotEmpty);
       final stamp = DateTime.now().microsecondsSinceEpoch.toString();
       final api = RutaApi();
       final session = Session(api);
       await session.login(
         'flutter-$stamp@example.invalid',
         'Ensayo-flutter-$stamp!',
-        invitation!,
         name: 'Ensayo Flutter ficticio',
       );
       expect(session.signedIn, true);
@@ -47,13 +44,13 @@ void main() {
       );
       await session.refresh();
       expect(session.canReport, true);
-      final plate = 'FL${stamp.substring(stamp.length - 8)}';
+      final plate = 'FL${stamp.substring(stamp.length - 4)}';
       final vehicle = await api.request(
         '/vehiculos',
         method: 'POST',
         body: {
-          'marca': 'MARCA FICTICIA',
-          'modelo': 'ENSAYO FLUTTER',
+          'marca': 'TOYOTA',
+          'modelo': 'YARIS',
           'patente': plate,
           'color': 'Gris',
           'anio': 2020,
@@ -78,7 +75,6 @@ void main() {
       await session.logout();
       expect(session.signedIn, false);
       api.token = bearer;
-      api.invitation = invitation;
       await expectLater(
         api.request('/mi-perfil'),
         throwsA(isA<ApiError>().having((e) => e.status, 'estado', 401)),

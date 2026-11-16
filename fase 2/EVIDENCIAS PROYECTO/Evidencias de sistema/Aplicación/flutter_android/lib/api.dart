@@ -18,7 +18,6 @@ class RutaApi {
     defaultValue: 'https://rutaalerta-mvp-g7.vercel.app',
   );
   final http.Client client;
-  String invitation = '';
   String token = '';
   void Function()? onExpired;
   RutaApi({http.Client? client}) : client = client ?? http.Client();
@@ -27,10 +26,7 @@ class RutaApi {
     final r = await client
         .get(
           Uri.parse('$base/evidencias/$id/foto'),
-          headers: {
-            'Authorization': 'Bearer $token',
-            'X-Demo-Access': invitation,
-          },
+          headers: {'Authorization': 'Bearer $token'},
         )
         .timeout(const Duration(seconds: 35));
     if (r.statusCode != 200) {
@@ -53,7 +49,6 @@ class RutaApi {
     final request = http.Request(method, uri)
       ..headers.addAll({
         'Accept': 'application/json',
-        if (invitation.isNotEmpty) 'X-Demo-Access': invitation,
         if (session.isNotEmpty) 'Authorization': 'Bearer $session',
         ...headers,
       });

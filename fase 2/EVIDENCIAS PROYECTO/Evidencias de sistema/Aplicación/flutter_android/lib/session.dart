@@ -16,6 +16,7 @@ class Session extends ChangeNotifier {
   LatLng? selectedPoint;
   String? _caseSignature, _caseKey;
   String? mfaChallenge;
+  String? avisoAlta;
   Session(this.api) {
     api.onExpired = clear;
   }
@@ -29,6 +30,7 @@ class Session extends ChangeNotifier {
     api.token = '';
     profile = null;
     mfaChallenge = null;
+    avisoAlta = null;
     identity = {};
     vehicles = [];
     cases = [];
@@ -38,13 +40,7 @@ class Session extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> login(
-    String email,
-    String password,
-    String invite, {
-    String? name,
-  }) async {
-    api.invitation = invite.trim();
+  Future<void> login(String email, String password, {String? name}) async {
     if (name != null) {
       await api.request(
         '/cuentas',
@@ -68,6 +64,22 @@ class Session extends ChangeNotifier {
     api.token = response['token'] as String;
     try {
       await refresh();
+      if (name != null && signedIn && identity['transporte_correo'] == 'smtp') {
+        final newSession = api.token;
+        try {
+          await api.request('/identidad/correo/solicitar', method: 'POST');
+          if (api.token == newSession) {
+            avisoAlta =
+                'Revisa tu correo y pega el código en Verificar mi correo.';
+          }
+        } on ApiError {
+          if (api.token == newSession) {
+            avisoAlta =
+                'Cuenta creada. Solicita un código desde Verificar mi correo.';
+          }
+        }
+        if (api.token == newSession) notifyListeners();
+      }
     } catch (_) {
       clear();
       rethrow;
@@ -92,13 +104,12 @@ class Session extends ChangeNotifier {
 
   Future<void> loginBiometric() async {
     final data = await BiometricAccess.unlock();
-    if (data['token'] is! String || data['invitation'] is! String) {
+    if (data['token'] is! String) {
       await BiometricAccess.clear();
       throw const ApiError(
         'Ingresa con tu contraseña para configurar el acceso otra vez.',
       );
     }
-    api.invitation = data['invitation'];
     api.token = data['token'];
     try {
       await refresh();
@@ -116,11 +127,7 @@ class Session extends ChangeNotifier {
     if (!signedIn || api.token.isEmpty) {
       throw const ApiError('Primero ingresa con tu cuenta.');
     }
-    await BiometricAccess.save(
-      api.token,
-      api.invitation,
-      profile!['id_usuario'] as int,
-    );
+    await BiometricAccess.save(api.token, profile!['id_usuario'] as int);
   }
 
   void lockLocally() {
@@ -177,7 +184,6 @@ class Session extends ChangeNotifier {
       await api.request('/sesiones/cerrar', method: 'POST');
     } finally {
       clear();
-      api.invitation = '';
     }
   }
 }

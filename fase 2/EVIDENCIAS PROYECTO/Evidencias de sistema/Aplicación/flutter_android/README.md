@@ -1,4 +1,16 @@
-# RutaAlerta · Beta 0.8.0
+# RutaAlerta · Beta 0.10.0
+
+## Registro ciudadano y vehículos
+
+Desde Android o /ciudadania, selecciona Crear cuenta, indica tu nombre, correo y contraseña y confirma el código recibido. Configura una aplicación autenticadora y conserva los códigos de recuperación. El alta pública asigna el rol ciudadano. /operaciones comprueba la membresía institucional. Un acompañante puede colaborar sin registrar un vehículo.
+
+El catálogo de altas admite automóvil, camioneta, furgón, motocicleta y camión. Bus no figura como tipo específico en el esquema. Otro y sin_dato siguen disponibles en los registros históricos. Los 65 objetos de tipo tabla se mantienen. El servidor verifica la combinación de tipo, marca y modelo contra una extracción de las nóminas livianos y pesados del SII 2026. En total hay 6.470 combinaciones distintas. La extracción usa los rótulos de carrocería definidos en scripts/importar_catalogo_sii.py. Omite categorías ambiguas, accesorios y carrocerías sin equivalencia en el MVP. Un modelo ausente no podrá darse de alta hasta actualizar el catálogo. Esta restricción no afecta los registros ya guardados.
+
+La validación de PPU revisa estructura y normaliza separadores. Para cuatro ruedas contempla AA1234, BBBB12 y BBBBB1. Para motocicleta contempla AA123, BBB12 y BBBB1. La introducción de nuevas series depende de la determinación del Registro Civil prevista en el decreto. La app no verifica la emisión de la serie, la existencia de la placa o la propiedad.
+
+Fuentes: [Nóminas SII](https://www.sii.cl/servicios_online/1049-2612.html) y [Decreto 53, artículos 2 y 2 bis](https://www.bcn.cl/leychile/navegar?idNorma=133287&idVersion=2026-01-16).
+
+## Historial de versiones
 
 ## Beta 0.9 · Aplicación ciudadana y escritorio institucional
 
@@ -9,7 +21,7 @@ El escritorio está en https://rutaalerta-mvp-g7.vercel.app/operaciones. Se ingr
 El panel usa la API de RutaAlerta y la base existente de 65 tablas. Su interfaz usa HTML, CSS y JavaScript. La aprobación de un antecedente, una publicación o una evidencia exige una decisión humana.
 
 
-Documentación vigente: [ESTADO_FUNCIONAL_080.md](ESTADO_FUNCIONAL_080.md). Correo real por Brevo, TOTP, desbloqueo biométrico Android, lugares privados, rutas con apertura Google Maps/Waze y avisos locales basados en fuentes revisadas. El esquema actual tiene 65 tablas. SMS no contratado; no se simula en operación.
+Documentación de la versión 0.8: [ESTADO_FUNCIONAL_080.md](ESTADO_FUNCIONAL_080.md). Correo real por Brevo, TOTP, desbloqueo biométrico Android, lugares privados, rutas con apertura Google Maps/Waze y avisos locales basados en fuentes revisadas. El esquema actual tiene 65 tablas. SMS no contratado; no se simula en operación.
 
 El contenido siguiente documenta la versión anterior:
 

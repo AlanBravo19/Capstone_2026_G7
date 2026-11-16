@@ -1,6 +1,10 @@
 """Tramo conectado: vehículos propios y casos. No publica reportes sin revisión."""
 import re
-from pydantic import BaseModel, Field, field_validator
+import json
+from pathlib import Path
+from typing import Literal
+from datetime import date
+from pydantic import BaseModel, Field, field_validator, model_validator
 from fastapi import APIRouter,Depends,HTTPException
 from ..db import obtener_conexion,fila_dict,ErrorBD,es_unico
 from ..seguridad import usuario_actual
@@ -8,18 +12,39 @@ from ..antifraude import participante,limitar,administrador
 
 router=APIRouter(tags=['avance conectado'])
 
+CATALOGO = json.loads((Path(__file__).resolve().parents[1] / 'catalogo_sii_2026.json').read_text(encoding='utf-8'))
+PLACAS = {'motocicleta': r'(?:[A-Z]{2}[0-9]{3}|[A-Z]{3}[0-9]{2}|[A-Z]{4}[0-9])',
+          'cuatro_ruedas': r'(?:[A-Z]{2}[0-9]{4}|[A-Z]{4}[0-9]{2}|[A-Z]{5}[0-9])'}
+
+@router.get('/catalogo/vehiculos')
+def catalogo_vehiculos():
+    return {'edicion':2026,'catalogo':CATALOGO,'formatos':PLACAS}
+
 class VehiculoEntrada(BaseModel):
+    tipo_vehiculo:Literal['automovil','camioneta','furgon','motocicleta','camion']='automovil'
     marca:str=Field(min_length=2,max_length=80)
     modelo:str=Field(min_length=1,max_length=100)
     patente:str=Field(min_length=4,max_length=16)
     color:str=Field(min_length=2,max_length=50)
     anio:int=Field(ge=1900,le=2100)
-    @field_validator('patente')
+    @field_validator('marca','modelo','color',mode='before')
     @classmethod
-    def placa(cls,v):
-        v=re.sub(r'[\s-]','',v).upper()
-        if not re.fullmatch(r'[A-Z0-9]{4,16}',v):raise ValueError('Patente alfanumérica de 4 a 16 caracteres')
-        return v
+    def limpiar_texto(cls,v):
+        return ' '.join(v.split()) if isinstance(v,str) else v
+
+    @model_validator(mode='after')
+    def validar_registro(self):
+        self.marca=self.marca.upper()
+        self.modelo=self.modelo.upper()
+        if self.modelo not in CATALOGO[self.tipo_vehiculo].get(self.marca, ()):
+            raise ValueError('Selecciona una marca y un modelo del catálogo para ese tipo de vehículo.')
+        self.patente=re.sub(r'[ .-]','',self.patente).upper()
+        patron=PLACAS['motocicleta' if self.tipo_vehiculo=='motocicleta' else 'cuatro_ruedas']
+        if not re.fullmatch(patron,self.patente):
+            raise ValueError('La patente no corresponde al formato del tipo de vehículo seleccionado.')
+        if self.anio>date.today().year+1:
+            raise ValueError('Revisa el año de fabricación.')
+        return self
 
 @router.post('/vehiculos',status_code=201)
 def nuevo_vehiculo(datos:VehiculoEntrada,usuario=Depends(participante),conn=Depends(obtener_conexion)):
@@ -34,7 +59,7 @@ def nuevo_vehiculo(datos:VehiculoEntrada,usuario=Depends(participante),conn=Depe
     modelo=cur.fetchone()[0]
     try:
         cur.execute('''INSERT INTO vehiculo(id_modelo,patente,color,anio,tipo_vehiculo)
-            VALUES(%s,%s,%s,%s,'automovil') RETURNING id_vehiculo''',(modelo,datos.patente,datos.color,datos.anio))
+            VALUES(%s,%s,%s,%s,%s) RETURNING id_vehiculo''',(modelo,datos.patente,datos.color,datos.anio,datos.tipo_vehiculo))
     except ErrorBD as e:
         if es_unico(e):
             raise HTTPException(409,'El vehículo ya está registrado. El vínculo con un vehículo existente requiere revisión asistida.')
@@ -46,7 +71,7 @@ def nuevo_vehiculo(datos:VehiculoEntrada,usuario=Depends(participante),conn=Depe
 @router.get('/vehiculos')
 def mis_vehiculos(usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):
     cur=conn.cursor()
-    cur.execute('''SELECT v.id_vehiculo,v.patente,v.color,v.anio,ma.nombre AS marca,mo.nombre AS modelo,vv.estado AS estado_vinculo
+    cur.execute('''SELECT v.id_vehiculo,v.tipo_vehiculo,v.patente,v.color,v.anio,ma.nombre AS marca,mo.nombre AS modelo,vv.estado AS estado_vinculo
        FROM vinculo_vehiculo vv JOIN vehiculo v USING(id_vehiculo) JOIN modelo mo USING(id_modelo)
        JOIN marca ma USING(id_marca) WHERE vv.id_usuario=%s AND vv.estado IN ('pendiente','autorizado') ORDER BY v.id_vehiculo DESC''',(usuario['id_usuario'],))
     return [fila_dict(cur,r) for r in cur.fetchall()]

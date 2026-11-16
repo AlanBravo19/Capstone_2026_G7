@@ -7,13 +7,9 @@ class BiometricAccess {
   static Future<Map<String, dynamic>> status() async =>
       await channel.invokeMapMethod<String, dynamic>('status') ??
       {'available': false, 'saved': false};
-  static Future<void> save(String token, String invitation, int uid) async {
+  static Future<void> save(String token, int uid) async {
     await channel.invokeMethod('save', {
-      'payload': jsonEncode({
-        'token': token,
-        'invitation': invitation,
-        'uid': uid,
-      }),
+      'payload': jsonEncode({'token': token, 'uid': uid}),
     });
   }
 

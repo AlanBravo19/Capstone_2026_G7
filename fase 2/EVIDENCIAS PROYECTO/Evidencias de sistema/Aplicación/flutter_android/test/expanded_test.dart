@@ -38,7 +38,6 @@ void main() {
       await session.login(
         'prueba@example.invalid',
         'clave-ficticia',
-        'invitacion-ficticia',
       );
       expect(session.signedIn, false);
       expect(session.api.token, isEmpty);

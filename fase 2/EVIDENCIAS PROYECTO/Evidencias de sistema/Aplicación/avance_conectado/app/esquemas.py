@@ -1,6 +1,7 @@
 """Modelos de entrada y salida (generan el contrato OpenAPI en /docs)."""
 from datetime import datetime
 from typing import Literal
+import re
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -14,9 +15,14 @@ class RegistroEntrada(BaseModel):
     @classmethod
     def correo_valido(cls, v: str) -> str:
         v = v.strip()
-        if "@" not in v or v.startswith("@") or v.endswith("@"):
+        if not re.fullmatch(r"[^\s@<>\x00-\x1f]+@[^\s@<>.]+(?:\.[^\s@<>.]+)+",v):
             raise ValueError("correo inválido")
         return v
+
+    @field_validator("nombre_visible", mode="before")
+    @classmethod
+    def limpiar_nombre(cls,v):
+        return ' '.join(v.split()) if isinstance(v,str) else v
 
 
 class CuentaSalida(BaseModel):

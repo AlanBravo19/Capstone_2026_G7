@@ -10,17 +10,17 @@ const empty=message=>`<p class="empty">${h(message)}</p>`;
 const motives='<label>Motivo de la decisión<textarea name="motivo" minlength="10" maxlength="500" required></textarea></label>';
 const selector=(name,label,values)=>`<label>${label}<select name="${name}">${Object.entries(values).map(([k,v])=>`<option value="${h(k)}">${h(v)}</option>`).join('')}</select></label>`;
 const action=(title,path,fields,submit=title)=>`<details class="record"><summary>${h(title)}</summary><form data-path="${h(path)}">${fields}<button class="primary">${h(submit)}</button></form></details>`;
-let token='', invite='', challenge='', view='cases', selected=null, generation=0, records=[], orgs=[], query='', filter='';
+let token='', challenge='', view='cases', selected=null, generation=0, records=[], orgs=[], query='', filter='';
 let photos=[], noticeTimer;
 function notify(message){el('status').textContent=message;clearTimeout(noticeTimer);noticeTimer=setTimeout(()=>el('status').textContent='',9500);}
 function clearPhotos(){photos.forEach(URL.revokeObjectURL);photos=[];}
 function reset(){
-  generation++;token=invite=challenge='';orgs=[];records=[];selected=null;query=filter='';clearPhotos();
+  generation++;token=challenge='';orgs=[];records=[];selected=null;query=filter='';clearPhotos();
   content.replaceChildren();el('name').textContent='';el('desk').hidden=true;document.querySelector('.user').hidden=true;
   el('access').hidden=false;el('mfa').hidden=true;el('login').hidden=false;el('login').reset();el('mfa').reset();
 }
 async function api(path,body,binary=false){
-  const session=token;const headers={'X-Demo-Access':invite};
+  const session=token;const headers={};
   if(session)headers.Authorization='Bearer '+session;
   if(body!==undefined)headers['Content-Type']='application/json';
   const response=await fetch(path,{method:body===undefined?'GET':'POST',headers,body:body===undefined?undefined:JSON.stringify(body),cache:'no-store'});
@@ -47,7 +47,7 @@ async function handle(button,work){button.disabled=true;try{await work();}catch(
 for(const id of ['login','mfa'])el(id).onsubmit=e=>{
   e.preventDefault();const f=e.currentTarget.elements;
   handle(e.submitter,async()=>{
-    if(id==='login'){invite=f.invite.value.trim();const result=await api('/sesiones',{correo:f.correo.value.trim(),clave:f.clave.value});f.clave.value='';await signin(result);}
+    if(id==='login'){const result=await api('/sesiones',{correo:f.correo.value.trim(),clave:f.clave.value});f.clave.value='';await signin(result);}
     else{const result=await api('/sesiones/mfa',{id_desafio:challenge,codigo:f.codigo.value.trim()});f.codigo.value='';await signin(result);}
   });
 };

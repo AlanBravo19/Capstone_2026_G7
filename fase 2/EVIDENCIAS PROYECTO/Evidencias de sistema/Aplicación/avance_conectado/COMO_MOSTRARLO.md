@@ -1,3 +1,5 @@
+> Beta 0.10. Consulta el README para el registro público vigente. Vercel usa ENTORNO=operacion, CANALES_DEMO=0, SMTP real, OTP_SECRET estable y DB_SSL=1. La clave interna de diagnóstico sólo corresponde a /health. El texto de las versiones anteriores se conserva como referencia.
+
 # Demostración para el profesor
 
 1. Abrir https://rutaalerta-mvp-g7.vercel.app/.

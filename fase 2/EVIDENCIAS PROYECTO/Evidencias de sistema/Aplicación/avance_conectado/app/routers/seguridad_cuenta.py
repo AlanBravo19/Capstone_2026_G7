@@ -62,6 +62,11 @@ def estado(usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):
 def preparar(datos:Clave,usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):
     uid=usuario['id_usuario'];limitar(conn,f'totp-alta:{uid}',5)
     cur=conn.cursor();clave_actual(cur,uid,datos.clave)
+    from ..correo import correo_real
+    if correo_real():
+        cur.execute("SELECT correo_verificado_en IS NOT NULL AND canal_correo_verificado IN ('smtp','brevo') FROM usuario WHERE id_usuario=%s",(uid,))
+        if not cur.fetchone()[0]:
+            raise HTTPException(403,'Confirma primero el código enviado a tu correo.')
     cur.execute('SELECT activo FROM autenticador_totp WHERE id_usuario=%s',(uid,));row=cur.fetchone()
     if row and row[0]:raise HTTPException(409,'Ya hay un autenticador activo')
     secret=base64.b32encode(secrets.token_bytes(20)).decode()

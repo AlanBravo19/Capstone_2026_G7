@@ -1,3 +1,5 @@
+> Beta 0.10. Consulta el README para el registro público vigente. Vercel usa ENTORNO=operacion, CANALES_DEMO=0, SMTP real, OTP_SECRET estable y DB_SSL=1. La clave interna de diagnóstico sólo corresponde a /health. El texto de las versiones anteriores se conserva como referencia.
+
 > Actualización 0.7.0 (12/11/2026): consultar ESTADO_FUNCIONAL_070.md. Incluye TOTP real, colaboración y 63 tablas. El contenido siguiente describe la configuración anterior y el envío SMTP, que sigue pendiente de proveedor.
 
 # Autenticación: avance de integración de correo real

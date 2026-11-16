@@ -12,15 +12,49 @@ class VehiclesScreen extends StatefulWidget {
 
 class _VehiclesScreenState extends State<VehiclesScreen> {
   final form = GlobalKey<FormState>();
-  final brand = TextEditingController(),
-      model = TextEditingController(),
-      plate = TextEditingController(),
+  String? type, brand, model;
+  late Future<dynamic> catalog;
+  static const labels = {
+    'automovil': 'Automóvil',
+    'motocicleta': 'Motocicleta',
+    'camioneta': 'Camioneta',
+    'furgon': 'Furgón',
+    'camion': 'Camión',
+  };
+  @override
+  void initState() {
+    super.initState();
+    catalog = widget.session.api.request('/catalogo/vehiculos');
+  }
+
+  Widget choice(
+    String label,
+    String? value,
+    List<String> choices,
+    ValueChanged<String?> change, {
+    Map<String, String> names = const {},
+  }) => DropdownButtonFormField<String>(
+    key: ValueKey('$label/$type/$brand/$value'),
+    initialValue: value,
+    isExpanded: true,
+    decoration: InputDecoration(labelText: label),
+    items: [
+      for (final item in choices)
+        DropdownMenuItem(
+          value: item,
+          child: Text(names[item] ?? item, overflow: TextOverflow.ellipsis),
+        ),
+    ],
+    onChanged: busy || choices.isEmpty ? null : change,
+    validator: (v) => v == null ? 'Selecciona $label' : null,
+  );
+  final plate = TextEditingController(),
       color = TextEditingController(),
       year = TextEditingController();
   bool busy = false;
   @override
   void dispose() {
-    for (final c in [brand, model, plate, color, year]) {
+    for (final c in [plate, color, year]) {
       c.dispose();
     }
     super.dispose();
@@ -34,8 +68,9 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
         '/vehiculos',
         method: 'POST',
         body: {
-          'marca': brand.text.trim(),
-          'modelo': model.text.trim(),
+          'tipo_vehiculo': type,
+          'marca': brand,
+          'modelo': model,
           'patente': plate.text.trim(),
           'color': color.text.trim(),
           'anio': int.parse(year.text),
@@ -43,9 +78,12 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
       );
       if (!mounted) return;
       feedback(context, 'Vehículo guardado. Vínculo pendiente de revisión.');
-      for (final c in [brand, model, plate, color, year]) {
+      for (final c in [plate, color, year]) {
         c.clear();
       }
+      setState(() {
+        type = brand = model = null;
+      });
       await widget.session.refresh();
     } catch (e) {
       if (mounted) feedback(context, e);
@@ -114,30 +152,79 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
                 const Note(
                   'Primero completa los pasos de contactos en Inicio.',
                 ),
-              TextFormField(
-                controller: brand,
-                decoration: const InputDecoration(labelText: 'Marca'),
-                validator: (v) =>
-                    (v?.trim().length ?? 0) >= 2 ? null : 'Ingresa la marca',
-              ),
-              gap(),
-              TextFormField(
-                controller: model,
-                decoration: const InputDecoration(labelText: 'Modelo'),
-                validator: requiredText,
-              ),
-              gap(),
-              TextFormField(
-                controller: plate,
-                textCapitalization: TextCapitalization.characters,
-                decoration: const InputDecoration(
-                  labelText: 'Patente',
-                  hintText: 'ABCD12',
-                ),
-                validator: (v) =>
-                    RegExp(r'^[A-Za-z0-9\s-]{4,16}$').hasMatch(v ?? '')
-                    ? null
-                    : 'Revisa la patente',
+              FutureBuilder<dynamic>(
+                future: catalog,
+                builder: (context, snapshot) {
+                  if (snapshot.hasError ||
+                      (snapshot.hasData && snapshot.data is! Map)) {
+                    return TextButton(
+                      onPressed: () => setState(() {
+                        catalog = widget.session.api.request(
+                          '/catalogo/vehiculos',
+                        );
+                      }),
+                      child: const Text('Reintentar carga del catálogo'),
+                    );
+                  }
+                  if (!snapshot.hasData) return const LinearProgressIndicator();
+                  final all = snapshot.data['catalogo'] as Map;
+                  final brands = all[type] as Map? ?? {};
+                  final models = (brands[brand] as List? ?? []).cast<String>();
+                  final format =
+                      snapshot.data['formatos'][type == 'motocicleta'
+                              ? 'motocicleta'
+                              : 'cuatro_ruedas']
+                          as String;
+                  return Column(
+                    children: [
+                      choice(
+                        'Tipo de vehículo',
+                        type,
+                        labels.keys.toList(),
+                        (v) => setState(() {
+                          type = v;
+                          brand = model = null;
+                        }),
+                        names: labels,
+                      ),
+                      gap(),
+                      choice(
+                        'Marca',
+                        brand,
+                        brands.keys.cast<String>().toList(),
+                        (v) => setState(() {
+                          brand = v;
+                          model = null;
+                        }),
+                      ),
+                      gap(),
+                      choice(
+                        'Modelo',
+                        model,
+                        models,
+                        (v) => setState(() => model = v),
+                      ),
+                      gap(),
+                      TextFormField(
+                        controller: plate,
+                        textCapitalization: TextCapitalization.characters,
+                        decoration: InputDecoration(
+                          labelText: 'Patente chilena',
+                          hintText: type == 'motocicleta' ? 'ABC12' : 'BCDF12',
+                        ),
+                        validator: (v) {
+                          final normalized = (v ?? '').toUpperCase().replaceAll(
+                            RegExp(r'[ .-]'),
+                            '',
+                          );
+                          return RegExp('^$format\$').hasMatch(normalized)
+                              ? null
+                              : 'Revisa el formato de la patente para este tipo.';
+                        },
+                      ),
+                    ],
+                  );
+                },
               ),
               gap(),
               TextFormField(
@@ -160,7 +247,9 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
               ),
               gap(20),
               FilledButton.icon(
-                onPressed: busy || !widget.session.canReport ? null : save,
+                onPressed: busy || model == null || !widget.session.canReport
+                    ? null
+                    : save,
                 icon: const Icon(Icons.add_rounded),
                 label: Text(busy ? 'Guardando…' : 'Guardar vehículo'),
               ),

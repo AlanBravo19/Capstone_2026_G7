@@ -58,6 +58,59 @@ class HomeScreen extends StatelessWidget {
               ],
             ),
           ),
+          if (!session.canReport)
+            Panel(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.verified_user_outlined, color: teal),
+                      const SizedBox(width: 10),
+                      const Expanded(
+                        child: Text(
+                          'Prepara tu cuenta',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      StateChip(session.canReport ? 'Completado' : 'Pendiente'),
+                    ],
+                  ),
+                  gap(12),
+                  Text(
+                    session.canReport
+                        ? 'Puedes registrar vehículos y reportes.'
+                        : session.identity['correo_verificado'] == true
+                        ? 'Tu correo ya está confirmado. Activa el segundo factor para poder participar.'
+                        : session.avisoAlta ?? 'Verifica tu correo y configura el autenticador para participar.',
+                    style: const TextStyle(color: muted),
+                  ),
+                  gap(12),
+                  OutlinedButton(
+                    onPressed:
+                        session.identity['correo_verificado'] == true &&
+                            session.identity['transporte_correo'] == 'smtp'
+                        ? () => openScreen(
+                            context,
+                            SecurityScreen(session: session),
+                          )
+                        : () => showDialog<void>(
+                            context: context,
+                            builder: (_) => ContactsDialog(session: session),
+                          ),
+                    child: Text(
+                      session.identity['correo_verificado'] == true &&
+                              session.identity['transporte_correo'] == 'smtp'
+                          ? 'Configurar autenticador'
+                          : 'Verificar mi correo',
+                    ),
+                  ),
+                ],
+              ),
+            ),
           const SectionTitle('Mis trayectos'),
           Panel(
             child: Column(
@@ -100,42 +153,6 @@ class HomeScreen extends StatelessWidget {
                   leading: const Icon(Icons.add_location_alt_outlined),
                   title: const Text('Reportar el robo de mi vehículo'),
                   onTap: () => navigate(session.vehicles.isEmpty ? 1 : 2),
-                ),
-              ],
-            ),
-          ),
-          Panel(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.verified_user_outlined, color: teal),
-                    const SizedBox(width: 10),
-                    const Expanded(
-                      child: Text(
-                        'Prepara tu cuenta',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    StateChip(session.canReport ? 'Completado' : 'Pendiente'),
-                  ],
-                ),
-                gap(12),
-                Text(
-                  session.canReport ? 'Puedes registrar vehículos y reportes.' : 'Verifica tus contactos y configura la seguridad de tu cuenta.',
-                  style: const TextStyle(color: muted),
-                ),
-                gap(12),
-                OutlinedButton(
-                  onPressed: () => showDialog<void>(
-                    context: context,
-                    builder: (_) => ContactsDialog(session: session),
-                  ),
-                  child: const Text('Revisar verificación'),
                 ),
               ],
             ),
