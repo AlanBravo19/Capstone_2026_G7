@@ -1,4 +1,8 @@
-# RutaAlerta · Beta 0.18.0
+# RutaAlerta · Beta 0.19.0
+
+En **Estadísticas** puedes filtrar el año o un rango de fechas, organización, sector y entorno. Se muestran series mensuales, días y horarios, marcas y modelos, desenlaces, aportes y proximidad al inventario de cámaras. El historial territorial revisado se consulta en una serie propia. En **Mi cuenta** se muestran las membresías y permisos institucionales.
+
+[Definición de métricas, fuentes y roles](evidencias/Estadisticas_y_roles_0190.md)
 
 El registro protege la exclusividad de la patente entre cuentas y permite retirar el vínculo cuando el vehículo carece de casos abiertos. El titular añade antecedentes privados desde su seguimiento. El portal institucional incluye dashboard y fichas con dirección propia.
 

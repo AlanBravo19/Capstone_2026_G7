@@ -10,6 +10,7 @@ from ..db import fila_dict, obtener_conexion, ErrorBD
 from ..esquemas import BandejaItem, CasoEntrada, CasoSalida
 from ..seguridad import organizaciones_del_operador, usuario_actual
 from ..antifraude import participante
+from ..config import config
 
 router = APIRouter(tags=["casos"])
 
@@ -52,11 +53,12 @@ def reportar_caso(datos: CasoEntrada, response: Response, idempotency_key: str =
     try:
         cur.execute(
             """INSERT INTO caso(folio, id_usuario_reportante, id_vehiculo, id_organizacion, fecha_hecho, zona,
-                                ubicacion, precision_m, descripcion_privada, clave_envio, tipo_incidente)
-               VALUES (%s, %s, %s, %s, %s, %s, ST_SetSRID(ST_Point(%s, %s), 4326)::geography, %s, %s, %s::uuid, %s)
+                                ubicacion, precision_m, descripcion_privada, clave_envio, tipo_incidente, entorno)
+               VALUES (%s, %s, %s, %s, %s, %s, ST_SetSRID(ST_Point(%s, %s), 4326)::geography, %s, %s, %s::uuid, %s, %s)
                RETURNING id_caso, folio, estado, creado_en""",
             (folio, usuario["id_usuario"], datos.id_vehiculo, datos.id_organizacion, fecha, datos.zona,
-             datos.longitud, datos.latitud, datos.precision_m, datos.descripcion, clave, datos.tipo_incidente),
+             datos.longitud, datos.latitud, datos.precision_m, datos.descripcion, clave, datos.tipo_incidente,
+             'operacion' if config.entorno=='operacion' else 'prueba'),
         )
     except ErrorBD as e:
         if "ck_caso_17" in str(e):

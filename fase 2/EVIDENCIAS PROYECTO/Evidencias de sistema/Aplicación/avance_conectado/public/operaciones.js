@@ -2,9 +2,9 @@
 const el=id=>document.getElementById(id);
 const content=el('content');
 const h=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const names={dashboard:'Resumen operativo',map:'Mapa operativo',pending:'Avistamientos pendientes',cases:'Bandeja de casos',witness:'Avisos de testigos',sources:'Fuentes territoriales',cameras:'Cámaras autorizadas',resources:'Recursos de apoyo'};
-const routes={dashboard:'/operaciones',map:'/operaciones/mapa',cases:'/operaciones/casos',pending:'/operaciones/avistamientos',witness:'/operaciones/testigos',sources:'/operaciones/fuentes',cameras:'/operaciones/camaras',resources:'/operaciones/recursos'};
-const descriptions={dashboard:'Pendientes y prioridades de tus organizaciones.',map:'Reportes y avistamientos aceptados de casos abiertos.',cases:'Consulta, filtra y gestiona los reportes recibidos.',pending:'Aportes ciudadanos que requieren una decisión.',witness:'Revisa los avisos recibidos y su posible relación con un caso.',sources:'Registra y valida antecedentes territoriales documentados.',cameras:'Consulta el inventario y revisa videos autorizados.',resources:'Mantén los contactos y orientaciones de apoyo a la ciudadanía.'};
+const names={dashboard:'Resumen operativo',statistics:'Estadísticas',map:'Mapa operativo',pending:'Avistamientos pendientes',cases:'Bandeja de casos',witness:'Avisos de testigos',sources:'Fuentes territoriales',cameras:'Cámaras autorizadas',resources:'Recursos de apoyo'};
+const routes={dashboard:'/operaciones',statistics:'/operaciones/estadisticas',map:'/operaciones/mapa',cases:'/operaciones/casos',pending:'/operaciones/avistamientos',witness:'/operaciones/testigos',sources:'/operaciones/fuentes',cameras:'/operaciones/camaras',resources:'/operaciones/recursos'};
+const descriptions={dashboard:'Pendientes y prioridades de tus organizaciones.',statistics:'Tendencias y distribución de registros reales, con su fuente y alcance.',map:'Reportes y avistamientos aceptados de casos abiertos.',cases:'Consulta, filtra y gestiona los reportes recibidos.',pending:'Aportes ciudadanos que requieren una decisión.',witness:'Revisa los avisos recibidos y su posible relación con un caso.',sources:'Registra y valida antecedentes territoriales documentados.',cameras:'Consulta el inventario y revisa videos autorizados.',resources:'Mantén los contactos y orientaciones de apoyo a la ciudadanía.'};
 const states={reportado:'Reportado',en_revision:'En revisión',en_gestion:'En gestión',cerrado:'Cerrado'};
 const date=value=>value?new Date(value).toLocaleString('es-CL',{dateStyle:'short',timeStyle:'short'}):'—';
 const badge=value=>`<span class="badge badge-${h(String(value).replace(/[^a-z_]/g,''))}">${h(states[value]||String(value).replaceAll('_',' '))}</span>`;
@@ -15,6 +15,15 @@ const action=(title,path,fields,submit=title)=>`<details class="record"><summary
 let token='', challenge='', view='cases', selected=null, generation=0, records=[], orgs=[], query='', filter='', priority='';
 let photos=[], noticeTimer;
 let mapOrg=null,originView='cases',resourceOffset=0;
+let accountAccess=null;
+const defaultStatisticsFilters=()=>({periodo:'anio',anio:new Intl.DateTimeFormat('en',{timeZone:'America/Santiago',year:'numeric'}).format(new Date()),desde:'',hasta:'',id_organizacion:'',zona:'',entorno:'operacion',radio_m:'300'});
+let statisticsFilters=defaultStatisticsFilters();
+const roleName=role=>({operador:'Operador',supervisor:'Supervisor'}[role]||String(role||'Rol no informado').replaceAll('_',' '));
+function showAccount(access){
+  accountAccess=access;
+  el('membership').innerHTML=access.organizaciones.map(o=>`<span class="membership-badge">${h(o.nombre)} · ${h(roleName(o.rol))}</span>`).join('');
+  el('account-content').innerHTML=`<h2>Tu acceso institucional</h2><ul class="membership-list">${access.organizaciones.map(o=>`<li><strong>${h(o.nombre)}</strong><span>${h(roleName(o.rol))} · ${o.puede_asignar?'Puede asignar responsables':'Sin permiso para asignar responsables'}</span></li>`).join('')}</ul>${access.administrador_global?'<p>Tu cuenta también tiene el rol de administrador global. El acceso a casos depende de tu membresía en cada organización.</p>':''}<h3>Permisos de esta cuenta</h3><ul>${(access.permisos||[]).map(p=>`<li>${h(p)}</li>`).join('')}</ul><p class="consent-note">${h(access.asignacion||'Ser responsable de un caso no cambia el rol ni amplía el ámbito institucional.')}</p><p>Solo un supervisor puede asignar responsables en su organización. Para cambiar tu rol, contacta a quien administra el acceso institucional.</p>`;
+}
 function readRoute(path=window.location.pathname){
   path=path.replace(/\/+$/,'')||'/';
   if(path==='/')return {view:'dashboard',selected:null};
@@ -44,6 +53,7 @@ function clearPhotos(){photos.forEach(URL.revokeObjectURL);photos=[];}
 function reset(){
   MapaOperador.cerrar();mapOrg=null;originView='cases';resourceOffset=0;
   generation++;token=challenge='';orgs=[];records=[];selected=null;query=filter=priority='';dashboard.bind=null;clearPhotos();
+  accountAccess=null;statisticsFilters=defaultStatisticsFilters();el('membership').replaceChildren();el('account-content').replaceChildren();el('account-help').open=false;
   content.replaceChildren();content.setAttribute('aria-busy','false');el('name').textContent='';el('desk').hidden=true;document.querySelector('.user').hidden=true;
   el('access').hidden=false;el('mfa').hidden=true;el('login').hidden=false;el('login').reset();el('mfa').reset();
 }
@@ -64,9 +74,10 @@ async function signin(result){
   if(result.requiere_mfa){challenge=result.id_desafio;el('login').hidden=true;el('mfa').hidden=false;el('mfa').elements.codigo.focus();return;}
   token=result.token;
   try{
-    const profile=await api('/mi-perfil');
+    const [profile,access]=await Promise.all([api('/mi-perfil'),api('/gestion/mi-acceso')]);
     if(!profile.organizaciones?.length)throw Error('Tu cuenta tiene acceso ciudadano. Para operar se requiere una membresía institucional vigente.');
     const available=await api('/organizaciones');orgs=available.filter(o=>profile.organizaciones.includes(o.id_organizacion));
+    showAccount(access);
     el('name').textContent=profile.nombre_visible;el('access').hidden=true;el('desk').hidden=false;document.querySelector('.user').hidden=false;
     ({view,selected}=readRoute());originView=window.history.state?.originView||'cases';
     if(!routes[originView])originView='cases';
@@ -142,6 +153,78 @@ function sources(items){
     ${action('Descartar fuente',path,'<input type="hidden" name="decision" value="descartado">'+reason)}</article>`;
   }).join('')+(items.length?'':empty('Aún no hay fuentes registradas.'));
 }
+
+function statisticsPath(){
+  const f=statisticsFilters,params=new URLSearchParams();
+  if(f.periodo==='fechas'){params.set('desde',f.desde);params.set('hasta',f.hasta);}
+  else params.set('anio',f.anio);
+  for(const key of ['id_organizacion','zona','entorno','radio_m'])if(f[key])params.set(key,String(f[key]).trim());
+  return '/gestion/estadisticas?'+params;
+}
+function statisticsForm(){
+  const f=statisticsFilters;
+  const options=(values,current)=>Object.entries(values).map(([value,label])=>`<option value="${h(value)}"${String(current)===String(value)?' selected':''}>${h(label)}</option>`).join('');
+  return `<section class="card statistics-filter-card" aria-labelledby="statistics-filter-title"><h2 id="statistics-filter-title">Explorar un período</h2><form id="statistics-filters" data-statistics="true"><div class="statistics-filters">
+    <label>Período<select id="statistics-period" name="periodo">${options({anio:'Año completo',fechas:'Rango de fechas'},f.periodo)}</select></label>
+    <label id="statistics-year-field">Año<input id="statistics-year" name="anio" type="number" step="1" min="1900" max="2100" value="${h(f.anio)}" required></label>
+    <div id="statistics-dates" class="statistics-dates" hidden><label>Desde<input id="statistics-from" name="desde" type="date" value="${h(f.desde)}"></label><label>Hasta (inclusive)<input id="statistics-to" name="hasta" type="date" value="${h(f.hasta)}"></label></div>
+    <label>Organización<select name="id_organizacion">${options({'':'Todas mis organizaciones',...Object.fromEntries(orgs.map(o=>[o.id_organizacion,o.nombre]))},f.id_organizacion)}</select></label>
+    <label>Sector o zona exacta<input name="zona" type="search" maxlength="200" placeholder="Todos los sectores" value="${h(f.zona)}" aria-describedby="statistics-sector-help"></label>
+    <label>Entorno de los registros<select name="entorno">${options({operacion:'Operación',prueba:'Prueba'},f.entorno)}</select></label>
+    <label>Proximidad a cámaras<select name="radio_m">${options({100:'100 m',300:'300 m',500:'500 m',1000:'1.000 m',2000:'2.000 m'},f.radio_m)}</select></label>
+    </div><p id="statistics-sector-help" class="muted">El sector coincide por nombre completo, sin distinguir mayúsculas ni tildes. Rango personalizado: máximo 366 días.</p><div class="statistics-filter-actions"><button class="primary">Aplicar filtros</button><button type="button" data-statistics-reset>Restablecer</button><a href="#statistics-methodology">Cómo se calculan</a></div></form></section>`;
+}
+function bindStatisticsFilters(){
+  const period=el('statistics-period');if(!period)return;
+  period.value=statisticsFilters.periodo;
+  const toggle=()=>{
+    const custom=period.value==='fechas';
+    el('statistics-year-field').hidden=custom;el('statistics-year').disabled=custom;el('statistics-year').required=!custom;
+    el('statistics-dates').hidden=!custom;
+    for(const id of ['statistics-from','statistics-to']){el(id).disabled=!custom;el(id).required=custom;}
+  };
+  period.onchange=toggle;toggle();
+}
+const statisticNumber=value=>Number.isFinite(Number(value))&&value!==null&&value!==undefined?Number(value).toLocaleString('es-CL'):'—';
+const statisticRows=items=>(Array.isArray(items)?items:[]).filter(row=>Number.isFinite(Number(row.total))&&Number(row.total)>=0);
+const statisticLabel=value=>({sin_dato:'Sin dato',sin_desenlace:'Sin desenlace registrado',sin_cierre:'Sin cierre registrado',recuperado:'Recuperado',duplicado:'Duplicado',informacion_insuficiente:'Información insuficiente',otro:'Otro',...states}[value]||String(value||'Sin dato').replaceAll('_',' '));
+function statisticsTable(rows,label,heading='Categoría',bars=false){
+  const max=Math.max(1,...rows.map(row=>Number(row.total)));
+  return `<div class="table-wrap"><table class="statistics-table"><caption>${h(label)}</caption><thead><tr><th scope="col">${h(heading)}</th>${bars?'<th scope="col" class="statistics-bar-heading">Comparación</th>':''}<th scope="col">Registros</th></tr></thead><tbody>${rows.map(row=>`<tr><th scope="row">${h(row.label)}</th>${bars?`<td><meter aria-hidden="true" min="0" max="${max}" value="${Number(row.total)}">${Number(row.total)}</meter></td>`:''}<td class="statistics-count">${statisticNumber(row.total)}</td></tr>`).join('')}</tbody></table></div>`;
+}
+function statisticsBreakdown(title,items,label=row=>statisticLabel(row.valor),heading='Categoría'){
+  const rows=statisticRows(items).map(row=>({label:label(row),total:Number(row.total)})).sort((a,b)=>b.total-a.total||a.label.localeCompare(b.label,'es'));
+  return `<section class="card statistics-breakdown"><h3>${h(title)}</h3>${rows.some(row=>row.total>0)?statisticsTable(rows.slice(0,8),title,heading,true)+(rows.length>8?`<details class="statistics-data"><summary>Ver las ${rows.length} categorías en tabla</summary>${statisticsTable(rows,title+' · todas las categorías',heading)}</details>`:''):empty('Sin registros para esta distribución.')}</section>`;
+}
+function statisticsTrend(id,title,items,kind){
+  const rows=statisticRows(items).map(row=>({label:String(row.periodo),total:Number(row.total)}));
+  const max=Math.max(1,...rows.map(row=>row.total)),width=660,left=56,baseline=154,height=120;
+  const x=i=>left+(rows.length===1?width/2:i*width/(rows.length-1));
+  const y=n=>baseline-n/max*height;
+  const points=rows.map((row,i)=>`${x(i).toFixed(2)},${y(row.total).toFixed(2)}`).join(' ');
+  const labels=rows.map((row,i)=>i===0||i===rows.length-1||i%Math.max(1,Math.ceil(rows.length/6))===0?`<text x="${x(i).toFixed(2)}" y="182" text-anchor="middle">${h(row.label)}</text>`:'').join('');
+  const graph=rows.some(row=>row.total>0)?`<figure class="statistics-trend"><svg viewBox="0 0 760 200" role="img" aria-labelledby="${id}-chart-title ${id}-chart-desc"><title id="${id}-chart-title">${h(title)}</title><desc id="${id}-chart-desc">${h(kind)} por mes. Cifras exactas disponibles en la tabla de datos.</desc><path class="chart-grid" d="M${left} 34H716 M${left} ${baseline}H716"/><text x="44" y="38" text-anchor="end">${statisticNumber(max)}</text><text x="44" y="158" text-anchor="end">0</text><polyline class="chart-line" points="${points}"/>${rows.map((row,i)=>`<circle class="chart-point" cx="${x(i).toFixed(2)}" cy="${y(row.total).toFixed(2)}" r="3.5"/>`).join('')}${labels}</svg><figcaption>${h(kind)} por mes · número de registros</figcaption></figure>`:empty('No hay '+kind.toLowerCase()+' en el período y ámbito seleccionados.');
+  return `<section class="card statistics-monthly"><h3>${h(title)}</h3>${graph}${rows.length?`<details class="statistics-data"><summary>Ver datos mensuales en tabla</summary>${statisticsTable(rows,title,'Mes')}</details>`:''}</section>`;
+}
+function statisticsMetric(label,value,caption){return `<div class="stat"><span>${h(label)}</span><strong>${h(value)}</strong><span class="stat-caption">${h(caption)}</span></div>`;}
+function statisticsCameras(cameras){
+  if(!cameras)return `<section class="card"><h2>Proximidad a cámaras</h2>${empty('El servicio no ofrece indicadores de cámaras para esta consulta.')}</section>`;
+  const inventory=cameras.inventario||{},zones=Array.isArray(cameras.zonas)?cameras.zonas:[];
+  return `<section class="card statistics-cameras"><div class="row"><div><small>Inventario institucional autorizado</small><h2>Proximidad y cobertura declarada</h2></div><span class="badge">Radio: ${statisticNumber(cameras.radio_m)} m</span></div><p class="muted">El inventario describe su estado actual. La proximidad usa las ubicaciones de los reportes y las cámaras disponibles; no confirma visibilidad, grabaciones ni cobertura efectiva.</p><dl class="camera-inventory">${[['Cámaras inventariadas','total'],['Disponibles','disponibles'],['Fuera de servicio','fuera_servicio'],['Estado desconocido','desconocidas'],['Con cobertura declarada','con_cobertura'],['Verificadas','verificadas']].map(([label,key])=>`<div><dt>${label}</dt><dd>${statisticNumber(inventory[key])}</dd></div>`).join('')}</dl>${zones.length?`<div class="table-wrap"><table><caption>Reportes internos del período y su proximidad a cámaras autorizadas</caption><thead><tr>${['Zona','Reportes','Con ubicación','Con cámara cercana','En cobertura declarada','Sin cámara cercana'].map(label=>`<th scope="col">${label}</th>`).join('')}</tr></thead><tbody>${zones.map(z=>`<tr><th scope="row">${h(z.zona||'Sin zona')}</th>${['reportes','con_ubicacion','cerca_de_camara','en_cobertura_declarada','sin_camara_cercana'].map(key=>`<td>${statisticNumber(z[key])}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`:empty('No hay reportes con los que calcular la proximidad en este ámbito.')}<p class="muted">Los indicadores de proximidad y cobertura pueden coincidir; no se suman. Los reportes sin ubicación no permiten evaluar distancia. Estos datos no determinan dónde instalar cámaras.</p></section>`;
+}
+function statisticsRoom(data){
+  const internal=data.internos||{},territorial=data.territorial||{},recovery=internal.recuperacion||{},f=data.filtros||{};
+  const orgLabel=f.id_organizacion?orgs.find(o=>Number(o.id_organizacion)===Number(f.id_organizacion))?.nombre||'Organización seleccionada':'Todas tus organizaciones autorizadas';
+  const days=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+  const temporal=(prefix,d)=>`<details class="card statistics-temporal"><summary>Distribución diaria y por horario · ${h(prefix)}</summary><p class="muted">Recuentos del período; los horarios sin información no se imputan.</p><div class="statistics-grid">${statisticsBreakdown('Día de la semana',d.dias_semana,row=>days[row.dia]||'Sin dato','Día')}${statisticsBreakdown('Hora del hecho',d.horas,row=>String(row.hora).padStart(2,'0')+':00','Hora')}</div>${statisticRows(d.diaria).length?statisticsTable(statisticRows(d.diaria).map(row=>({label:row.periodo,total:row.total})),'Recuento por día · '+prefix,'Fecha'):empty('No hay desglose diario disponible.')}</details>`;
+  return statisticsForm()+`<section class="statistics-scope" aria-label="Ámbito de los resultados"><strong>${h(f.desde||'—')} — ${h(f.hasta||'—')}</strong><span>${h(orgLabel)}${f.zona?' · '+h(f.zona):' · Todos los sectores'}</span><span class="badge">${f.entorno==='prueba'?'Entorno de prueba':'Entorno de operación'}</span><span>${h(f.zona_horaria||'America/Santiago')}</span></section>
+    <section class="statistics-source" aria-labelledby="statistics-internal-title"><div class="statistics-section-head"><small>Fuente 01 · registros internos</small><h2 id="statistics-internal-title">Reportes de tus organizaciones</h2><p>Casos del período seleccionado. Su estado y desenlace reflejan la situación registrada al consultar.</p><p>${statisticNumber(internal.reportes_total)} reportes recibidos · ${statisticNumber(internal.duplicados_excluidos)} duplicados excluidos de los gráficos y de la recuperación.</p></div><div class="stats statistics-metrics">${statisticsMetric('Casos sin duplicados',statisticNumber(internal.total),'Cohorte del período')}${statisticsMetric('Casos abiertos',statisticNumber(recovery.abiertos),'En seguimiento a la fecha de consulta')}${statisticsMetric('Recuperaciones documentadas',statisticNumber(recovery.documentados),'Según el desenlace registrado')}${statisticsMetric('Recuperación de la cohorte',recovery.porcentaje_cohorte==null?'—':statisticNumber(recovery.porcentaje_cohorte)+' %','Recuperaciones / casos sin duplicados')}</div>
+    ${statisticsTrend('statistics-internal','Evolución mensual de reportes',internal.mensual,'Reportes internos')}<div class="statistics-grid">${statisticsBreakdown('Marcas de vehículos',internal.marcas)}${statisticsBreakdown('Modelos de vehículos',internal.modelos,row=>[row.marca,row.modelo].filter(Boolean).join(' · ')||'Sin dato','Marca / modelo')}${statisticsBreakdown('Tipos de vehículo',internal.tipos_vehiculo)}${statisticsBreakdown('Reportes por zona',internal.zonas)}${statisticsBreakdown('Estado actual de los casos',internal.estados)}${statisticsBreakdown('Desenlace registrado',internal.desenlaces)}${statisticsBreakdown('Tipos de incidente',internal.tipos_incidente)}</div>${temporal('reportes internos',internal)}</section>
+    ${statisticsBreakdown('Revisión actual de aportes de estos casos',internal.aportes)}
+    ${statisticsCameras(data.camaras)}
+    <section class="statistics-source statistics-external" aria-labelledby="statistics-external-title"><div class="statistics-section-head"><small>Fuente 02 · historial externo validado</small><h2 id="statistics-external-title">Hechos territoriales revisados</h2><p>Historial compartido, sin adscripción a una organización. El filtro de organización limita los reportes internos y el inventario de cámaras; no atribuye este historial a tu institución.</p><p>Se cuentan hechos validados con respaldo autorizado, no la cantidad de noticias. Pueden referirse a un reporte interno: ambas fuentes se consultan por separado y no se suman.</p><strong class="territorial-total">${statisticNumber(territorial.total)} hechos territoriales</strong></div>${statisticsTrend('statistics-external','Evolución mensual del historial territorial',territorial.mensual,'Hechos territoriales validados')}<div class="statistics-grid">${statisticsBreakdown('Hechos territoriales por zona',territorial.zonas)}${statisticsBreakdown('Tipos de hecho territorial',territorial.tipos)}</div>${temporal('historial territorial',territorial)}</section>
+    <section id="statistics-methodology" class="card statistics-methodology" tabindex="-1"><h2>Fuentes, método y límites</h2><p>Los gráficos muestran recuentos del servicio de estadísticas para los filtros indicados. No son tasas de delincuencia ni estimaciones de riesgo. La ausencia de registros no demuestra ausencia de hechos.</p><p>Las tablas de clasificación muestran primero las ocho categorías de mayor recuento y permiten consultar todas las categorías devueltas. La serie mensual incluye los meses sin registros dentro del período.</p><ul>${(data.limites||[]).map(limit=>`<li>${h(limit)}</li>`).join('')}</ul><p>Origen: registros institucionales de RutaAlerta, historial territorial revisado e inventario autorizado de cámaras. Los datos de operación y prueba se consultan en entornos separados.</p></section>`;
+}
 async function load(focus=false){
   MapaOperador.cerrar();
   const epoch=++generation;clearPhotos();el('title').textContent=selected?'Ficha del caso':names[view]||'Página no encontrada';el('status').textContent='';
@@ -155,6 +238,7 @@ async function load(focus=false){
     if(view==='dashboard'){
       const result=await Promise.all([api('/casos'),api('/gestion/testigos')]);render=()=>dashboard(...result);
     }
+    else if(view==='statistics'){const data=await api(statisticsPath());render=()=>statisticsRoom(data);}
     else if(view==='map'){
       const actual=orgs.find(o=>o.id_organizacion===mapOrg);
       if(!actual){render=()=>empty('No hay una organización disponible para esta cuenta.');}
@@ -178,17 +262,19 @@ async function load(focus=false){
     if(epoch!==generation)return;
     content.innerHTML=render();
     if(view==='dashboard')dashboard.bind();
+    if(view==='statistics')bindStatisticsFilters();
     el('updated').textContent='Actualizado a las '+new Date().toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'});
     if(montar)montar();
     if(selected && originView!=='cases'){const back=content.querySelector('[data-list]');if(back)back.textContent='← '+names[originView];}
     if(el('clip'))bindClip();
     if(el('results')){const priorities=content.querySelector('[name=prioridad]');priorities.value=priority;priorities.onchange=()=>{priority=priorities.value;el('results').innerHTML=caseRows();};const select=content.querySelector('[name="estado"]');select.value=filter;select.onchange=()=>{filter=select.value;el('results').innerHTML=caseRows();};el('search').oninput=e=>{query=e.target.value;el('results').innerHTML=caseRows();};}
-  }catch(err){if(epoch===generation)content.innerHTML=`<section class="card load-error" role="alert"><h2>No se pudo cargar esta vista</h2><p>${h(err.message)}</p><button data-retry>Reintentar</button>${selected?'<button data-list>Volver a la bandeja</button>':''}</section>`;else if(!token)notify(err.message);}
+  }catch(err){if(epoch===generation){content.innerHTML=(view==='statistics'?statisticsForm():'')+`<section class="card load-error" role="alert"><h2>No se pudo cargar esta vista</h2><p>${h(err.message)}</p><button data-retry>Reintentar</button>${selected?'<button data-list>Volver a la bandeja</button>':''}</section>`;if(view==='statistics')bindStatisticsFilters();}else if(!token)notify(err.message);}
   finally{if(epoch===generation)content.setAttribute('aria-busy','false');}
 }
 content.onclick=e=>{
   const b=e.target.closest('button');if(!b)return;
   if(b.hasAttribute('data-retry'))load();
+  if(b.hasAttribute('data-statistics-reset')){statisticsFilters=defaultStatisticsFilters();load(true);}
   if(b.hasAttribute('data-list'))navigate(originView);
   if(b.dataset.view)navigate(b.dataset.view);
   if(b.dataset.go){
@@ -201,6 +287,11 @@ content.onclick=e=>{
 };
 content.onsubmit=e=>{
   e.preventDefault();const form=e.target;const epoch=generation;
+  if(form.dataset.statistics){
+    const fields=Object.fromEntries(new FormData(form));
+    if(fields.periodo==='fechas'&&(!fields.desde||!fields.hasta||fields.desde>fields.hasta)){notify('Selecciona un rango válido: la fecha de inicio debe ser anterior o igual al término.');return;}
+    statisticsFilters={...statisticsFilters,...fields,zona:(fields.zona||'').trim()};load(true);return;
+  }
   handle(e.submitter,async()=>{const data=Object.fromEntries(new FormData(form));
     for(const input of form.querySelectorAll('input[type="number"]')){if(input.value==='')delete data[input.name];else data[input.name]=input.valueAsNumber;}
     for(const field of ['id_organizacion','id_membresia','id_caso'])if(data[field])data[field]=Number(data[field]);
@@ -217,9 +308,9 @@ content.onsubmit=e=>{
 function equipoCaso(c,equipo) {
   const base=`/gestion/casos/${Number(c.id_caso)}`;
   const members=Object.fromEntries(equipo.opciones.map(m=>[m.id_membresia,m.nombre_visible]));
-  const assign=c.estado!=='cerrado'&&equipo.opciones.length?action('Asignar responsable',base+'/asignacion',selector('id_membresia','Integrante de la organización',members)+motives):'';
+  const assign=c.estado!=='cerrado'&&equipo.puede_asignar!==false&&equipo.opciones.length?action('Asignar responsable',base+'/asignacion',selector('id_membresia','Integrante de la organización',members)+motives):'';
   const note=c.estado!=='cerrado'?action('Registrar gestión interna',base+'/gestiones',selector('accion','Tipo de gestión',{nota:'Nota interna',derivacion:'Derivación realizada'})+'<label>Describe la gestión realizada<textarea name="descripcion" required minlength="10" maxlength="500"></textarea></label>'):'';
-  return `<section class="card"><h2>Equipo y gestiones internas</h2><p>Responsable: ${h(equipo.responsable||'Sin asignar')}</p>${assign}${note}${equipo.gestiones.map(g=>`<div class="record">${badge(g.accion)} <strong>${h(date(g.creada_en))}</strong><p>${h(g.descripcion)}</p></div>`).join('')}</section>`;
+  return `<section class="card"><h2>Equipo y gestiones internas</h2><p>Responsable: ${h(equipo.responsable||'Sin asignar')}${equipo.responsable&&equipo.responsable_rol?` <span class="badge">${h(roleName(equipo.responsable_rol))}</span>`:''}</p>${equipo.responsable&&equipo.responsable_vigente===false?'<p class="membership-warning" role="status">La membresía de la persona asignada ya no está vigente. Un supervisor debe revisar la asignación.</p>':''}<p class="muted assignment-help">La asignación de un caso no modifica el rol ni otorga permisos de supervisor.</p>${assign}${note}${equipo.gestiones.map(g=>`<div class="record">${badge(g.accion)} <strong>${h(date(g.creada_en))}</strong><p>${h(g.descripcion)}</p></div>`).join('')}</section>`;
 }
 function witnessQueue(items,cases){
   if(!items.length)return empty('Aún no hay avisos de pasajeros o testigos en tu organización.');

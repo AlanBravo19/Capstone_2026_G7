@@ -7,6 +7,31 @@ from .colaboracion import caso_autorizado, bitacora, rows
 
 router=APIRouter(tags=['gestión institucional'])
 
+@router.get('/gestion/mi-acceso')
+def mi_acceso(usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):
+    cur=conn.cursor()
+    cur.execute("""SELECT m.id_organizacion,o.nombre,m.rol,
+        (m.rol='supervisor') AS puede_asignar
+        FROM membresia m JOIN organizacion o USING(id_organizacion)
+        WHERE m.id_usuario=%s AND m.estado='activa' AND m.fin IS NULL
+        AND m.inicio<=CURRENT_TIMESTAMP AND o.estado='activa'
+        ORDER BY o.nombre,m.id_membresia""",(usuario['id_usuario'],))
+    organizaciones=rows(cur)
+    if not organizaciones:raise HTTPException(403,'Sin membresía institucional vigente')
+    cur.execute("""SELECT 1 FROM usuario_rol ur JOIN rol r USING(id_rol)
+        WHERE ur.id_usuario=%s AND ur.revocado_en IS NULL AND r.codigo='administrador'""",
+        (usuario['id_usuario'],))
+    admin=cur.fetchone() is not None
+    permisos=['Consultar y gestionar casos de tus organizaciones',
+              'Revisar aportes, publicar solicitudes y enviar novedades',
+              'Consultar estadísticas del ámbito institucional',
+              'Mantener recursos de apoyo del equipo']
+    if any(o['puede_asignar'] for o in organizaciones):
+        permisos.append('Asignar responsables en las organizaciones donde eres supervisor')
+    if admin:permisos.append('Administrar restricciones de cuentas')
+    return {'organizaciones':organizaciones,'administrador_global':admin,'permisos':permisos,
+            'asignacion':'Ser responsable de un caso no cambia el rol ni amplía el ámbito institucional.'}
+
 @router.get('/gestion/mapa')
 def mapa_operativo(id_organizacion: int, usuario=Depends(usuario_actual), conn=Depends(obtener_conexion)):
     cur = conn.cursor()
@@ -40,7 +65,9 @@ def supervisor(cur,uid,oid):
 @router.get('/gestion/casos/{cid}/equipo')
 def equipo(cid:int,usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):
     cur=conn.cursor();c=caso_autorizado(cur,cid,usuario,operador=True);oid=c['id_organizacion']
-    cur.execute("""SELECT u.nombre_visible FROM asignacion_caso a JOIN membresia m USING(id_membresia)
+    cur.execute("""SELECT u.nombre_visible,m.rol,
+                   (m.estado='activa' AND m.fin IS NULL AND m.inicio<=CURRENT_TIMESTAMP AND u.estado='activo')
+                   FROM asignacion_caso a JOIN membresia m USING(id_membresia)
                    JOIN usuario u USING(id_usuario) WHERE a.id_caso=%s AND a.fin IS NULL""",(cid,))
     actual=cur.fetchone();opciones=[]
     if supervisor(cur,usuario['id_usuario'],oid):
@@ -54,7 +81,11 @@ def equipo(cid:int,usuario=Depends(usuario_actual),conn=Depends(obtener_conexion
     cur.execute("""SELECT id_solicitud_colaboracion,vence_en FROM solicitud_colaboracion WHERE id_caso=%s
                    AND estado='publicada' AND vence_en>CURRENT_TIMESTAMP""",(cid,))
     publica=rows(cur)
-    return {'responsable':actual[0] if actual else None,'opciones':opciones,'gestiones':gestiones,'publicacion':publica[0] if publica else None}
+    return {'responsable':actual[0] if actual else None,
+            'responsable_rol':actual[1] if actual else None,
+            'responsable_vigente':actual[2] if actual else False,
+            'puede_asignar':supervisor(cur,usuario['id_usuario'],oid),
+            'opciones':opciones,'gestiones':gestiones,'publicacion':publica[0] if publica else None}
 
 class Renovacion(BaseModel):
     motivo:str=Field(min_length=10,max_length=500)
