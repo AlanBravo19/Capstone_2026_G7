@@ -112,11 +112,12 @@ def listado(lat:float|None=Query(None,ge=-90,le=90),lon:float|None=Query(None,ge
     if (lat is None)!=(lon is None):raise HTTPException(422,'Envía latitud y longitud juntas')
     cur=conn.cursor()
     cur.execute('''SELECT s.id_solicitud_colaboracion,s.zona_publicable,s.texto_aprobado,s.vence_en,v.patente,v.color,ma.nombre AS marca,m.nombre AS modelo,
+        c.id_usuario_reportante=%s AS es_mi_caso,
         ST_Y(s.centro_publico::geometry) AS latitud_sector, ST_X(s.centro_publico::geometry) AS longitud_sector,
         CASE WHEN %s::float IS NOT NULL THEN ST_Distance(s.centro_publico,ST_SetSRID(ST_Point(%s,%s),4326)::geography)/1000 END AS distancia_km
         FROM solicitud_colaboracion s JOIN caso c USING(id_caso) JOIN vehiculo v USING(id_vehiculo) JOIN modelo m USING(id_modelo) JOIN marca ma USING(id_marca)
         WHERE s.estado='publicada' AND s.inicio<=CURRENT_TIMESTAMP AND s.vence_en>CURRENT_TIMESTAMP AND c.estado<>'cerrado' AND s.zona_publicable ILIKE %s
-        ORDER BY distancia_km ASC NULLS LAST,s.inicio DESC LIMIT 100''',(lat,lon,lat,'%'+zona+'%'))
+        ORDER BY distancia_km ASC NULLS LAST,s.inicio DESC LIMIT 100''',(usuario['id_usuario'],lat,lon,lat,'%'+zona+'%'))
     found=rows(cur)
     resultado={'cercanos':[], 'otras_zonas':[], 'nota':'Distancias aproximadas al sector de publicación, no ubicación actual del vehículo.'}
     for fila in found:
@@ -146,8 +147,10 @@ def aportar(sid:int,datos:AvistamientoEntrada,response:Response,idempotency_key:
     # Bloquear caso antes que solicitud, igual que cierre/publicación.
     cur.execute('SELECT id_caso FROM solicitud_colaboracion WHERE id_solicitud_colaboracion=%s',(sid,));row=cur.fetchone()
     if not row:raise HTTPException(404,'Publicación no disponible')
-    cid=row[0];cur.execute('SELECT estado FROM caso WHERE id_caso=%s FOR UPDATE',(cid,))
-    if cur.fetchone()[0]=='cerrado':raise HTTPException(409,'Caso cerrado')
+    cid=row[0];cur.execute('SELECT estado,id_usuario_reportante FROM caso WHERE id_caso=%s FOR UPDATE',(cid,))
+    caso=cur.fetchone()
+    if caso[1]==uid:raise HTTPException(403,'Actualiza tus antecedentes desde el seguimiento de tu caso.')
+    if caso[0]=='cerrado':raise HTTPException(409,'Caso cerrado')
     cur.execute("SELECT 1 FROM solicitud_colaboracion WHERE id_solicitud_colaboracion=%s AND estado='publicada' AND inicio<=CURRENT_TIMESTAMP AND vence_en>CURRENT_TIMESTAMP",(sid,))
     if not cur.fetchone():raise HTTPException(409,'La publicación ya no está vigente')
     cur.execute('''INSERT INTO avistamiento(id_solicitud_colaboracion,id_caso,id_usuario_autor,observado_en,zona,descripcion,ubicacion,clave_envio) VALUES(%s,%s,%s,%s,%s,%s,ST_SetSRID(ST_Point(%s,%s),4326)::geography,%s) RETURNING id_avistamiento''',(sid,cid,uid,fecha,datos.zona,datos.descripcion,datos.longitud,datos.latitud,str(idempotency_key)))
@@ -237,6 +240,37 @@ def foto(cid:int,datos:Foto,response:Response,usuario=Depends(participante),conn
     if cur.fetchone()[0]>=5:raise HTTPException(409,'Máximo cinco fotos por caso en esta beta')
     eid=guardar_foto(cur,cid,uid,datos.clave_envio,datos.contenido_base64)
     return {'id_evidencia':eid,'estado_revision':'pendiente','mensaje':'Foto privada recibida para revisión.'}
+
+class AntecedenteTitular(BaseModel):
+    descripcion:str=Field(min_length=10,max_length=3000)
+    clave_envio:uuid.UUID
+    latitud:float|None=Field(default=None,ge=-90,le=90)
+    longitud:float|None=Field(default=None,ge=-180,le=180)
+    foto_base64:str|None=Field(default=None,min_length=16,max_length=2800000)
+
+@router.post('/mis-casos/{cid}/antecedentes',status_code=201)
+def antecedente_titular(cid:int,datos:AntecedenteTitular,response:Response,usuario=Depends(participante),conn=Depends(obtener_conexion)):
+    uid=usuario['id_usuario'];cur=conn.cursor()
+    bloquear_participante(cur,uid)
+    caso=caso_autorizado(cur,cid,usuario,propietario=True)
+    if (datos.latitud is None)!=(datos.longitud is None):
+        raise HTTPException(422,'Selecciona un punto completo en el mapa')
+    marcador=f'Antecedente del titular [{datos.clave_envio}]'
+    cur.execute("SELECT descripcion FROM gestion_caso WHERE id_caso=%s AND id_usuario=%s AND accion='nota' AND descripcion LIKE %s",
+                (cid,uid,marcador+'%'))
+    if cur.fetchone():
+        response.status_code=200
+        return {'mensaje':'Antecedente recibido','reintento':True}
+    if caso['estado']=='cerrado':raise HTTPException(409,'Caso cerrado')
+    texto=marcador+'\n'+datos.descripcion.strip()
+    if datos.latitud is not None:
+        texto+=f'\nUbicación aportada: {datos.latitud}, {datos.longitud}'
+    if datos.foto_base64:
+        cur.execute('SELECT count(*) FROM evidencia WHERE id_caso=%s AND id_avistamiento IS NULL',(cid,))
+        if cur.fetchone()[0]>=5:raise HTTPException(409,'Máximo cinco fotos por caso')
+        guardar_foto(cur,cid,uid,datos.clave_envio,datos.foto_base64)
+    bitacora(cur,cid,uid,'nota',texto,'interna')
+    return {'mensaje':'Antecedente privado recibido para revisión del operador'}
 
 def guardar_foto(cur,cid,uid,clave,contenido,aid=None):
     try:

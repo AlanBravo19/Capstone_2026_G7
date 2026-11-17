@@ -245,6 +245,33 @@ class Note extends StatelessWidget {
   );
 }
 
+class FormSection extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  const FormSection(this.title, {super.key, required this.icon});
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(top: 8, bottom: 16),
+    child: Row(
+      children: [
+        Icon(icon, color: teal, size: 22),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            title,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: navy,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
 void feedback(BuildContext context, Object message) {
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(

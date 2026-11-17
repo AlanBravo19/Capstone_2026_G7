@@ -9,7 +9,6 @@ import 'login.dart';
 import 'home.dart';
 import 'vehicles.dart';
 import 'report.dart';
-import 'map_screen.dart';
 import 'panorama.dart';
 import 'trip.dart';
 import 'expanded.dart';
@@ -120,14 +119,12 @@ class _MobileShellState extends State<MobileShell> {
   }
 
   int index = 0;
-  bool mapaDetallado = false;
   final visited = <int>{0};
   void navigate(int i, {bool seleccionarPunto = false}) {
     if (i == index) return;
     setState(() {
       visited.add(i);
       index = i;
-      if (i == 3) mapaDetallado = seleccionarPunto;
     });
   }
 
@@ -255,37 +252,10 @@ class _MobileShellState extends State<MobileShell> {
           )
         else
           const SizedBox.shrink(),
-        if (index == 3 && !mapaDetallado)
+        if (index == 3)
           ListView(
-            padding: const EdgeInsets.all(12),
-            children: [
-              PanoramaZonal(session: widget.session),
-              OutlinedButton.icon(
-                onPressed: () => setState(() => mapaDetallado = true),
-                icon: const Icon(Icons.layers),
-                label: const Text('Mapa 3D y ubicación del reporte'),
-              ),
-            ],
-          )
-        else if (visited.contains(3) && mapaDetallado)
-          Column(
-            children: [
-              Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton.icon(
-                  onPressed: () => setState(() => mapaDetallado = false),
-                  icon: const Icon(Icons.arrow_back),
-                  label: const Text('Mapa zonal'),
-                ),
-              ),
-              Expanded(
-                child: MapScreen(
-                  session: widget.session,
-                  active: index == 3,
-                  usePoint: () => navigate(2),
-                ),
-              ),
-            ],
+            padding: const EdgeInsets.all(16),
+            children: [PanoramaZonal(session: widget.session)],
           )
         else
           const SizedBox.shrink(),

@@ -1,4 +1,8 @@
-# RutaAlerta · Beta 0.17.0
+# RutaAlerta · Beta 0.18.0
+
+El registro protege la exclusividad de la patente entre cuentas y permite retirar el vínculo cuando el vehículo carece de casos abiertos. El titular añade antecedentes privados desde su seguimiento. El portal institucional incluye dashboard y fichas con dirección propia.
+
+[Checklist de cierre y alcance de plataformas](evidencias/Cierre_Capstone_0180.md)
 
 El titular puede adjuntar una foto al reporte y autorizar la colaboración. Al publicar el operador, el vehículo aparece en el portal ciudadano y Android. Los colaboradores pueden enviar un avistamiento con una segunda foto privada.
 

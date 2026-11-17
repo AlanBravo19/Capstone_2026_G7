@@ -7,6 +7,7 @@ import secrets
 
 from .db import obtener_conexion
 from .routers import casos, cuentas, identidad, avance, seguridad_cuenta, colaboracion, movilidad, testigos, gestion_equipo
+from .routers import recursos_territorio
 from .antifraude import DEMO, SECRET
 from .correo import correo_real, configuracion_smtp
 
@@ -25,7 +26,7 @@ if os.getenv('VERCEL'):
 
 app = FastAPI(
     title="RutaAlerta API",
-    version="0.17.0-beta",
+    version="0.18.0-beta",
     description="Beta colaborativa: TOTP, seguimiento, publicación revisada y fotos privadas. Correo y SMS dependen de la configuración de proveedores.",
 )
 app.include_router(cuentas.router)
@@ -37,6 +38,7 @@ app.include_router(colaboracion.router)
 app.include_router(movilidad.router)
 app.include_router(testigos.router)
 app.include_router(gestion_equipo.router)
+app.include_router(recursos_territorio.router)
 
 BASE=Path(__file__).resolve().parents[1]
 
@@ -50,6 +52,7 @@ async def cabeceras_respuesta(request:Request,call_next):
 
 @app.get('/',include_in_schema=False)
 @app.get('/operaciones',include_in_schema=False)
+@app.get('/operaciones/{ruta:path}',include_in_schema=False)
 def inicio():return FileResponse(BASE/'web/operaciones.html')
 
 @app.get('/ciudadania',include_in_schema=False)
@@ -90,7 +93,7 @@ def health(request:Request,conn=Depends(obtener_conexion)):
     return {"estado": "ok", "postgis": postgis, "tablas": tablas}
 
 @app.get("/version",include_in_schema=False)
-def version_beta():return {"version":"0.17.0-beta","modelo_tablas":66,"cliente":"Flutter Android","panel":"/operaciones"}
+def version_beta():return {"version":"0.18.0-beta","modelo_tablas":66,"cliente":"Flutter Android","panel":"/operaciones"}
 
 @app.get('/leaflet/leaflet.css', include_in_schema=False)
 def estilos_cartografia(): return FileResponse(BASE/'public/leaflet/leaflet.css', media_type='text/css')

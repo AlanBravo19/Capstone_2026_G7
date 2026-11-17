@@ -55,6 +55,9 @@ def test_recorrido_chillan(client, ciudadano, supervisor_org1, operador_org2):
     h={**colaborador,"Idempotency-Key":str(uuid.uuid4())}
     datos={**punto,"observado_en":datetime.now(timezone.utc).isoformat(),"zona":"Chillán de ensayo",
            "descripcion":"Observación ficticia enviada para revisar la foto de prueba."}
+    propia=client.get("/colaboracion",headers=titular).json()
+    assert next(s for s in propia["otras_zonas"] if s["id_solicitud_colaboracion"]==sid)["es_mi_caso"]
+    assert client.post(url,headers={**titular,"Idempotency-Key":str(uuid.uuid4())},json=datos).status_code==403
     assert client.post(url,headers=h,json={**datos,"foto_base64":"A"*40}).status_code == 422
     datos["foto_base64"]=foto_payload()["contenido_base64"]
     r=client.post(url,headers=h,json=datos)

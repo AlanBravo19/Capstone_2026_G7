@@ -92,6 +92,43 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
     }
   }
 
+  Future<void> unlink(Map<String, dynamic> vehicle) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('¿Quitar ${vehicle['patente']} de mis vehículos?'),
+        content: const Text(
+          'Se quitará tu vínculo con el vehículo. Los casos, antecedentes y fotos se conservan. Si tiene un caso abierto, primero debes resolverlo con el equipo a cargo.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Quitar vínculo'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted || busy) return;
+    setState(() => busy = true);
+    try {
+      await widget.session.unlinkVehicle(vehicle['id_vehiculo'] as int);
+      if (mounted) {
+        feedback(
+          context,
+          'Vehículo quitado de tu lista. Los datos de los casos se conservan.',
+        );
+      }
+    } catch (e) {
+      if (mounted) feedback(context, e);
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) => ListView(
     padding: const EdgeInsets.all(20),
@@ -132,6 +169,11 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
                   ],
                 ),
               ),
+              IconButton(
+                tooltip: 'Quitar vehículo',
+                onPressed: busy ? null : () => unlink(v),
+                icon: const Icon(Icons.link_off_rounded, color: muted),
+              ),
             ],
           ),
         ),
@@ -148,6 +190,10 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SectionTitle('Agregar vehículo'),
+              const FormSection(
+                'Identificación del vehículo',
+                icon: Icons.directions_car_outlined,
+              ),
               if (!widget.session.canReport)
                 const Note(
                   'Primero completa los pasos de contactos en Inicio.',
@@ -207,6 +253,7 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
                       gap(),
                       TextFormField(
                         controller: plate,
+                        enabled: !busy,
                         textCapitalization: TextCapitalization.characters,
                         decoration: InputDecoration(
                           labelText: 'Patente chilena',
@@ -229,15 +276,23 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
               gap(),
               TextFormField(
                 controller: color,
-                decoration: const InputDecoration(labelText: 'Color'),
+                enabled: !busy,
+                decoration: const InputDecoration(
+                  labelText: 'Color',
+                  prefixIcon: Icon(Icons.palette_outlined),
+                ),
                 validator: (v) =>
                     (v?.trim().length ?? 0) >= 2 ? null : 'Ingresa el color',
               ),
               gap(),
               TextFormField(
                 controller: year,
+                enabled: !busy,
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Año'),
+                decoration: const InputDecoration(
+                  labelText: 'Año',
+                  prefixIcon: Icon(Icons.calendar_today_outlined),
+                ),
                 validator: (v) {
                   final y = int.tryParse(v ?? '');
                   return y != null && y >= 1900 && y <= DateTime.now().year + 1

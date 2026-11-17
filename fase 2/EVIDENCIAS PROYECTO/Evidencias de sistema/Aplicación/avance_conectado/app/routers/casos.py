@@ -38,8 +38,10 @@ def reportar_caso(datos: CasoEntrada, response: Response, idempotency_key: str =
     if fecha > datetime.now(timezone.utc):
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "La fecha del hecho no puede ser futura")
     # Conocer un vehículo no basta: el usuario debe tener un vínculo no rechazado ni revocado.
+    # Coordinar el alta del caso con el retiro o cambio de titular.
+    cur.execute('SELECT id_vehiculo FROM vehiculo WHERE id_vehiculo=%s FOR UPDATE',(datos.id_vehiculo,))
     cur.execute("""SELECT 1 FROM vinculo_vehiculo WHERE id_usuario = %s AND id_vehiculo = %s
-                    AND estado IN ('pendiente', 'autorizado')""", (usuario["id_usuario"], datos.id_vehiculo))
+                    AND estado IN ('pendiente', 'autorizado') AND fin IS NULL""", (usuario["id_usuario"], datos.id_vehiculo))
     if cur.fetchone() is None:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "El vehículo no está vinculado a la cuenta")
     if datos.id_organizacion is not None:

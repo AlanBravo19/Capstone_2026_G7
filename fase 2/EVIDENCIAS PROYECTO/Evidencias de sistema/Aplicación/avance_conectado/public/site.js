@@ -146,7 +146,7 @@ async function solicitudesCiudadanas(permitido){
  const d=await api('/colaboracion');
  if(actual!==token||turno!==consultaSolicitudes)return;
  const items=[...d.cercanos,...d.otras_zonas];
- $('solicitudes-ciudadanas').innerHTML=items.length?items.map(s=>`<article class="item"><b>${esc(s.patente)} · ${esc(s.marca)} ${esc(s.modelo)}</b><p>${esc(s.color)} · ${esc(s.zona_publicable)}</p><p>${esc(s.texto_aprobado)}</p><button type="button" data-solicitud="${Number(s.id_solicitud_colaboracion)}" data-patente="${esc(s.patente)}" ${permitido?'':'disabled'}>Aportar información y foto</button></article>`).join(''):'<p class="empty">Sin solicitudes vigentes. Aquí aparecen los vehículos que el titular autorizó y el operador publicó.</p>';
+ $('solicitudes-ciudadanas').innerHTML=items.length?items.map(s=>`<article class="item"><b>${esc(s.patente)} · ${esc(s.marca)} ${esc(s.modelo)}</b><p>${esc(s.color)} · ${esc(s.zona_publicable)}</p><p>${esc(s.texto_aprobado)}</p><button type="button" data-solicitud="${Number(s.id_solicitud_colaboracion)}" data-patente="${esc(s.patente)}" ${permitido&&!s.es_mi_caso?'':'disabled'}>${s.es_mi_caso?'Tu caso · usa el seguimiento':'Aportar información y foto'}</button></article>`).join(''):'<p class="empty">Sin solicitudes vigentes. Aquí aparecen los vehículos que el titular autorizó y el operador publicó.</p>';
  if(!permitido&&items.length)$('solicitudes-ciudadanas').insertAdjacentHTML('beforeend','<p>Verifica tu cuenta para enviar avistamientos.</p>');
  if(solicitudElegida&&!items.some(s=>s.id_solicitud_colaboracion===solicitudElegida))cerrarAporte();
 }

@@ -1,4 +1,6 @@
-# RutaAlerta · Beta 0.17.0
+# RutaAlerta · Beta 0.18.0
+
+La ubicación del reporte y del avistamiento se selecciona en el mapa compartido o mediante GPS. Selecciona la comuna del catálogo y añade la referencia del sector. Desde **Mis vehículos** puedes quitar el vínculo cuando el vehículo carece de casos abiertos. El titular puede añadir antecedentes privados desde su seguimiento.
 
 En **Reportar** puedes adjuntar una foto y autorizar que el operador publique una solicitud. En **Colaborar** selecciona el vehículo para informar dónde y cuándo lo viste y adjuntar una imagen. Desde el mapa de **Inicio** puedes consultar los vehículos publicados y antecedentes históricos del sector. **Simular alerta de proximidad** permite ensayar el aviso dentro de la app.
 

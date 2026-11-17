@@ -57,16 +57,40 @@ def nuevo_vehiculo(datos:VehiculoEntrada,usuario=Depends(participante),conn=Depe
     mid=cur.fetchone()[0]
     cur.execute('INSERT INTO modelo(id_marca,nombre) VALUES(%s,%s) ON CONFLICT(id_marca,nombre) DO UPDATE SET nombre=EXCLUDED.nombre RETURNING id_modelo',(mid,datos.modelo.strip().upper()))
     modelo=cur.fetchone()[0]
-    try:
-        cur.execute('''INSERT INTO vehiculo(id_modelo,patente,color,anio,tipo_vehiculo)
-            VALUES(%s,%s,%s,%s,%s) RETURNING id_vehiculo''',(modelo,datos.patente,datos.color,datos.anio,datos.tipo_vehiculo))
-    except ErrorBD as e:
-        if es_unico(e):
-            raise HTTPException(409,'El vehículo ya está registrado. El vínculo con un vehículo existente requiere revisión asistida.')
-        raise
+    cur.execute('''INSERT INTO vehiculo(id_modelo,patente,color,anio,tipo_vehiculo)
+        VALUES(%s,%s,%s,%s,%s) ON CONFLICT(pais,patente_normalizada) DO NOTHING''',
+        (modelo,datos.patente,datos.color,datos.anio,datos.tipo_vehiculo))
+    # La fila única serializa registros concurrentes y retiros de la misma patente.
+    cur.execute("SELECT id_vehiculo FROM vehiculo WHERE pais='CL' AND patente_normalizada=%s FOR UPDATE",(datos.patente,))
     vid=cur.fetchone()[0]
+    cur.execute("""SELECT 1 FROM vinculo_vehiculo WHERE id_vehiculo=%s
+        AND estado IN ('pendiente','autorizado') AND fin IS NULL""",(vid,))
+    if cur.fetchone():
+        raise HTTPException(409,'La patente ya está vinculada a una cuenta. Su titular debe retirarla o solicitar revisión al operador.')
+    cur.execute("SELECT 1 FROM caso WHERE id_vehiculo=%s AND estado<>'cerrado'",(vid,))
+    if cur.fetchone():
+        raise HTTPException(409,'El vehículo tiene un caso abierto. Solicita revisión al operador.')
+    cur.execute('UPDATE vehiculo SET id_modelo=%s,color=%s,anio=%s,tipo_vehiculo=%s WHERE id_vehiculo=%s',
+                (modelo,datos.color,datos.anio,datos.tipo_vehiculo,vid))
     cur.execute("INSERT INTO vinculo_vehiculo(id_usuario,id_vehiculo,tipo) VALUES(%s,%s,'propietario')",(usuario['id_usuario'],vid))
     return {'id_vehiculo':vid,'estado_vinculo':'pendiente','mensaje':'Vínculo declarado; no acredita propiedad.'}
+
+@router.delete('/vehiculos/{vid}/vinculo',status_code=204)
+def retirar_vehiculo(vid:int,usuario=Depends(participante),conn=Depends(obtener_conexion)):
+    cur=conn.cursor()
+    cur.execute('SELECT id_vehiculo FROM vehiculo WHERE id_vehiculo=%s FOR UPDATE',(vid,))
+    if not cur.fetchone():raise HTTPException(404,'Vehículo no disponible')
+    cur.execute("""SELECT id_vinculo_vehiculo FROM vinculo_vehiculo
+        WHERE id_vehiculo=%s AND id_usuario=%s AND tipo='propietario'
+        AND estado IN ('pendiente','autorizado') AND fin IS NULL""",(vid,usuario['id_usuario']))
+    vinculos=[r[0] for r in cur.fetchall()]
+    if not vinculos:raise HTTPException(403,'El vehículo no está vinculado a tu cuenta como propietario')
+    cur.execute("SELECT 1 FROM caso WHERE id_vehiculo=%s AND estado<>'cerrado'",(vid,))
+    if cur.fetchone():raise HTTPException(409,'Cierra el caso con el operador antes de retirar el vehículo.')
+    cur.execute("""UPDATE vinculo_vehiculo SET estado='revocado',fin=CURRENT_TIMESTAMP,
+        revisado_por=%s,revisado_en=CURRENT_TIMESTAMP,motivo_revision='Retiro voluntario por el titular'
+        WHERE id_vehiculo=%s AND estado IN ('pendiente','autorizado') AND fin IS NULL""",
+        (usuario['id_usuario'],vid))
 
 @router.get('/vehiculos')
 def mis_vehiculos(usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):

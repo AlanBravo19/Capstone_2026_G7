@@ -14,6 +14,11 @@ import 'package:flutter/services.dart' show FilteringTextInputFormatter;
 
 import 'movilidad.dart' show Mobility;
 import 'ui.dart';
+import 'location_picker.dart';
+import 'commune_picker.dart';
+import 'owner_note.dart';
+
+import 'package:latlong2/latlong.dart';
 
 // Formularios acotados: los permisos y reglas se vuelven a comprobar en el servidor.
 Future<Map<String, String>?> ask(
@@ -497,6 +502,43 @@ class CaseScreen extends StatelessWidget {
           eyebrow: '${d['patente']} · ${d['zona']}',
         ),
         StateChip('${d['estado']}'),
+        OutlinedButton.icon(
+          onPressed: () {
+            final comuna = '${d['zona']}'.split(' · ').first;
+            openScreen(ctx, DataScreen(
+              session: session,
+              title: 'Recursos de apoyo',
+              path: '/recursos-apoyo?territorio=${Uri.encodeQueryComponent(comuna)}',
+              render: (context, data, reload) => Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SectionTitle('Orientación en $comuna'),
+                  if ((data as List).isEmpty)
+                    const Note('El equipo todavía no ha publicado canales vigentes para esta comuna.'),
+                  for (final recurso in data)
+                    Panel(child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('${recurso['titulo']}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                        gap(),
+                        Text('${recurso['descripcion']}'),
+                        gap(),
+                        SelectableText('Canal: ${recurso['canal']}'),
+                        if (recurso['url_oficial'] != null)
+                          SelectableText('${recurso['url_oficial']}'),
+                        gap(),
+                        Text('Responsable: ${recurso['responsable']}'),
+                        Text('Verificado: ${recurso['verificado_en']}'),
+                        Text('Vigente hasta: ${recurso['vence_en']}'),
+                      ],
+                    )),
+                ],
+              ),
+            ));
+          },
+          icon: const Icon(Icons.support_agent),
+          label: const Text('Ver recursos de apoyo de la comuna'),
+        ),
         const Note(
           'Los aportes son antecedentes sujetos a revisión. Este reporte no reemplaza una denuncia.',
         ),
@@ -505,6 +547,22 @@ class CaseScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                FilledButton.icon(
+                  onPressed: d['estado'] == 'cerrado'
+                      ? null
+                      : () async {
+                          final saved = await Navigator.of(ctx).push<bool>(
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  OwnerNoteScreen(session: session, cid: cid),
+                            ),
+                          );
+                          if (saved == true && ctx.mounted) reload();
+                        },
+                  icon: const Icon(Icons.note_add_outlined),
+                  label: const Text('Agregar antecedente privado'),
+                ),
+                gap(),
                 OutlinedButton.icon(
                   onPressed: d['estado'] == 'cerrado'
                       ? null
@@ -986,19 +1044,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                           ),
                         Text('${s['texto_aprobado']}'),
                         Note('Vigencia: ${s['vence_en']}'),
-                        FilledButton.icon(
-                          onPressed: widget.session.canReport
-                              ? () => openScreen(
-                                  ctx,
-                                  SightingScreen(
-                                    session: widget.session,
-                                    sid: s['id_solicitud_colaboracion'] as int,
-                                  ),
-                                )
-                              : null,
-                          icon: const Icon(Icons.visibility_outlined),
-                          label: const Text('Aportar avistamiento'),
-                        ),
+                        collaborationAction(ctx, widget.session, s),
                       ],
                     ),
                   ),
@@ -1020,10 +1066,9 @@ class SightingScreen extends StatefulWidget {
 }
 
 class _SightingScreenState extends State<SightingScreen> {
-  final zone = TextEditingController(),
-      description = TextEditingController(),
-      lat = TextEditingController(),
-      lon = TextEditingController();
+  final zone = TextEditingController(), description = TextEditingController();
+  LatLng? location;
+  String? commune;
   final key = const Uuid().v4();
   Uint8List? photo;
   @override
@@ -1031,8 +1076,7 @@ class _SightingScreenState extends State<SightingScreen> {
     super.initState();
     if (widget.sid == null) {
       zone.text = 'Chillán · ensayo';
-      lat.text = '-36.606';
-      lon.text = '-72.104';
+      location = const LatLng(-36.606, -72.104);
     }
   }
 
@@ -1040,7 +1084,7 @@ class _SightingScreenState extends State<SightingScreen> {
   bool busy = false;
   @override
   void dispose() {
-    for (final c in [zone, description, lat, lon]) {
+    for (final c in [zone, description]) {
       c.dispose();
     }
     super.dispose();
@@ -1056,149 +1100,182 @@ class _SightingScreenState extends State<SightingScreen> {
     body: ListView(
       padding: const EdgeInsets.all(24),
       children: [
-        const SectionTitle('Lo que observaste'),
-        if (widget.sid == null)
-          const Note(
-            'Simulación local. Puedes practicar con una foto de prueba. El ejercicio se descarta al salir.',
-          ),
-        const Note(
-          'Indica una observación real y su lugar. Nunca es una orden de búsqueda o persecución.',
-        ),
-        OutlinedButton(
-          onPressed: () async {
-            final day = await showDatePicker(
-              context: context,
-              initialDate: date,
-              firstDate: DateTime(2020),
-              lastDate: DateTime.now(),
-            );
-            if (day == null || !context.mounted) return;
-            final time = await showTimePicker(
-              context: context,
-              initialTime: TimeOfDay.fromDateTime(date),
-            );
-            if (time != null && mounted) {
-              setState(
-                () => date = DateTime(
-                  day.year,
-                  day.month,
-                  day.day,
-                  time.hour,
-                  time.minute,
+        Panel(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SectionTitle('Lo que observaste'),
+              if (widget.sid == null)
+                const Note(
+                  'Simulación local. Puedes practicar con una foto de prueba. El ejercicio se descarta al salir.',
                 ),
-              );
-            }
-          },
-          child: Text('Observado: ${date.toLocal()}'),
-        ),
-        gap(),
-        OutlinedButton.icon(
-          onPressed: busy
-              ? null
-              : () => perform(context, () async {
-                  final p = await Mobility.location();
-                  if (!mounted) return;
-                  lat.text = (p['lat'] as num).toStringAsFixed(5);
-                  lon.text = (p['lon'] as num).toStringAsFixed(5);
-                }),
-          icon: const Icon(Icons.my_location),
-          label: const Text('Usar mi ubicación para el avistamiento'),
-        ),
-        gap(),
-        for (final item in [
-          (zone, 'Comuna o sector'),
-          (description, 'Describe lo observado (mínimo 10 caracteres)'),
-          (lat, 'Latitud del avistamiento'),
-          (lon, 'Longitud del avistamiento'),
-        ]) ...[
-          TextField(
-            controller: item.$1,
-            decoration: InputDecoration(labelText: item.$2),
-            maxLines: item.$1 == description ? 4 : 1,
-          ),
-          gap(),
-        ],
-        FotoAporte(
-          foto: photo,
-          ocupado: busy,
-          cambiar: (v) => setState(() => photo = v),
-        ),
-        const Note(
-          'La foto es opcional. Solo el equipo que revisa el caso puede consultarla.',
-        ),
-        FilledButton(
-          onPressed: busy
-              ? null
-              : () => perform(context, () async {
-                  setState(() => busy = true);
-                  try {
-                    final la = double.tryParse(lat.text),
-                        lo = double.tryParse(lon.text);
-                    if (la == null ||
-                        lo == null ||
-                        !la.isFinite ||
-                        !lo.isFinite ||
-                        la.abs() > 90 ||
-                        lo.abs() > 180) {
-                      throw Exception(
-                        'Indica las coordenadas del lugar observado.',
-                      );
-                    }
-                    if (zone.text.trim().length < 3 ||
-                        description.text.trim().length < 10) {
-                      throw Exception(
-                        'Completa el sector y describe lo observado en al menos 10 caracteres.',
-                      );
-                    }
-                    if (widget.sid == null) {
-                      await showDialog<void>(
-                        context: context,
-                        builder: (d) => AlertDialog(
-                          title: const Text('Ensayo completado'),
-                          content: Text(
-                            '${zone.text} · ${photo == null ? 'Sin foto' : 'Con foto'}. Este aporte de práctica quedó fuera de los casos publicados.',
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(d),
-                              child: const Text('Listo'),
+              const Note(
+                'Indica una observación real y su lugar. Nunca es una orden de búsqueda o persecución.',
+              ),
+              OutlinedButton(
+                onPressed: busy
+                    ? null
+                    : () async {
+                        final day = await showDatePicker(
+                          context: context,
+                          initialDate: date,
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime.now(),
+                        );
+                        if (day == null || !context.mounted) return;
+                        final time = await showTimePicker(
+                          context: context,
+                          initialTime: TimeOfDay.fromDateTime(date),
+                        );
+                        if (time != null && mounted) {
+                          setState(
+                            () => date = DateTime(
+                              day.year,
+                              day.month,
+                              day.day,
+                              time.hour,
+                              time.minute,
                             ),
-                          ],
-                        ),
-                      );
-                      if (context.mounted) Navigator.pop(context);
-                      return;
-                    }
-                    await widget.session.api.request(
-                      '/colaboracion/${widget.sid}/avistamientos',
-                      method: 'POST',
-                      headers: {'Idempotency-Key': key},
-                      body: {
-                        'zona': zone.text,
-                        'descripcion': description.text,
-                        'observado_en': date.toUtc().toIso8601String(),
-                        if (photo != null) 'foto_base64': base64Encode(photo!),
-                        'latitud': la,
-                        'longitud': lo,
+                          );
+                        }
                       },
-                    );
-                    if (context.mounted) {
-                      feedback(
-                        context,
-                        'Aporte recibido para revisión humana.',
-                      );
-                      Navigator.pop(context);
-                    }
-                  } finally {
-                    if (mounted) setState(() => busy = false);
-                  }
-                }),
-          child: Text(
-            busy
-                ? 'Procesando…'
-                : widget.sid == null
-                ? 'Completar ensayo'
-                : 'Enviar para revisión',
+                child: Text('Observado: ${date.toLocal()}'),
+              ),
+              gap(),
+              const FormSection('Lugar observado', icon: Icons.place_outlined),
+              if (widget.sid != null) ...[
+                CommunePicker(
+                  api: widget.session.api,
+                  value: commune,
+                  enabled: !busy,
+                  onChanged: (value) => setState(() => commune = value),
+                ),
+                gap(),
+              ],
+              TextField(
+                controller: zone,
+                enabled: !busy,
+                maxLength: 200,
+                decoration: const InputDecoration(
+                  labelText: 'Calle o sector del avistamiento',
+                  hintText: 'Ej.: calle, cruce o punto de referencia y comuna',
+                  helperText: 'Describe el lugar que marcarás en el mapa.',
+                  helperMaxLines: 2,
+                ),
+              ),
+              LocationPicker(
+                value: location,
+                center: widget.session.centroZonal,
+                enabled: !busy,
+                onChanged: (value) => setState(() => location = value),
+              ),
+              gap(24),
+              const FormSection(
+                'Detalles del avistamiento',
+                icon: Icons.visibility_outlined,
+              ),
+              TextField(
+                controller: description,
+                enabled: !busy,
+                maxLength: 3000,
+                maxLines: 4,
+                decoration: const InputDecoration(
+                  labelText: 'Describe lo observado (mínimo 10 caracteres)',
+                  alignLabelWithHint: true,
+                ),
+              ),
+              gap(),
+              FotoAporte(
+                foto: photo,
+                ocupado: busy,
+                cambiar: (v) => setState(() => photo = v),
+              ),
+              const Note(
+                'La foto es opcional. Solo el equipo que revisa el caso puede consultarla.',
+              ),
+              FilledButton(
+                onPressed: busy
+                    ? null
+                    : () => perform(context, () async {
+                        setState(() => busy = true);
+                        try {
+                          if (!validLocation(location)) {
+                            throw Exception(
+                              'Selecciona el lugar observado en el mapa o usa tu ubicación actual.',
+                            );
+                          }
+                          if (date.isAfter(
+                            DateTime.now().add(const Duration(minutes: 1)),
+                          )) {
+                            throw Exception(
+                              'La fecha del avistamiento no puede ser futura.',
+                            );
+                          }
+                          if (zone.text.trim().length < 3 ||
+                              description.text.trim().length < 10) {
+                            throw Exception(
+                              'Completa el sector y describe lo observado en al menos 10 caracteres.',
+                            );
+                          }
+                          if (widget.sid == null) {
+                            await showDialog<void>(
+                              context: context,
+                              builder: (d) => AlertDialog(
+                                title: const Text('Ensayo completado'),
+                                content: Text(
+                                  '${zone.text} · ${photo == null ? 'Sin foto' : 'Con foto'}. Este aporte de práctica quedó fuera de los casos publicados.',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(d),
+                                    child: const Text('Listo'),
+                                  ),
+                                ],
+                              ),
+                            );
+                            if (context.mounted) Navigator.pop(context);
+                            return;
+                          }
+                          final validated = await validatedZone(
+                            widget.session.api,
+                            commune,
+                            zone.text,
+                            location!,
+                          );
+                          await widget.session.api.request(
+                            '/colaboracion/${widget.sid}/avistamientos',
+                            method: 'POST',
+                            headers: {'Idempotency-Key': key},
+                            body: {
+                              'zona': validated,
+                              'descripcion': description.text.trim(),
+                              'observado_en': date.toUtc().toIso8601String(),
+                              if (photo != null)
+                                'foto_base64': base64Encode(photo!),
+                              'latitud': location!.latitude,
+                              'longitud': location!.longitude,
+                            },
+                          );
+                          if (context.mounted) {
+                            feedback(
+                              context,
+                              'Aporte recibido para revisión humana.',
+                            );
+                            Navigator.pop(context);
+                          }
+                        } finally {
+                          if (mounted) setState(() => busy = false);
+                        }
+                      }),
+                child: Text(
+                  busy
+                      ? 'Procesando…'
+                      : widget.sid == null
+                      ? 'Completar ensayo'
+                      : 'Enviar para revisión',
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -1460,5 +1537,64 @@ class ReviewScreen extends StatelessWidget {
           ),
       ],
     ),
+  );
+}
+
+/// Ownership is supplied by the server; owners contribute through private follow-up.
+Widget collaborationAction(
+  BuildContext context,
+  Session session,
+  dynamic item,
+) {
+  final own = item['es_mi_caso'] == true;
+  return FilledButton.icon(
+    onPressed: own
+        ? () {
+            final match = session.cases
+                .where((c) => c['patente'] == item['patente'])
+                .firstOrNull;
+            final cid = item['id_caso'] ?? match?['id_caso'];
+            if (cid is int) {
+              openScreen(context, CaseScreen(session: session, cid: cid));
+            } else {
+              openScreen(
+                context,
+                DataScreen(
+                  session: session,
+                  title: 'Mis casos',
+                  path: '/mis-casos',
+                  render: (ctx, data, _) => Column(
+                    children: [
+                      for (final c in data)
+                        Panel(
+                          child: ListTile(
+                            title: Text('${c['folio']}'),
+                            subtitle: Text('${c['patente']} · ${c['estado']}'),
+                            onTap: () => openScreen(
+                              ctx,
+                              CaseScreen(
+                                session: session,
+                                cid: c['id_caso'] as int,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            }
+          }
+        : session.canReport
+        ? () => openScreen(
+            context,
+            SightingScreen(
+              session: session,
+              sid: item['id_solicitud_colaboracion'] as int,
+            ),
+          )
+        : null,
+    icon: Icon(own ? Icons.assignment_outlined : Icons.visibility_outlined),
+    label: Text(own ? 'Ir al seguimiento de mi caso' : 'Aportar avistamiento'),
   );
 }

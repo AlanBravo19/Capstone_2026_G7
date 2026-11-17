@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
@@ -9,6 +8,7 @@ import 'session.dart';
 import 'expanded.dart';
 import 'movilidad.dart' show Mobility;
 import 'ui.dart';
+import 'location_picker.dart';
 
 class PanoramaZonal extends StatefulWidget {
   final Session session;
@@ -181,23 +181,10 @@ class _PanoramaZonalState extends State<PanoramaZonal> {
             if (historico)
               SelectableText('${item['url_fuente']}')
             else
-              FilledButton.icon(
-                icon: const Icon(Icons.add_a_photo_outlined),
-                label: const Text('Aportar información y foto'),
-                onPressed: widget.session.canReport
-                    ? () {
-                        Navigator.pop(ctx);
-                        openScreen(
-                          context,
-                          SightingScreen(
-                            session: widget.session,
-                            sid: item['id_solicitud_colaboracion'] as int,
-                          ),
-                        );
-                      }
-                    : null,
-              ),
-            if (!historico && !widget.session.canReport)
+              collaborationAction(ctx, widget.session, item),
+            if (!historico &&
+                item['es_mi_caso'] != true &&
+                !widget.session.canReport)
               const Text('Verifica tu cuenta para aportar.'),
           ],
         ),
@@ -309,51 +296,12 @@ class _PanoramaZonalState extends State<PanoramaZonal> {
             height: widget.compacto ? 205 : 320,
             child: Stack(
               children: [
-                FlutterMap(
-                  mapController: mapa,
-                  options: MapOptions(
-                    initialCenter: centro,
-                    initialZoom: 12,
-                    interactionOptions: InteractionOptions(
-                      flags: widget.compacto
-                          ? InteractiveFlag.none
-                          : InteractiveFlag.all & ~InteractiveFlag.rotate,
-                    ),
-                  ),
-                  children: [
-                    ColorFiltered(
-                      colorFilter: const ColorFilter.matrix([
-                        .53,
-                        .33,
-                        .09,
-                        0,
-                        4,
-                        .19,
-                        .68,
-                        .11,
-                        0,
-                        4,
-                        .19,
-                        .45,
-                        .35,
-                        0,
-                        8,
-                        0,
-                        0,
-                        0,
-                        1,
-                        0,
-                      ]),
-                      child: TileLayer(
-                        urlTemplate:
-                            'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                        userAgentPackageName: 'cl.rutaalerta.rutaalerta_movil',
-                        maxNativeZoom: 19,
-                      ),
-                    ),
-                    CircleLayer(circles: circulos),
-                    MarkerLayer(markers: marcas),
-                  ],
+                RutaMap(
+                  controller: mapa,
+                  center: centro,
+                  interactive: !widget.compacto,
+                  circles: circulos,
+                  markers: marcas,
                 ),
                 Positioned(
                   top: 10,
@@ -402,25 +350,6 @@ class _PanoramaZonalState extends State<PanoramaZonal> {
                     onPressed: gpsOcupado ? null : ubicar,
                     icon: const Icon(Icons.my_location),
                     tooltip: 'Centrar en mi GPS',
-                  ),
-                ),
-                Positioned(
-                  right: 3,
-                  bottom: 2,
-                  child: Material(
-                    color: Colors.white,
-                    child: InkWell(
-                      onTap: () => perform(
-                        context,
-                        () =>
-                            const MethodChannel('cl.rutaalerta/trayecto')
-                                .invokeMethod<void>('openAttribution'),
-                      ),
-                      child: const Text(
-                        ' © OpenStreetMap ',
-                        style: TextStyle(fontSize: 11),
-                      ),
-                    ),
                   ),
                 ),
               ],

@@ -227,6 +227,15 @@ class Session extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> unlinkVehicle(int id) async {
+    final token = api.token;
+    await api.request('/vehiculos/$id/vinculo', method: 'DELETE');
+    if (api.token != token) return;
+    vehicles = vehicles.where((v) => v['id_vehiculo'] != id).toList();
+    // Unlinking ownership never removes a case or its private evidence.
+    notifyListeners();
+  }
+
   Future<String> report(Map<String, dynamic> body) async {
     // Conservar la misma clave ante un fallo de red evita duplicar el reporte.
     final signature = body.toString();
