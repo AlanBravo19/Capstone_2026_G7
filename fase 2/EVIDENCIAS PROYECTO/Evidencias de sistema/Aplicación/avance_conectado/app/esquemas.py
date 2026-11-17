@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Literal
 import re
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class RegistroEntrada(BaseModel):
@@ -62,6 +62,7 @@ class RecuperacionConfirmar(BaseModel):
 class CasoEntrada(BaseModel):
     foto_base64: str | None = Field(default=None, min_length=16, max_length=2800000)
     solicitar_colaboracion: bool = False
+    autorizar_foto_publica: bool = False
     id_vehiculo: int
     id_organizacion: int | None = None
     fecha_hecho: datetime
@@ -71,6 +72,12 @@ class CasoEntrada(BaseModel):
     longitud: float = Field(ge=-180, le=180)
     precision_m: float | None = Field(default=None, ge=0)
     tipo_incidente: Literal["encerrona", "portonazo", "robo_estacionado", "otro", "sin_clasificar"] = "sin_clasificar"
+
+    @model_validator(mode='after')
+    def validar_foto_publica(self):
+        if self.autorizar_foto_publica and not (self.foto_base64 and self.solicitar_colaboracion):
+            raise ValueError('Autorizar la foto pública requiere foto y solicitar colaboración')
+        return self
 
 
 class CasoSalida(BaseModel):

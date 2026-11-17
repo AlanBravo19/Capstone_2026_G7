@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 import 'foto_aporte.dart';
+import 'case_photos.dart';
 
 import 'session.dart';
 import 'location_picker.dart';
@@ -33,6 +34,7 @@ class _ReportScreenState extends State<ReportScreen> {
   bool busy = false;
   Uint8List? foto;
   bool colaborar = false;
+  bool autorizarFotoPublica = false;
   LatLng? appliedPoint;
   DateTime date = DateTime.now();
   @override
@@ -118,6 +120,7 @@ class _ReportScreenState extends State<ReportScreen> {
         'descripcion': description.text.trim(),
         if (foto != null) 'foto_base64': base64Encode(foto!),
         'solicitar_colaboracion': colaborar,
+        'autorizar_foto_publica': foto != null && colaborar && autorizarFotoPublica,
         'latitud': appliedPoint!.latitude,
         'longitud': appliedPoint!.longitude,
       });
@@ -129,6 +132,7 @@ class _ReportScreenState extends State<ReportScreen> {
       setState(() {
         foto = null;
         colaborar = false;
+        autorizarFotoPublica = false;
         vehicle = null;
         commune = null;
         date = DateTime.now();
@@ -297,7 +301,10 @@ class _ReportScreenState extends State<ReportScreen> {
               FotoAporte(
                 foto: foto,
                 ocupado: busy,
-                cambiar: (v) => setState(() => foto = v),
+                cambiar: (v) => setState(() {
+                  foto = v;
+                  autorizarFotoPublica = false;
+                }),
               ),
               const Text(
                 'Opcional. La foto queda como evidencia privada.',
@@ -307,13 +314,24 @@ class _ReportScreenState extends State<ReportScreen> {
                 value: colaborar,
                 onChanged: busy
                     ? null
-                    : (v) => setState(() => colaborar = v == true),
+                    : (v) => setState(() {
+                        colaborar = v == true;
+                        if (!colaborar) autorizarFotoPublica = false;
+                      }),
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Solicitar colaboración ciudadana'),
                 subtitle: const Text(
                   'Autorizo que el operador publique la descripción del vehículo y el sector tras la revisión.',
                 ),
               ),
+              if (foto != null && colaborar)
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: autorizarFotoPublica,
+                  onChanged: busy ? null : (v) => setState(() => autorizarFotoPublica = v == true),
+                  title: const Text(publicPhotoConsentText),
+                  subtitle: const Text(publicPhotoReviewText),
+                ),
               FilledButton.icon(
                 onPressed:
                     busy || !widget.session.canReport || organization == null

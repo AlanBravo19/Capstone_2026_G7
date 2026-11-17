@@ -4,7 +4,6 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 
 import 'session.dart';
@@ -17,6 +16,8 @@ import 'ui.dart';
 import 'location_picker.dart';
 import 'commune_picker.dart';
 import 'owner_note.dart';
+import 'public_vehicle.dart';
+import 'case_photos.dart';
 
 import 'package:latlong2/latlong.dart';
 
@@ -636,31 +637,19 @@ class CaseScreen extends StatelessWidget {
                   onPressed: d['estado'] == 'cerrado'
                       ? null
                       : () => perform(ctx, () async {
-                          final file = await ImagePicker().pickImage(
-                            source: ImageSource.gallery,
-                            maxWidth: 1800,
-                            maxHeight: 1800,
-                            imageQuality: 85,
+                          final saved = await showDialog<bool>(
+                            context: ctx,
+                            barrierDismissible: false,
+                            builder: (_) => CasePhotoUpload(
+                              api: session.api,
+                              cid: cid,
+                              collaborationRequested: d['colaboracion_consentida_en'] != null,
+                            ),
                           );
-                          if (file == null) return;
-                          final bytes = await file.readAsBytes();
-                          if (bytes.length > 2097152) {
-                            throw Exception(
-                              'Selecciona una foto de hasta 2 MB.',
-                            );
-                          }
-                          await session.api.request(
-                            '/casos/$cid/fotos',
-                            method: 'POST',
-                            body: {
-                              'contenido_base64': base64Encode(bytes),
-                              'clave_envio': const Uuid().v4(),
-                            },
-                          );
-                          reload();
+                          if (saved == true && ctx.mounted) reload();
                         }),
                   icon: const Icon(Icons.add_photo_alternate_outlined),
-                  label: const Text('Adjuntar foto privada'),
+                  label: const Text('Adjuntar foto al caso'),
                 ),
                 OutlinedButton.icon(
                   onPressed: () =>
@@ -673,10 +662,12 @@ class CaseScreen extends StatelessWidget {
           ),
         if (d['evidencias'] != null &&
             (d['evidencias'] as List).isNotEmpty) ...[
-          const SectionTitle('Evidencias privadas'),
+          const SectionTitle('Fotos del caso'),
           for (final e in d['evidencias'])
             Panel(
-              child: ListTile(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [ListTile(
                 leading: const Icon(Icons.image_outlined),
                 title: Text('Foto #${e['id_evidencia']}'),
                 subtitle: Text('${e['estado_revision']}'),
@@ -684,6 +675,17 @@ class CaseScreen extends StatelessWidget {
                   ctx,
                   PhotoScreen(session: session, id: e['id_evidencia'] as int),
                 ),
+              ),
+                if (d['es_propietario'] == true)
+                  PhotoPublicationControl(
+                    api: session.api,
+                    cid: cid,
+                    eid: e['id_evidencia'] as int,
+                    authorized: e['autorizada_publicacion_en'] != null,
+                    canGrant: d['estado'] != 'cerrado' && d['colaboracion_consentida_en'] != null,
+                    onChanged: reload,
+                  ),
+                ],
               ),
             ),
         ],
@@ -1029,20 +1031,14 @@ class _CommunityScreenState extends State<CommunityScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          '${s['patente']} · ${s['marca']} ${s['modelo']}',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        PublicVehicleDetails(
+                          api: widget.session.api,
+                          data: Map<String, dynamic>.from(s as Map),
                         ),
-                        gap(8),
-                        Text('${s['color']} · ${s['zona_publicable']}'),
                         if (s['distancia_km'] != null)
                           Note(
                             'Sector a ~${s['distancia_km']} km. No es posición actual del vehículo.',
                           ),
-                        Text('${s['texto_aprobado']}'),
                         Note('Vigencia: ${s['vence_en']}'),
                         collaborationAction(ctx, widget.session, s),
                       ],
@@ -1100,6 +1096,8 @@ class _SightingScreenState extends State<SightingScreen> {
     body: ListView(
       padding: const EdgeInsets.all(24),
       children: [
+        if (widget.sid != null)
+          PublicVehicleHeader(api: widget.session.api, sid: widget.sid!),
         Panel(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,

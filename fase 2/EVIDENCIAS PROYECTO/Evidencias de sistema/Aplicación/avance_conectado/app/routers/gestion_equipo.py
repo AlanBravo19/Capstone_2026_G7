@@ -78,7 +78,7 @@ def equipo(cid:int,usuario=Depends(usuario_actual),conn=Depends(obtener_conexion
     cur.execute("""SELECT accion,descripcion,creada_en FROM gestion_caso WHERE id_caso=%s AND visibilidad='interna'
                    ORDER BY id_gestion_caso DESC LIMIT 100""",(cid,))
     gestiones=rows(cur)
-    cur.execute("""SELECT id_solicitud_colaboracion,vence_en FROM solicitud_colaboracion WHERE id_caso=%s
+    cur.execute("""SELECT id_solicitud_colaboracion,vence_en,id_foto_vehiculo FROM solicitud_colaboracion WHERE id_caso=%s
                    AND estado='publicada' AND vence_en>CURRENT_TIMESTAMP""",(cid,))
     publica=rows(cur)
     return {'responsable':actual[0] if actual else None,

@@ -1,4 +1,8 @@
-# RutaAlerta · Beta 0.19.0
+# RutaAlerta · Beta 0.20.0
+
+La comunidad puede ver la foto del vehículo autorizada por el titular y seleccionada por el operador, tanto en la tarjeta como al abrir el avistamiento. Cuando falta una imagen habilitada se muestra una referencia genérica del tipo de vehículo.
+
+[Fotos del vehículo, consentimiento y revisión](evidencias/Fotos_vehiculos_0200.md)
 
 En **Estadísticas** puedes filtrar el año o un rango de fechas, organización, sector y entorno. Se muestran series mensuales, días y horarios, marcas y modelos, desenlaces, aportes y proximidad al inventario de cámaras. El historial territorial revisado se consulta en una serie propia. En **Mi cuenta** se muestran las membresías y permisos institucionales.
 

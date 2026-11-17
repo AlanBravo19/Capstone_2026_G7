@@ -22,6 +22,43 @@ class RutaApi {
   void Function()? onExpired;
   RutaApi({http.Client? client}) : client = client ?? http.Client();
 
+  /// Fetches only the API's reviewed vehicle image, never an arbitrary photo URL.
+  Future<Uint8List> vehiclePhoto(int sid) async {
+    final uri = Uri.parse('$base/colaboracion/$sid/foto-vehiculo');
+    if (uri.scheme != 'https') {
+      throw const ApiError('La conexión debe utilizar HTTPS.');
+    }
+    final session = token;
+    try {
+      final response = await http.Response.fromStream(
+        await client.send(http.Request('GET', uri)
+          ..followRedirects = false
+          ..headers.addAll({
+            'Accept': 'image/*',
+            if (session.isNotEmpty) 'Authorization': 'Bearer $session',
+          })).timeout(const Duration(seconds: 35)),
+      ).timeout(const Duration(seconds: 35));
+      if (response.statusCode == 401 &&
+          session.isNotEmpty && token == session) {
+        token = '';
+        onExpired?.call();
+      }
+      if (response.statusCode != 200 || response.bodyBytes.isEmpty) {
+        throw ApiError(
+          response.statusCode == 404
+              ? 'La foto ya no está disponible.'
+              : 'No se pudo cargar la foto del vehículo.',
+          response.statusCode,
+        );
+      }
+      return response.bodyBytes;
+    } on TimeoutException {
+      throw const ApiError('La foto tardó demasiado en cargar.');
+    } on http.ClientException {
+      throw const ApiError('No se pudo cargar la foto. Revisa tu conexión.');
+    }
+  }
+
   Future<Uint8List> photo(int id) async {
     final r = await client
         .get(

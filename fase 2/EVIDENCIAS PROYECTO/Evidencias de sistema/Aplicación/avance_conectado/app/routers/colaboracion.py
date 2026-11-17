@@ -68,7 +68,7 @@ def seguimiento(cid:int,usuario=Depends(usuario_actual),conn=Depends(obtener_con
         c['relato_para_revision']=cur.fetchone()[0]
     if own or org:
         cur.execute('''SELECT a.id_avistamiento,a.zona,a.observado_en,a.estado_revision,a.resumen_para_afectado FROM avistamiento a WHERE a.id_caso=%s AND a.estado_revision='aceptado' AND a.resumen_para_afectado IS NOT NULL ORDER BY observado_en DESC''',(cid,));c['aportes']=rows(cur)
-        cur.execute('SELECT id_evidencia,estado_revision,mime,tamano_bytes FROM evidencia WHERE id_caso=%s AND id_avistamiento IS NULL ORDER BY creada_en DESC',(cid,));c['evidencias']=rows(cur)
+        cur.execute('SELECT id_evidencia,estado_revision,mime,tamano_bytes,autorizada_publicacion_en FROM evidencia WHERE id_caso=%s AND id_avistamiento IS NULL ORDER BY creada_en DESC',(cid,));c['evidencias']=rows(cur)
     return c
 
 @router.post('/mis-casos/{cid}/colaboracion')
@@ -80,6 +80,7 @@ def consentir(cid:int,usuario=Depends(participante),conn=Depends(obtener_conexio
     return {'mensaje':'Solicitud de colaboración pendiente de revisión; todavía no está publicada.'}
 
 class Publicacion(BaseModel):
+    id_foto_vehiculo:int|None=Field(default=None,gt=0)
     zona:str=Field(min_length=3,max_length=200)
     texto:str=Field(min_length=15,max_length=1500)
     motivo:str=Field(min_length=10,max_length=500)
@@ -90,12 +91,17 @@ def publicar(cid:int,datos:Publicacion,usuario=Depends(usuario_actual),conn=Depe
     cur=conn.cursor();c=caso_autorizado(cur,cid,usuario,operador=True)
     if c['estado'] not in ('en_revision','en_gestion') or not c['colaboracion_consentida_en']:
         raise HTTPException(409,'Se requiere revisión del caso y consentimiento del afectado')
+    if datos.id_foto_vehiculo is not None:
+        cur.execute(f'''SELECT 1 FROM evidencia e JOIN archivo_evidencia f USING(id_evidencia)
+            JOIN caso c ON c.id_caso=e.id_caso
+            WHERE e.id_evidencia=%s AND c.id_caso=%s AND {FOTO_PUBLICABLE}''',(datos.id_foto_vehiculo,cid))
+        if not cur.fetchone():raise HTTPException(422,'Foto no elegible: requiere foto del reportante, aceptada y con consentimiento explícito')
     cur.execute("UPDATE solicitud_colaboracion SET estado='vencida' WHERE id_caso=%s AND estado='publicada' AND vence_en<=CURRENT_TIMESTAMP",(cid,))
     cur.execute("SELECT 1 FROM solicitud_colaboracion WHERE id_caso=%s AND estado='publicada'",(cid,))
     if cur.fetchone():raise HTTPException(409,'Ya existe una publicación vigente')
     # Centro territorial redondeado (~2 km), nunca la coordenada privada del afectado.
-    cur.execute('''INSERT INTO solicitud_colaboracion(id_caso,autorizada_por,zona_publicable,texto_aprobado,motivo_autorizacion,inicio,vence_en,centro_publico)
-      SELECT id_caso,%s,%s,%s,%s,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP+(%s*interval '1 hour'),ST_SnapToGrid(ubicacion::geometry,0.02)::geography FROM caso WHERE id_caso=%s RETURNING id_solicitud_colaboracion''',(usuario['id_usuario'],datos.zona,datos.texto,datos.motivo,datos.horas,cid));sid=cur.fetchone()[0]
+    cur.execute('''INSERT INTO solicitud_colaboracion(id_caso,autorizada_por,zona_publicable,texto_aprobado,motivo_autorizacion,inicio,vence_en,centro_publico,id_foto_vehiculo)
+      SELECT id_caso,%s,%s,%s,%s,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP+(%s*interval '1 hour'),ST_SnapToGrid(ubicacion::geometry,0.02)::geography,%s FROM caso WHERE id_caso=%s RETURNING id_solicitud_colaboracion''',(usuario['id_usuario'],datos.zona,datos.texto,datos.motivo,datos.horas,datos.id_foto_vehiculo,cid));sid=cur.fetchone()[0]
     bitacora(cur,cid,usuario['id_usuario'],'publicacion','Se publicó una solicitud de colaboración con datos mínimos revisados.')
     aviso(cur,c['id_usuario_reportante'],cid,'Colaboración publicada','Tu solicitud ya está disponible para colaboradores.',f'publicacion:{sid}')
     return {'id_solicitud_colaboracion':sid}
@@ -107,18 +113,52 @@ def retirar(cid:int,datos:Motivo,usuario=Depends(usuario_actual),conn=Depends(ob
     cur.execute("UPDATE solicitud_colaboracion SET estado='retirada',retirada_en=CURRENT_TIMESTAMP,motivo_retiro=%s WHERE id_caso=%s AND estado='publicada'",(datos.motivo,cid))
     bitacora(cur,cid,usuario['id_usuario'],'retirar_publicacion','La publicación de colaboración fue retirada.')
 
+# Shared by selection, listing and download so revocation/review changes apply immediately.
+FOTO_PUBLICABLE="""e.id_caso=c.id_caso AND e.id_usuario_autor=c.id_usuario_reportante
+    AND e.id_avistamiento IS NULL AND e.tipo='foto' AND e.mime='image/jpeg'
+    AND e.estado_revision='aceptada' AND e.estado_carga='recibido' AND e.recibida_en IS NOT NULL
+    AND e.autorizada_publicacion_en IS NOT NULL AND octet_length(f.contenido)>0"""
+SOLICITUD_VIGENTE="""s.estado='publicada' AND s.inicio<=CURRENT_TIMESTAMP
+    AND s.vence_en>CURRENT_TIMESTAMP AND c.estado<>'cerrado'"""
+
+def colaboraciones_publicas(cur,uid,lat=None,lon=None,zona='',sid=None):
+    cur.execute(f'''SELECT s.id_solicitud_colaboracion,s.zona_publicable,s.texto_aprobado,s.vence_en,v.patente,v.color,v.tipo_vehiculo,ma.nombre AS marca,m.nombre AS modelo,
+        c.id_usuario_reportante=%s AS es_mi_caso,
+        ST_Y(s.centro_publico::geometry) AS latitud_sector, ST_X(s.centro_publico::geometry) AS longitud_sector,
+        CASE WHEN %s::float IS NOT NULL THEN ST_Distance(s.centro_publico,ST_SetSRID(ST_Point(%s,%s),4326)::geography)/1000 END AS distancia_km,
+        EXISTS(SELECT 1 FROM evidencia e JOIN archivo_evidencia f USING(id_evidencia)
+               WHERE e.id_evidencia=s.id_foto_vehiculo AND {FOTO_PUBLICABLE}) AS foto_disponible
+        FROM solicitud_colaboracion s JOIN caso c USING(id_caso) JOIN vehiculo v USING(id_vehiculo) JOIN modelo m USING(id_modelo) JOIN marca ma USING(id_marca)
+        WHERE {SOLICITUD_VIGENTE} AND s.zona_publicable ILIKE %s
+        AND (%s::bigint IS NULL OR s.id_solicitud_colaboracion=%s)
+        ORDER BY distancia_km ASC NULLS LAST,s.inicio DESC LIMIT 100''',(uid,lat,lon,lat,'%'+zona+'%',sid,sid))
+    found=rows(cur)
+    for fila in found:
+        fila['foto_url']=f"/colaboracion/{fila['id_solicitud_colaboracion']}/foto-vehiculo" if fila['foto_disponible'] else None
+    return found
+
+@router.get('/colaboracion/{sid}/foto-vehiculo')
+def foto_vehiculo_publica(sid:int,usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):
+    cur=conn.cursor()
+    cur.execute(f'''SELECT f.contenido FROM solicitud_colaboracion s JOIN caso c USING(id_caso)
+        JOIN evidencia e ON e.id_evidencia=s.id_foto_vehiculo
+        JOIN archivo_evidencia f USING(id_evidencia)
+        WHERE s.id_solicitud_colaboracion=%s AND {SOLICITUD_VIGENTE} AND {FOTO_PUBLICABLE}''',(sid,))
+    row=cur.fetchone()
+    if not row:raise HTTPException(404,'Foto no disponible',headers={'Cache-Control':'no-store'})
+    return Response(bytes(row[0]),media_type='image/jpeg',headers={'Cache-Control':'no-store','Content-Disposition':'inline; filename="vehiculo.jpg"'})
+
+@router.get('/colaboracion/{sid}')
+def detalle_colaboracion(sid:int,usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):
+    found=colaboraciones_publicas(conn.cursor(),usuario['id_usuario'],sid=sid)
+    if not found:raise HTTPException(404,'Publicación no disponible')
+    return found[0]
+
 @router.get('/colaboracion')
 def listado(lat:float|None=Query(None,ge=-90,le=90),lon:float|None=Query(None,ge=-180,le=180),radio_km:int=Query(30,ge=1,le=300),zona:str=Query('',max_length=200),usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):
     if (lat is None)!=(lon is None):raise HTTPException(422,'Envía latitud y longitud juntas')
     cur=conn.cursor()
-    cur.execute('''SELECT s.id_solicitud_colaboracion,s.zona_publicable,s.texto_aprobado,s.vence_en,v.patente,v.color,ma.nombre AS marca,m.nombre AS modelo,
-        c.id_usuario_reportante=%s AS es_mi_caso,
-        ST_Y(s.centro_publico::geometry) AS latitud_sector, ST_X(s.centro_publico::geometry) AS longitud_sector,
-        CASE WHEN %s::float IS NOT NULL THEN ST_Distance(s.centro_publico,ST_SetSRID(ST_Point(%s,%s),4326)::geography)/1000 END AS distancia_km
-        FROM solicitud_colaboracion s JOIN caso c USING(id_caso) JOIN vehiculo v USING(id_vehiculo) JOIN modelo m USING(id_modelo) JOIN marca ma USING(id_marca)
-        WHERE s.estado='publicada' AND s.inicio<=CURRENT_TIMESTAMP AND s.vence_en>CURRENT_TIMESTAMP AND c.estado<>'cerrado' AND s.zona_publicable ILIKE %s
-        ORDER BY distancia_km ASC NULLS LAST,s.inicio DESC LIMIT 100''',(usuario['id_usuario'],lat,lon,lat,'%'+zona+'%'))
-    found=rows(cur)
+    found=colaboraciones_publicas(cur,usuario['id_usuario'],lat,lon,zona)
     resultado={'cercanos':[], 'otras_zonas':[], 'nota':'Distancias aproximadas al sector de publicación, no ubicación actual del vehículo.'}
     for fila in found:
         km=fila['distancia_km']
@@ -204,6 +244,7 @@ def revisar(aid:int,datos:Revision,usuario=Depends(usuario_actual),conn=Depends(
     return {'estado_revision':datos.decision}
 
 class Foto(BaseModel):
+    autorizar_foto_publica:bool=False
     contenido_base64:str=Field(min_length=16,max_length=2800000)
     clave_envio:uuid.UUID
 
@@ -238,7 +279,7 @@ def foto(cid:int,datos:Foto,response:Response,usuario=Depends(participante),conn
         response.status_code=200;return {'id_evidencia':prev[0]}
     cur.execute('SELECT count(*) FROM archivo_evidencia f JOIN evidencia e USING(id_evidencia) WHERE e.id_caso=%s AND e.id_avistamiento IS NULL',(cid,))
     if cur.fetchone()[0]>=5:raise HTTPException(409,'Máximo cinco fotos por caso en esta beta')
-    eid=guardar_foto(cur,cid,uid,datos.clave_envio,datos.contenido_base64)
+    eid=guardar_foto(cur,cid,uid,datos.clave_envio,datos.contenido_base64,autorizar_foto_publica=datos.autorizar_foto_publica)
     return {'id_evidencia':eid,'estado_revision':'pendiente','mensaje':'Foto privada recibida para revisión.'}
 
 class AntecedenteTitular(BaseModel):
@@ -272,7 +313,7 @@ def antecedente_titular(cid:int,datos:AntecedenteTitular,response:Response,usuar
     bitacora(cur,cid,uid,'nota',texto,'interna')
     return {'mensaje':'Antecedente privado recibido para revisión del operador'}
 
-def guardar_foto(cur,cid,uid,clave,contenido,aid=None):
+def guardar_foto(cur,cid,uid,clave,contenido,aid=None,autorizar_foto_publica=False):
     try:
         raw=base64.b64decode(contenido,validate=True)
         if len(raw)>2097152:raise ValueError()
@@ -286,7 +327,20 @@ def guardar_foto(cur,cid,uid,clave,contenido,aid=None):
     cur.execute('''INSERT INTO evidencia(id_caso,id_avistamiento,id_usuario_autor,tipo,origen,clave_objeto,mime,tamano_bytes,sha256,estado_carga,clave_envio,recibida_en)
       VALUES(%s,%s,%s,'foto','archivo_adjuntado',%s,'image/jpeg',%s,%s,'recibido',%s,CURRENT_TIMESTAMP) RETURNING id_evidencia''',(cid,aid,uid,key,len(clean),hashlib.sha256(clean).digest(),str(clave)));eid=cur.fetchone()[0]
     cur.execute('INSERT INTO archivo_evidencia(id_evidencia,contenido) VALUES(%s,%s)',(eid,clean))
+    if autorizar_foto_publica and aid is None:
+        cur.execute('UPDATE evidencia SET autorizada_publicacion_en=CURRENT_TIMESTAMP WHERE id_evidencia=%s',(eid,))
     return eid
+
+class ConsentimientoFoto(BaseModel):
+    autorizada:bool
+
+@router.post('/mis-casos/{cid}/fotos/{eid}/publicacion',status_code=204)
+def consentir_foto(cid:int,eid:int,datos:ConsentimientoFoto,usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):
+    cur=conn.cursor();caso_autorizado(cur,cid,usuario,propietario=True)
+    cur.execute('''UPDATE evidencia SET autorizada_publicacion_en=CASE WHEN %s THEN CURRENT_TIMESTAMP ELSE NULL END
+        WHERE id_evidencia=%s AND id_caso=%s AND id_usuario_autor=%s AND id_avistamiento IS NULL AND tipo='foto'
+        RETURNING id_evidencia''',(datos.autorizada,eid,cid,usuario['id_usuario']))
+    if not cur.fetchone():raise HTTPException(404,'Foto no disponible')
 
 @router.get('/evidencias/{eid}/foto')
 def descargar(eid:int,usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):

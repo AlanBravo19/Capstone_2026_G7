@@ -74,7 +74,8 @@ def reportar_caso(datos: CasoEntrada, response: Response, idempotency_key: str =
     caso = fila_dict(cur, cur.fetchone())
     if datos.foto_base64:
         from .colaboracion import guardar_foto
-        guardar_foto(cur, caso["id_caso"], usuario["id_usuario"], uuid.uuid4(), datos.foto_base64)
+        guardar_foto(cur, caso["id_caso"], usuario["id_usuario"], uuid.uuid4(), datos.foto_base64,
+                     autorizar_foto_publica=datos.autorizar_foto_publica)
     if datos.solicitar_colaboracion:
         if datos.id_organizacion is None:
             raise HTTPException(422, "Selecciona una organización para solicitar colaboración.")

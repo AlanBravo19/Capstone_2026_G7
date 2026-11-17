@@ -1,4 +1,6 @@
-# RutaAlerta · Beta 0.18.0
+# RutaAlerta · Beta 0.20.0
+
+Las solicitudes de colaboración muestran la fotografía del vehículo autorizada por el titular y elegida por el operador. El formulario de avistamiento mantiene esa foto y la descripción pública. Desde el seguimiento se puede autorizar una fotografía anterior o revocar su publicación. Mientras falte una foto habilitada, la app presenta una referencia genérica por tipo de vehículo.
 
 La ubicación del reporte y del avistamiento se selecciona en el mapa compartido o mediante GPS. Selecciona la comuna del catálogo y añade la referencia del sector. Desde **Mis vehículos** puedes quitar el vínculo cuando el vehículo carece de casos abiertos. El titular puede añadir antecedentes privados desde su seguimiento.
 
