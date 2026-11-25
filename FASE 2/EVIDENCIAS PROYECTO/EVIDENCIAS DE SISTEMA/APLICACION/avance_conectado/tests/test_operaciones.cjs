@@ -8,13 +8,13 @@ const source=fs.readFileSync(path.join(__dirname,'../public/operaciones.js'),'ut
 function environment(initial='/operaciones',override={}){
   const nodes=new Map(),events={},calls=[],history=[];
   const node=()=>({hidden:false,value:'',textContent:'',innerHTML:'',dataset:{},attrs:{},
-    setAttribute(k,v){this.attrs[k]=v;},removeAttribute(k){delete this.attrs[k];},
+    setAttribute(k,v){this.attrs[k]=v;},getAttribute(k){return this.attrs[k];},removeAttribute(k){delete this.attrs[k];},
     focus(){this.focused=true;},reset(){},replaceChildren(){this.innerHTML='';},
     querySelector(selector){if(selector==='[data-list]')return this.innerHTML.includes('data-list')?back:null;return null;}});
   const back=node();
-  for(const id of ['content','status','name','membership','account-help','account-content','desk','access','login','mfa','back','exit','refresh','title','page-description','updated','restaurando'])nodes.set(id,node());
+  for(const id of ['content','status','name','membership','account-help','account-content','desk','access','login','mfa','back','exit','refresh','title','page-description','updated','restaurando','operator-avatar','rail-toggle','context-path'])nodes.set(id,node());
   const nav=node(),user=node();
-  const window={location:{pathname:initial},addEventListener(name,fn){events[name]=fn;},history:{state:null,
+  const window={location:{pathname:initial},addEventListener(name,fn){events[name]=fn;},scrollTo(){},history:{state:null,
     pushState(state,_,url){this.state=state;window.location.pathname=url;history.push(url);},
     replaceState(state,_,url){this.state=state;window.location.pathname=url;}}};
   const document={getElementById(id){
@@ -67,6 +67,12 @@ test('institutional login retains requested case and displays internal owner not
   assert.match(e.nodes.get('content').innerHTML,/Antecedente privado del titular/);
   assert.match(e.nodes.get('content').innerHTML,/Registrar consulta manual/);
   assert.match(e.nodes.get('content').innerHTML,/name="captura_encargo"/);
+  for(const key of ['gestion','difusion','avistamientos','evidencias','equipo','historial']){
+    assert.match(e.nodes.get('content').innerHTML,new RegExp('data-case-section="case-'+key+'"'));
+    assert.match(e.nodes.get('content').innerHTML,new RegExp('id="case-'+key+'"'));
+  }
+  assert.equal(e.nodes.get('context-path').textContent,'Operación / Bandeja de casos');
+  assert.equal(e.nodes.get('operator-avatar').textContent,'O');
   assert.doesNotMatch(e.nodes.get('content').innerHTML,/Mantener imagen actual|load-error/);
   assert.doesNotMatch(e.nodes.get('content').innerHTML,/Asignar responsable/);
   assert.equal(e.calls.find(c=>c.url==='/seguimiento/7').headers.Authorization,'Bearer session');

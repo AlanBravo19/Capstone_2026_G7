@@ -13,6 +13,10 @@ const motives='<label>Motivo de la decisión<textarea name="motivo" minlength="1
 const selector=(name,label,values)=>`<label>${label}<select name="${name}">${Object.entries(values).map(([k,v])=>`<option value="${h(k)}">${h(v)}</option>`).join('')}</select></label>`;
 const action=(title,path,fields,submit=title)=>`<details class="record"><summary>${h(title)}</summary><form data-path="${h(path)}">${fields}<button class="primary">${h(submit)}</button></form></details>`;
 const rutaSesion='/institucional/sesiones';
+const sectionGroups={dashboard:'Operación',cases:'Operación',map:'Operación',pending:'Revisión',witness:'Revisión',links:'Revisión',statistics:'Territorio',sources:'Territorio',cameras:'Territorio',resources:'Territorio'};
+const lineIcon=path=>`<svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="${path}"/></svg>`;
+const arrowIcon=lineIcon('M5 12h14m-6-6 6 6-6 6');
+const badgeWithLabel=(value,label)=>`<span class="badge badge-${h(value)}">${h(label)}</span>`;
 let token='', challenge='', view='cases', selected=null, generation=0, records=[], orgs=[], query='', filter='', priority='';
 let photos=[], noticeTimer;
 let mapOrg=null,originView='cases',resourceOffset=0;
@@ -54,10 +58,10 @@ function alertReview(c,base){
   const manual=c.simulacion_disponible?'':action('Registrar consulta manual',base+'/encargo',versionField(c)+options+ref+motives+captura+fotoAlerta);
   const controls=c.estado==='cerrado'?'':manual+simulation+
     (c.alerta?.visible?action('Suspender alerta',base+'/suspender-alerta',versionField(c)+motives):'');
-  return `<section class="card"><h2>Difusión y consulta del encargo</h2><p>${h(c.estado_colaboracion)}</p>
+  return `<div class="case-encargo"><h3>Consulta del encargo</h3>
     <a href="https://www.autoseguro.gob.cl/" target="_blank" rel="noopener noreferrer">Abrir Auto Seguro ↗</a>
     <p class="muted">Consulta la patente del expediente en el sitio oficial y registra el resultado. Usa una referencia interna y omite datos personales en la observación.</p>${controls}
-    ${(c.consultas_encargo||[]).map(q=>`<div class="record"><strong>${q.simulada?'SIMULACIÓN · ':''}${h(labelsEncargo[q.resultado])}</strong><p>${h(q.fuente)} · ${h(date(q.consultada_en))} · ${h(q.operador)}</p><p>${h(q.referencia||'')} ${h(q.observacion)}</p>${q.id_evidencia?`<button data-photo="${Number(q.id_evidencia)}">Ver captura privada</button>`:''}</div>`).join('')||empty('Encargo pendiente de comprobación.')}</section>`;
+    ${(c.consultas_encargo||[]).map(q=>`<div class="record"><strong>${q.simulada?'SIMULACIÓN · ':''}${h(labelsEncargo[q.resultado])}</strong><p>${h(q.fuente)} · ${h(date(q.consultada_en))} · ${h(q.operador)}</p><p>${h(q.referencia||'')} ${h(q.observacion)}</p>${q.id_evidencia?`<button data-photo="${Number(q.id_evidencia)}">Ver captura privada</button>`:''}</div>`).join('')||empty('Encargo pendiente de comprobación.')}</div>`;
 }
 function reviewLinks(items){
   return `<section class="card"><h2>Solicitudes de revisión</h2><p>Contrasta el padrón con el vehículo y la persona solicitante. Para un conductor autorizado, comprueba también la autorización del titular. Registra solo un código de referencia del expediente protegido.</p></section>`+
@@ -145,7 +149,9 @@ function clearPhotos(){photos.forEach(URL.revokeObjectURL);photos=[];}
 function reset(){
   MapaOperador.cerrar();mapOrg=null;originView='cases';resourceOffset=0;
   generation++;token=challenge='';orgs=[];records=[];selected=null;query=filter=priority='';dashboard.bind=null;clearPhotos();
-  accountAccess=null;statisticsFilters=defaultStatisticsFilters();el('membership').replaceChildren();el('account-content').replaceChildren();el('account-help').open=false;
+  accountAccess=null;alertFilter='';statisticsFilters=defaultStatisticsFilters();el('membership').replaceChildren();el('account-content').replaceChildren();el('account-help').open=false;
+  el('operator-avatar').textContent='';
+  el('rail-toggle').setAttribute('aria-expanded','false');
   content.replaceChildren();content.setAttribute('aria-busy','false');el('name').textContent='';el('desk').hidden=true;document.querySelector('.user').hidden=true;
   el('access').hidden=false;el('mfa').hidden=true;el('login').hidden=false;el('login').reset();el('mfa').reset();
 }
@@ -172,6 +178,7 @@ async function signin(result,reanudada=false){
     if(!profile.organizaciones?.length)throw Error('Tu cuenta tiene acceso ciudadano. Para operar se requiere una membresía institucional vigente.');
     const available=await api('/organizaciones');orgs=available.filter(o=>profile.organizaciones.includes(o.id_organizacion));
     showAccount(access);
+    el('operator-avatar').textContent=profile.nombre_visible.trim().split(/\s+/).slice(0,2).map(name=>Array.from(name)[0]||'').join('').toUpperCase();
     el('name').textContent=profile.nombre_visible;el('access').hidden=true;el('desk').hidden=false;document.querySelector('.user').hidden=false;
     ({view,selected}=readRoute());originView=window.history.state?.originView||'cases';
     if(!routes[originView])originView='cases';
@@ -204,7 +211,16 @@ for(const id of ['login','mfa'])el(id).onsubmit=e=>{
 };
 el('back').onclick=reset;
 el('exit').onclick=()=>handle(el('exit'),async()=>{await api(rutaSesion+'/cerrar',{});reset();});
-document.querySelector('nav').onclick=e=>{const b=e.target.closest('[data-view]');if(b){e.preventDefault();navigate(b.dataset.view);}};
+const railToggle=el('rail-toggle');
+railToggle.onclick=()=>railToggle.setAttribute('aria-expanded',String(railToggle.getAttribute('aria-expanded')!=='true'));
+document.querySelector('nav').onclick=e=>{
+  const b=e.target.closest('[data-view]');
+  if(b){
+    e.preventDefault();
+    railToggle.setAttribute('aria-expanded','false');
+    navigate(b.dataset.view);
+  }
+};
 function abrirCaso(cid){const id=Number(cid);if(Number.isSafeInteger(id)&&id>0)return navigate('cases',id);}
 el('refresh').onclick=()=>load();
 
@@ -214,31 +230,56 @@ function dashboard(data,witnesses){
   const pending=open.reduce((n,c)=>n+Number(c.aportes_pendientes||0),0);
   const high=open.filter(c=>c.prioridad==='alta');
   const waiting=witnesses.filter(a=>a.estado==='pendiente').length;
-  const stats=[['Casos abiertos',open.length,'cases','En revisión y seguimiento','open'],['Sin primera revisión',reported.length,'cases','Reportes en estado reportado','reported'],['Aportes pendientes',pending,'pending','Avistamientos por evaluar',''],['Prioridad alta',high.length,'cases','Casos abiertos de atención prioritaria','high']];
+  const stats=[
+    ['Casos abiertos',open.length,'cases','En revisión y seguimiento','open','blue','M3 7h18v13H3z M8 7V4h8v3 M3 12h18'],
+    ['Sin primera revisión',reported.length,'cases','Reportes por revisar','reported','amber','M12 7v5l3 2 M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z'],
+    ['Aportes pendientes',pending,'pending','Avistamientos por evaluar','','teal','M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0'],
+    ['Prioridad alta',high.length,'cases','Casos abiertos prioritarios','high','red','M12 3 2 21h20L12 3z M12 9v5 M12 17h.01'],
+  ];
   const attention=[...open].sort((a,b)=>(b.prioridad==='alta')-(a.prioridad==='alta')||Number(b.aportes_pendientes||0)-Number(a.aportes_pendientes||0)||new Date(a.creado_en)-new Date(b.creado_en)).slice(0,6);
   const attentionRows=items=>items.map(c=>`<tr><td><button class="text-button" data-case="${Number(c.id_caso)}">${h(c.folio)}</button><span class="cell-note">${h(orgs.find(o=>o.id_organizacion===c.id_organizacion)?.nombre||'Organización autorizada')}</span></td><td>${badge(c.estado)}</td><td>${badge(c.prioridad)}</td><td>${Number(c.aportes_pendientes||0)}</td></tr>`).join('');
   const attentionTable=items=>items.length?`<div class="table-wrap"><table><caption class="sr-only">Casos abiertos que requieren atención</caption><thead><tr><th>Folio / organización</th><th>Estado</th><th>Prioridad</th><th>Aportes</th></tr></thead><tbody>${attentionRows(items)}</tbody></table></div>`:empty('No hay casos abiertos que coincidan con la búsqueda.');
   dashboard.bind=()=>{el('geo-filtro').oninput=e=>{const q=e.target.value.trim().toLowerCase();el('attention-results').innerHTML=attentionTable(q?open.filter(c=>c.folio.toLowerCase().includes(q)):attention);};};
-  return `<section class="overview-banner"><div><small>Tu mesa de trabajo</small><h2>Actividad de tu organización</h2><p>${h(orgs.map(o=>o.nombre).join(' · '))}</p></div><button data-go="map">Abrir mapa operativo →</button></section>
-    <div class="stats dashboard-stats">${stats.map(([label,n,target,caption,scope])=>`<button class="stat" data-go="${target}" data-scope="${scope}"><span>${label}</span><strong>${n}</strong><span class="stat-caption">${caption}</span></button>`).join('')}</div>
-    <div class="dashboard-grid"><section class="card"><div class="row"><h2>Casos que requieren atención</h2><button data-go="cases">Ver bandeja →</button></div><p class="muted">Hasta seis casos: primero prioridad alta, luego aportes pendientes y mayor antigüedad.</p><label class="dashboard-search">Buscar un caso abierto por folio<input id="geo-filtro" type="search" placeholder="Ej. RA-20261117"></label><div id="attention-results">${attentionTable(attention)}</div></section>
-    <section class="card"><h2>Pendientes de revisión</h2><button class="task-link" data-go="pending"><span>Avistamientos por evaluar</span><strong>${pending} →</strong></button><button class="task-link" data-go="witness"><span>Avisos de testigos</span><strong>${waiting}${witnesses.length===200?'+':''} →</strong></button><p class="muted">Los avisos se calculan sobre los últimos 200 registros disponibles.</p><h3>Distribución de casos</h3><ul class="state-summary">${Object.entries(states).map(([state,label])=>{const n=data.filter(c=>c.estado===state).length;return `<li><span>${label}</span><strong>${n}</strong><meter min="0" max="${Math.max(data.length,1)}" value="${n}" aria-label="${label}">${n}</meter></li>`;}).join('')}</ul><p class="muted">${data.length} casos en tus organizaciones autorizadas.</p></section></div>`;
+  const title=orgs.length===1?orgs[0].nombre:'Actividad de tus organizaciones';
+  const organizations=orgs.length>1?`<p>${h(orgs.map(o=>o.nombre).join(' · '))}</p>`:'';
+  return `<section class="overview-banner"><div><h2>${h(title)}</h2>${organizations}</div>
+      <div class="overview-actions"><button data-go="cases" data-scope="open">Abrir bandeja ${arrowIcon}</button><button class="overview-secondary" data-go="map">Abrir mapa operativo</button></div>
+    </section>
+    <div class="stats dashboard-stats">${stats.map(([label,n,target,caption,scope,color,path])=>`<button class="stat metric-${color}" data-go="${target}" data-scope="${scope}"><span class="metric-icon">${lineIcon(path)}</span>${arrowIcon}<span>${label}</span><strong>${n}</strong><span class="stat-caption">${caption}</span></button>`).join('')}</div>
+    <div class="dashboard-grid"><section class="card attention-card"><div class="row"><h2>Casos que requieren atención</h2><button data-go="cases">Ver bandeja ${arrowIcon}</button></div><label class="dashboard-search">Buscar un caso abierto por folio<input id="geo-filtro" type="search" placeholder="Ej. RA-20261117"></label><div id="attention-results">${attentionTable(attention)}</div></section>
+    <section class="card dashboard-review"><h2>Pendientes de revisión</h2><button class="task-link" data-go="pending"><span>Avistamientos por evaluar</span><strong>${pending} ${arrowIcon}</strong></button><button class="task-link" data-go="witness"><span>Avisos de testigos</span><strong>${waiting}${witnesses.length===200?'+':''} ${arrowIcon}</strong></button><button class="task-link" data-go="links"><span>Verificar vínculos</span><strong>${arrowIcon}</strong></button>${witnesses.length===200?'<p class="muted">Se muestran los últimos 200 avisos disponibles.</p>':''}<h3>Distribución de casos</h3><ul class="state-summary">${Object.entries(states).map(([state,label])=>{const n=data.filter(c=>c.estado===state).length;return `<li><span>${label}</span><strong>${n}</strong><meter min="0" max="${Math.max(data.length,1)}" value="${n}" aria-label="${label}">${n}</meter></li>`;}).join('')}</ul></section></div>`;
 }
 
 function caseRows(){
   const visible=records.filter(c=>(!filter||(filter==='open'?c.estado!=='cerrado':c.estado===filter))&&(!priority||c.prioridad===priority)&&c.folio.toLowerCase().includes(query.toLowerCase().trim())&&(!alertFilter||matchesAlertFilter(c)));
   const rows=visible.map(c=>`<tr><td><strong>${h(c.folio)}</strong></td><td>${badge(c.estado)} <small>${h(c.prioridad)}</small></td>
-    <td>${badge(labelsDifusion[estadoDifusion(c)])}${c.vence_en?`<small>Vence: ${h(date(c.vence_en))}</small>`:''}</td>
+    <td>${badgeWithLabel(estadoDifusion(c),labelsDifusion[estadoDifusion(c)])}${c.vence_en?`<small>Vence: ${h(date(c.vence_en))}</small>`:''}</td>
     <td>${h(labelsEncargo[c.consulta_encargo]||'Pendiente')}</td><td>${h(c.aportes_pendientes)}</td>
     <td>${h(c.responsable||'Sin asignar')}<small>${h(minutesOld(c.creado_en))} min desde ingreso</small></td>
-    <td><button data-case="${Number(c.id_caso)}" aria-label="Abrir ficha ${h(c.folio)}">Abrir ficha →</button></td></tr>`).join('');
-  return rows?`<div class="table-wrap"><table class="alert-queue"><thead><tr><th>Folio</th><th>Caso</th><th>Difusión</th><th>Encargo</th><th>Aportes pendientes</th><th>Responsable</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`:empty(records.length?'Ningún caso coincide con la búsqueda.':'Tu organización aún no ha recibido reportes.');
+    <td><button class="open-case" data-case="${Number(c.id_caso)}" aria-label="Abrir ficha ${h(c.folio)}">Abrir ${arrowIcon}</button></td></tr>`).join('');
+  const count=`<p class="queue-count">${visible.length} de ${records.length} reportes</p>`;
+  return count+(rows?`<div class="table-wrap"><table class="alert-queue"><thead><tr><th scope="col">Folio</th><th scope="col">Caso</th><th scope="col">Difusión</th><th scope="col">Encargo</th><th scope="col">Aportes</th><th scope="col">Responsable</th><th scope="col"><span class="sr-only">Abrir ficha</span></th></tr></thead><tbody>${rows}</tbody></table></div>`:empty(records.length?'Ningún caso coincide con la búsqueda.':'Tu organización aún no ha recibido reportes.'));
 }
 function queue(data){
   records=data;
   const stats=[['Casos abiertos',data.filter(c=>c.estado!=='cerrado').length],['Por revisar',data.filter(c=>c.estado==='reportado').length],['Aportes pendientes',data.reduce((n,c)=>n+c.aportes_pendientes,0)]];
-  return `<div class="stats">${stats.map(([label,n])=>`<div class="stat"><span>${label}</span><strong>${n}</strong></div>`).join('')}</div>
-    <section class="card"><h2>Reportes recibidos</h2><div class="filters"><label>Buscar folio<input id="search" type="search" value="${h(query)}"></label>${selector('estado','Filtrar por estado',{'':'Todos los estados',open:'Solo abiertos',...states})}${selector('prioridad','Prioridad',{'':'Todas',alta:'Alta',normal:'Normal',baja:'Baja'})}${selector('filtro_alerta','Alertas y revisión',{'':'Todos los reportes',provisional:'Provisionales activas',pendiente:'Pendientes de publicar',vencimiento:'Vencen en 15 minutos',vencida:'Vencidas',suspendida:'Suspendidas',aportes:'Con nuevos avistamientos',encargo:'Requieren consulta de encargo'})}</div><div id="results">${caseRows()}</div></section>`;
+  return `<div class="stats queue-metrics">${stats.map(([label,n])=>`<div class="stat"><span>${label}</span><strong>${n}</strong></div>`).join('')}</div>
+    <section class="card queue-card"><div class="row"><h2>Reportes recibidos</h2><button type="button" data-clear-case-filters>Limpiar filtros</button></div><div class="filters"><label>Buscar folio<input id="search" type="search" value="${h(query)}"></label>${selector('estado','Estado',{'':'Todos los estados',open:'Solo abiertos',...states})}${selector('prioridad','Prioridad',{'':'Todas',alta:'Alta',normal:'Normal',baja:'Baja'})}${selector('filtro_alerta','Alertas y revisión',{'':'Todos los reportes',provisional:'Provisionales activas',pendiente:'Pendientes de publicar',vencimiento:'Vencen en 15 minutos',vencida:'Vencidas',suspendida:'Suspendidas',aportes:'Con nuevos avistamientos',encargo:'Requieren consulta de encargo'})}</div><div id="results">${caseRows()}</div></section>`;
+}
+function bindCaseFilters(){
+  const results=el('results');
+  const search=el('search');
+  const state=content.querySelector('[name=estado]');
+  const rank=content.querySelector('[name=prioridad]');
+  const alert=content.querySelector('[name=filtro_alerta]');
+  search.value=query;
+  state.value=filter;
+  rank.value=priority;
+  alert.value=alertFilter;
+  search.oninput=()=>{query=search.value;results.innerHTML=caseRows();};
+  state.onchange=()=>{filter=state.value;results.innerHTML=caseRows();};
+  rank.onchange=()=>{priority=rank.value;results.innerHTML=caseRows();};
+  alert.onchange=()=>{alertFilter=alert.value;results.innerHTML=caseRows();};
 }
 function publicPhotoField(c,emptyLabel='Sin foto real · imagen de referencia'){
   // Seguimiento only exposes initial-report evidence from this case.
@@ -247,18 +288,40 @@ function publicPhotoField(c,emptyLabel='Sin foto real · imagen de referencia'){
 }
 function detail(c,contributions,equipo){
   const base=`/gestion/casos/${Number(c.id_caso)}`;const open=c.estado!=='cerrado';
-  const header=`<button class="back" data-list>← Volver a la bandeja</button><section class="card case-summary"><div class="row"><h2>${h(c.folio)}</h2>${badge(c.estado)}</div><dl class="case-facts"><div><dt>Patente</dt><dd>${h(c.patente)}</dd></div><div><dt>Sector</dt><dd>${h(c.zona)}</dd></div><div><dt>Fecha del hecho</dt><dd>${h(date(c.fecha_hecho))}</dd></div><div><dt>Denuncia declarada</dt><dd>${h(c.denuncia_estado.replaceAll('_',' '))}</dd></div></dl><p class="consent-note">${h(c.estado_colaboracion||(c.colaboracion_consentida_en?'Colaboración autorizada por el afectado':'Pendiente de consentimiento del afectado'))}</p>`;
-  const statement='<h3>Relato recibido</h3><p>'+h(c.relato_para_revision || 'Sin relato disponible.')+'</p>';
+  const status=c.estado_colaboracion||(c.colaboracion_consentida_en?'Colaboración autorizada por el afectado':'Pendiente de consentimiento del afectado');
+  const header=`<button class="back" data-list>← Volver a la bandeja</button><section class="card case-summary"><div class="row"><h2>${h(c.folio)}</h2>${badge(c.estado)}</div><dl class="case-facts"><div><dt>Patente</dt><dd class="case-plate">${h(c.patente)}</dd></div><div><dt>Sector</dt><dd>${h(c.zona)}</dd></div><div><dt>Fecha del hecho</dt><dd>${h(date(c.fecha_hecho))}</dd></div><div><dt>Denuncia declarada</dt><dd>${h(String(c.denuncia_estado||'no_informada').replaceAll('_',' '))}</dd></div></dl></section>`;
   const management=open?action('Cambiar estado',base+'/revision',selector('estado','Nuevo estado',{en_revision:'En revisión',en_gestion:'En gestión'})+motives,'Guardar cambio')+
     action('Asignar prioridad',base+'/prioridad',selector('prioridad','Prioridad',{normal:'Normal',alta:'Alta',baja:'Baja'})+motives,'Guardar prioridad')+
-    (c.colaboracion_consentida_en&&c.estado!=='reportado'&&!equipo.publicacion?action('Publicar solicitud de colaboración',base+'/publicacion','<label>Sector público<input name="zona" required minlength="3" maxlength="200"></label><label>Texto para la ciudadanía<textarea name="texto" required minlength="15" maxlength="1500"></textarea></label>'+publicPhotoField(c)+motives):'')+
-    (equipo.publicacion?'<p>Solicitud vigente hasta '+h(date(equipo.publicacion.vence_en))+'</p>'+action('Renovar solicitud',base+'/renovacion','<input type="hidden" name="id_solicitud_colaboracion" value="'+Number(equipo.publicacion.id_solicitud_colaboracion)+'">'+numberField('horas','Nuevo plazo contado desde ahora (horas)',1,72)+motives)+action('Retirar solicitud de colaboración',base+'/retirar',motives):'')+
     action('Notificar al afectado',base+'/mensaje','<input type="hidden" name="clave_envio" value="'+crypto.randomUUID()+'"><label>Mensaje para su bandeja privada<textarea name="mensaje" required minlength="10" maxlength="500"></textarea></label>','Enviar notificación')+
-    action('Cerrar caso',base+'/cerrar',selector('motivo_cierre','Resultado',{recuperado:'Recuperado',duplicado:'Duplicado',informacion_insuficiente:'Información insuficiente',otro:'Otro'})+'<label>ID de evidencia aceptada (si fue recuperado)<input type="number" min="1" name="id_evidencia"></label><label>ID del caso principal (si fue duplicado)<input type="number" min="1" name="id_caso_principal"></label>'+motives):'';
+    action('Cerrar caso',base+'/cerrar',versionField(c)+selector('motivo_cierre','Resultado',{recuperado:'Recuperado',duplicado:'Duplicado',informacion_insuficiente:'Información insuficiente',otro:'Otro'})+'<label>ID de evidencia aceptada (si fue recuperado)<input type="number" min="1" name="id_evidencia"></label><label>ID del caso principal (si fue duplicado)<input type="number" min="1" name="id_caso_principal"></label>'+motives):'';
+  let publication='';
+  if(open&&equipo.publicacion){
+    publication=`<p class="muted">Vigente hasta ${h(date(equipo.publicacion.vence_en))}</p>`+
+      action('Renovar solicitud',base+'/renovacion',versionField(c)+'<input type="hidden" name="id_solicitud_colaboracion" value="'+Number(equipo.publicacion.id_solicitud_colaboracion)+'">'+numberField('horas','Nuevo plazo contado desde ahora (horas)',1,72)+motives)+
+      action('Retirar solicitud de colaboración',base+'/retirar',versionField(c)+motives);
+  }else if(open&&c.colaboracion_consentida_en&&c.estado!=='reportado'){
+    publication=action('Publicar solicitud de colaboración',base+'/publicacion',versionField(c)+
+      '<label>Sector público<input name="zona" required minlength="3" maxlength="200"></label><label>Texto para la ciudadanía<textarea name="texto" required minlength="15" maxlength="1500"></textarea></label>'+publicPhotoField(c)+motives);
+  }
   const sightings=contributions.map(a=>`<div class="record"><strong>${h(a.zona)}</strong> ${badge(a.estado_revision)}<p>${h(a.descripcion)}</p><p class="muted">${h(date(a.observado_en))}</p>${(a.fotos||[]).map(id=>`<button data-photo="${Number(id)}">Ver foto del avistamiento #${Number(id)}</button>`).join('')}${open?action('Evaluar aporte',`/gestion/aportes/${Number(a.id_avistamiento)}/revision`,selector('decision','Decisión',{aceptado:'Aceptar',requiere_aclaracion:'Pedir aclaración',rechazado:'Rechazar'})+motives+'<label>Resumen que podrá ver el afectado si se acepta<textarea name="resumen" maxlength="500"></textarea></label>'):''}</div>`).join('');
   const evidence=(c.evidencias||[]).map(e=>`<div class="record"><button data-photo="${Number(e.id_evidencia)}">Ver foto #${Number(e.id_evidencia)}</button> ${badge(e.estado_revision)}<p class="consent-note">${e.autorizada_publicacion_en!=null?'Foto pública autorizada por el titular · '+h(date(e.autorizada_publicacion_en)):'Sin autorización del titular para publicar esta foto'}</p>${open?action('Revisar evidencia',`/gestion/evidencias/${Number(e.id_evidencia)}/revision`,selector('decision','Decisión',{aceptada:'Aceptar',rechazada:'Rechazar'})+motives):''}</div>`).join('');
-  const guarded=management.replace(/(<form data-path="[^"]+\/(?:publicacion|renovacion|retirar|cerrar)">)/g,'$1'+versionField(c));
-  return header+statement+guarded+"</section>"+alertReview(c,base)+equipoCaso(c,equipo)+`<section class="card"><h2>Avistamientos</h2>${sightings||empty('Todavía no hay aportes para este caso.')}</section><section class="card"><h2>Evidencias privadas</h2>${evidence||empty('Sin fotos adjuntas.')}</section><section class="card"><h2>Historial compartido con el afectado</h2>${c.historial.map(x=>`<div class="record"><strong>${h(date(x.creada_en))}</strong><p>${h(x.descripcion)}</p></div>`).join('')||empty('Todavía no hay novedades en el seguimiento.')}</section>`;
+  const sections=[['gestion','Gestión'],['difusion','Difusión'],['avistamientos',`Avistamientos · ${contributions.length}`],['evidencias',`Evidencias · ${(c.evidencias||[]).length}`],['equipo','Equipo'],['historial','Historial']];
+  return header+`
+    <div class="case-shortcuts" role="group" aria-label="Ir a una sección de la ficha">
+      ${sections.map(([id,label])=>`<button type="button" data-case-section="case-${id}">${label}</button>`).join('')}
+    </div>
+    <div class="case-layout">
+      <div class="case-main">
+        <section id="case-gestion" class="card case-section" tabindex="-1"><h2>Gestión del caso</h2><h3>Relato recibido</h3><p class="case-statement">${h(c.relato_para_revision || 'Sin relato disponible.')}</p>${management}</section>
+        <section id="case-avistamientos" class="card case-section" tabindex="-1"><h2>Avistamientos</h2>${sightings||empty('Todavía no hay aportes para este caso.')}</section>
+        <section id="case-evidencias" class="card case-section" tabindex="-1"><h2>Evidencias privadas</h2>${evidence||empty('Sin fotos adjuntas.')}</section>
+      </div>
+      <div class="case-side">
+        <section id="case-difusion" class="card case-section" tabindex="-1"><h2>Difusión</h2><p class="consent-note">${h(status)}</p>${publication}${alertReview(c,base)}</section>
+        ${equipoCaso(c,equipo)}
+        <section id="case-historial" class="card case-section" tabindex="-1"><h2>Historial compartido</h2>${c.historial.map(x=>`<div class="record"><strong>${h(date(x.creada_en))}</strong><p>${h(x.descripcion)}</p></div>`).join('')||empty('Todavía no hay novedades en el seguimiento.')}</section>
+      </div>
+    </div>`;
 }
 function numberField(key,label,min,max,step='1'){return `<label>${label}<input type="number" required name="${key}" min="${min}" max="${max}" step="${step}"></label>`;}
 function sources(items){
@@ -347,10 +410,11 @@ function statisticsRoom(data){
 async function load(focus=false){
   MapaOperador.cerrar();
   const epoch=++generation;clearPhotos();el('title').textContent=selected?'Ficha del caso':names[view]||'Página no encontrada';el('status').textContent='';
+  el('context-path').textContent=selected?'Operación / Bandeja de casos':sectionGroups[view]||'Operaciones';
   el('page-description').textContent=selected?'Expediente privado, revisión y seguimiento institucional.':descriptions[view]||'Selecciona una sección del centro de operaciones.';
   el('updated').textContent='';document.title=(selected?'Ficha #'+selected:names[view]||'Página no encontrada')+' · RutaAlerta';
   for(const b of document.querySelectorAll('nav [data-view]')){if(b.dataset.view===view)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');}
-  if(focus)el('title').focus();
+  if(focus){window.scrollTo(0,0);el('title').focus({preventScroll:true});}
   content.setAttribute('aria-busy','true');content.textContent='Cargando…';
   try{
     let render, montar;
@@ -387,9 +451,7 @@ async function load(focus=false){
     if(montar)montar();
     if(selected && originView!=='cases'){const back=content.querySelector('[data-list]');if(back)back.textContent='← '+names[originView];}
     if(el('clip'))bindClip();
-    if(el('results')){const priorities=content.querySelector('[name=prioridad]');priorities.value=priority;priorities.onchange=()=>{priority=priorities.value;el('results').innerHTML=caseRows();};const select=content.querySelector('[name="estado"]');select.value=filter;select.onchange=()=>{filter=select.value;el('results').innerHTML=caseRows();};el('search').oninput=e=>{query=e.target.value;el('results').innerHTML=caseRows();};}
-    const alertSelect=content.querySelector('[name=filtro_alerta]');
-    if(alertSelect){alertSelect.value=alertFilter;alertSelect.onchange=()=>{alertFilter=alertSelect.value;el('results').innerHTML=caseRows();};}
+    if(view==='cases'&&!selected)bindCaseFilters();
   }catch(err){if(epoch===generation){content.innerHTML=(view==='statistics'?statisticsForm():'')+`<section class="card load-error" role="alert"><h2>No se pudo cargar esta vista</h2><p>${h(err.message)}</p><button data-retry>Reintentar</button>${selected?'<button data-list>Volver a la bandeja</button>':''}</section>`;if(view==='statistics')bindStatisticsFilters();}else if(!token)notify(err.message);}
   finally{if(epoch===generation)content.setAttribute('aria-busy','false');}
 }
@@ -397,10 +459,19 @@ content.onclick=e=>{
   const b=e.target.closest('button');if(!b)return;
   if(b.hasAttribute('data-retry'))load();
   if(b.hasAttribute('data-statistics-reset')){statisticsFilters=defaultStatisticsFilters();load(true);}
+  if(b.hasAttribute('data-clear-case-filters')){
+    query=filter=priority=alertFilter='';
+    bindCaseFilters();
+    el('results').innerHTML=caseRows();
+  }
   if(b.hasAttribute('data-list'))navigate(originView);
   if(b.dataset.view)navigate(b.dataset.view);
+  if(b.dataset.caseSection){
+    const section=el(b.dataset.caseSection);
+    if(section){section.focus({preventScroll:true});section.scrollIntoView({block:'start'});}
+  }
   if(b.dataset.go){
-    if(b.dataset.scope){query='';filter=b.dataset.scope==='reported'?'reportado':'open';priority=b.dataset.scope==='high'?'alta':'';}
+    if(b.dataset.scope){query=alertFilter='';filter=b.dataset.scope==='reported'?'reportado':'open';priority=b.dataset.scope==='high'?'alta':'';}
     navigate(b.dataset.go);
   }
   if(b.dataset.case)abrirCaso(b.dataset.case);
@@ -467,7 +538,7 @@ function equipoCaso(c,equipo) {
   const members=Object.fromEntries(equipo.opciones.map(m=>[m.id_membresia,m.nombre_visible]));
   const assign=c.estado!=='cerrado'&&equipo.puede_asignar!==false&&equipo.opciones.length?action('Asignar responsable',base+'/asignacion',selector('id_membresia','Integrante de la organización',members)+motives):'';
   const note=c.estado!=='cerrado'?action('Registrar gestión interna',base+'/gestiones',selector('accion','Tipo de gestión',{nota:'Nota interna',derivacion:'Derivación realizada'})+'<label>Describe la gestión realizada<textarea name="descripcion" required minlength="10" maxlength="500"></textarea></label>'):'';
-  return `<section class="card"><h2>Equipo y gestiones internas</h2><p>Responsable: ${h(equipo.responsable||'Sin asignar')}${equipo.responsable&&equipo.responsable_rol?` <span class="badge">${h(roleName(equipo.responsable_rol))}</span>`:''}</p>${equipo.responsable&&equipo.responsable_vigente===false?'<p class="membership-warning" role="status">La membresía de la persona asignada ya no está vigente. Un supervisor debe revisar la asignación.</p>':''}<p class="muted assignment-help">La asignación de un caso no modifica el rol ni otorga permisos de supervisor.</p>${assign}${note}${equipo.gestiones.map(g=>`<div class="record">${badge(g.accion)} <strong>${h(date(g.creada_en))}</strong><p>${h(g.descripcion)}</p></div>`).join('')}</section>`;
+  return `<section id="case-equipo" class="card case-section" tabindex="-1"><h2>Equipo y gestiones internas</h2><p>Responsable: ${h(equipo.responsable||'Sin asignar')}${equipo.responsable&&equipo.responsable_rol?` <span class="badge">${h(roleName(equipo.responsable_rol))}</span>`:''}</p>${equipo.responsable&&equipo.responsable_vigente===false?'<p class="membership-warning" role="status">La membresía de la persona asignada ya no está vigente. Un supervisor debe revisar la asignación.</p>':''}<p class="muted assignment-help">La asignación de un caso no modifica el rol ni otorga permisos de supervisor.</p>${assign}${note}${equipo.gestiones.map(g=>`<div class="record">${badge(g.accion)} <strong>${h(date(g.creada_en))}</strong><p>${h(g.descripcion)}</p></div>`).join('')}</section>`;
 }
 function witnessQueue(items,cases){
   if(!items.length)return empty('Aún no hay avisos de pasajeros o testigos en tu organización.');

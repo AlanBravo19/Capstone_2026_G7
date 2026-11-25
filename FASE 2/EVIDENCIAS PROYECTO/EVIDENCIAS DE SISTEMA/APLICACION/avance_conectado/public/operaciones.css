@@ -113,3 +113,282 @@ header .user .account-help>summary>span,header .user #exit>span{display:inline}.
 .alert-queue td small{display:block;margin-top:4px;color:var(--soft)}
 .check-padron{display:flex;align-items:flex-start;gap:10px;line-height:1.5}
 .check-padron input{width:auto;flex:none;margin:4px 0 0;accent-color:var(--blue)}
+
+/* Centro de operaciones */
+@font-face {
+  font-family: Manrope;
+  src: url('/operaciones-manrope.ttf') format('truetype');
+  font-weight: 400 800;
+  font-display: swap;
+}
+
+:root {
+  font-family: Manrope, "Segoe UI", sans-serif;
+  --navy: #162638;
+  --blue: #1956b3;
+  --line: #dce4ed;
+  --soft: #526477;
+  --rail: #101d31;
+  --header-height: 70px;
+}
+
+body {background: #f3f6fa}
+header {
+  position: sticky;
+  top: 0;
+  min-height: var(--header-height);
+  padding-inline: clamp(16px, 2.2vw, 34px);
+  background: #fbfdfff2;
+  backdrop-filter: blur(14px);
+  box-shadow: none;
+}
+.brand {gap: 11px; font-size: 22px; font-weight: 800; letter-spacing: -.035em}
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: #14366a;
+  color: #9ff5dc;
+}
+.brand-mark svg {width: 23px; height: 23px}
+header .suite {font-size: 13px}
+header .user .operator-avatar {
+  display: grid;
+  place-items: center;
+  width: 37px;
+  height: 37px;
+  flex: none;
+  border-radius: 50%;
+  background: #e0eefb;
+  color: #214e77;
+  font-size: 13px;
+  font-weight: 800;
+}
+.user .account-help>summary, #exit {border: 1px solid var(--line); border-radius: 9px}
+header .user .membership-badge {background: #edf3fa; color: #345771}
+.identity {background: linear-gradient(138deg, #14345b, #102238 70%)}
+
+#desk {grid-template-columns: 238px minmax(0, 1fr); background: #f3f6fa}
+#desk .operator-rail {
+  gap: 20px;
+  padding: 26px 14px 16px;
+  background: linear-gradient(155deg, #13243b, var(--rail) 75%);
+}
+.nav-heading {padding: 0 10px; display: flex; align-items: center; justify-content: space-between}
+.nav-heading strong {font-size: 21px; font-weight: 800; letter-spacing: -.035em}
+#rail-toggle {display: none}
+#desk #operator-nav {display: grid; gap: 19px; align-content: start}
+.nav-group {display: grid; gap: 4px}
+.nav-group-label {
+  padding: 0 10px 5px;
+  color: #a4b6cc;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+}
+#desk #operator-nav button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  color: #d3dfed;
+  font-size: 13px;
+  line-height: 1.25;
+}
+#desk #operator-nav button:hover {background: #20364e}
+#desk #operator-nav button[aria-current="page"] {
+  background: #223b54;
+  border-color: #36546a;
+  box-shadow: inset 3px 0 #72e0c7;
+  color: white;
+}
+#desk #operator-nav svg {width: 18px; height: 18px; color: #9eb5cc}
+#desk #operator-nav [aria-current="page"] svg {color: #98eedb}
+.nav-footnote {padding: 13px 10px 0; margin-bottom: 0; color: #a4b6cc; font-size: 11px}
+
+.workspace {max-width: 1690px; padding: 30px clamp(18px, 3vw, 50px) 42px}
+.page-head {margin-bottom: 23px}
+.page-head .context-path {margin: 0 0 7px; font-size: 12px; font-weight: 750; color: #416388}
+.page-head h1 {font-size: clamp(29px, 2.8vw, 43px); font-weight: 800; letter-spacing: -.046em}
+.page-head p {margin-top: 7px}
+.refresh-area button {min-height: 40px; border-radius: 9px; border-color: var(--line); font-size: 13px}
+.refresh-area svg {width: 17px; height: 17px}
+.card, .stat, .geo-board {
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  box-shadow: 0 2px 6px #162a4208;
+}
+.card h2 {letter-spacing: -.026em; font-weight: 800}
+.overview-banner {
+  position: relative;
+  isolation: isolate;
+  min-height: 134px;
+  padding: 24px 26px;
+  overflow: hidden;
+  border-radius: 17px;
+  background: linear-gradient(104deg, #14325a 2%, #153a60 55%, #165262);
+  margin-bottom: 17px;
+}
+.overview-banner::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 0 35%;
+  z-index: -1;
+  opacity: .65;
+  background:
+    radial-gradient(circle at 82% 44%, #9cf4d8 0 3px, transparent 4px),
+    radial-gradient(circle at 57% 78%, #80cfea 0 2px, transparent 3px),
+    repeating-linear-gradient(35deg, transparent 0 47px, #a5e4ee26 48px 49px, transparent 50px 75px),
+    repeating-linear-gradient(-49deg, transparent 0 54px, #a5e4ee24 55px 56px, transparent 57px 92px);
+  mask-image: linear-gradient(90deg, transparent, black 40%);
+}
+.overview-banner h2 {margin: 0; font-size: clamp(22px, 2.5vw, 33px); font-weight: 800; letter-spacing: -.036em}
+.overview-banner p {margin-top: 9px}
+.overview-actions {display: flex; gap: 9px; flex-wrap: wrap; justify-content: flex-end; flex: none}
+.overview-actions button {display: inline-flex; gap: 6px; align-items: center; min-height: 42px; font-size: 13px; border-radius: 10px}
+.overview-actions svg {width: 16px; height: 16px}
+.overview-actions .overview-secondary {background: #ffffff13; color: #f4faff; border-color: #addbdf6e}
+.overview-actions .overview-secondary:hover {background: #ffffff25}
+.dashboard-stats {gap: 13px; margin-bottom: 18px}
+.dashboard-stats .stat {
+  margin: 0;
+  display: grid;
+  gap: 3px;
+  align-content: start;
+  padding: 15px 16px 14px;
+  border: 1px solid var(--line);
+}
+.dashboard-stats .stat .metric-icon {display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; margin-bottom: 6px}
+.metric-blue .metric-icon {background: #e8f0ff; color: #235eb5}
+.metric-amber .metric-icon {background: #fff1d8; color: #8b590d}
+.metric-teal .metric-icon {background: #e1f6f1; color: #137269}
+.metric-red .metric-icon {background: #fdebf0; color: #ac3152}
+.dashboard-stats .stat>svg {position: absolute; top: 19px; right: 16px; width: 16px; height: 16px; color: #6d829a}
+.dashboard-stats .stat strong {font-size: 34px; line-height: 1.13; font-weight: 800; color: var(--navy)}
+.dashboard-stats .stat span:not(.metric-icon) {font-size: 13px; font-weight: 750; color: #344b65}
+.dashboard-stats .stat span.stat-caption {font-size: 11px; font-weight: 550; color: var(--soft)}
+.dashboard-grid {grid-template-columns: minmax(0, 2.15fr) minmax(238px, 1fr); gap: 15px}
+.dashboard-grid .card {min-width: 0; padding: 18px}
+.dashboard-grid .row {align-items: center}
+.dashboard-grid .row button {display: flex; align-items: center; gap: 5px}
+.dashboard-grid .row button svg, .task-link svg {width: 15px; height: 15px}
+.task-link strong {display: inline-flex; align-items: center; gap: 7px}
+.dashboard-review .state-summary {margin-bottom: 0}
+.state-summary meter {appearance: none; height: 7px; border: 0; border-radius: 9px; background: #eaf0f6}
+.state-summary meter::-webkit-meter-bar {height: 7px; background: #eaf0f6; border: 0; border-radius: 9px}
+.state-summary meter::-webkit-meter-optimum-value {background: #39719a; border-radius: 9px}
+.state-summary meter::-moz-meter-bar {background: #39719a; border-radius: 9px}
+.dashboard-search input {max-width: 320px}
+.geo-toolbar {background: #f9fbfe}
+.geo-feed {background: #fcfdff}
+
+.queue-card {padding: 20px}
+.queue-card h2 {margin: 0}
+.queue-card .row button {font-size: 12px}
+.queue-card .filters {grid-template-columns: 1.2fr 1fr .85fr 1.25fr; padding: 13px; margin: 16px 0 12px; border-radius: 11px; background: #f2f6fc}
+.queue-card :is(input, select) {font-size: 13px}
+.queue-metrics .stat {border-top: 1px solid var(--line)}
+.queue-metrics .stat strong {font-variant-numeric: tabular-nums}
+.queue-count {margin: 10px 0 13px; font-size: 12px; font-weight: 750; color: var(--soft)}
+.table-wrap {border: 1px solid var(--line); border-radius: 10px}
+.table-wrap th {background: #f5f8fc; font-size: 12px; font-weight: 800}
+.table-wrap tr:last-child td {border-bottom: 0}
+.table-wrap tbody tr:hover {background: #f8fbff}
+.alert-queue {min-width: 790px; font-size: 13px}
+.alert-queue :is(th,td) {padding-inline: 11px}
+.alert-queue .open-case {display: flex; align-items: center; gap: 5px; font-size: 12px; white-space: nowrap}
+.open-case svg {width: 15px; height: 15px}
+.badge-provisional, .badge-pendiente {color: #805215; background: #fff0da}
+.badge-encargo_comprobado, .badge-revisada {color: #136a59; background: #e2f4ed}
+.badge-suspendida, .badge-retirada, .badge-vencida {color: #86494c; background: #fae9eb}
+
+.case-summary {padding: 20px 22px}
+.case-summary .case-facts {margin: 19px 0 0; gap: 10px}
+.case-facts>div {background: #f3f7fc; padding: 11px 13px; border-radius: 9px; min-width: 0}
+.case-summary h2 {margin: 0; font-size: clamp(21px, 2.3vw, 30px)}
+.case-facts dd {font-size: 14px}
+.case-facts .case-plate {font-variant-numeric: tabular-nums; letter-spacing: .06em; font-weight: 800}
+.case-shortcuts {display: flex; gap: 7px; flex-wrap: wrap; margin: 0 0 16px}
+.case-shortcuts button {min-height: 36px; padding: 6px 11px; font-size: 12px; border-radius: 8px}
+.case-layout {display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(270px, 1fr); gap: 15px; align-items: start}
+.case-section {
+  min-width: 0;
+  padding: 19px 21px;
+  scroll-margin-top: calc(var(--header-height) + 17px);
+}
+.case-section:focus-visible {outline: 2px solid #1d6caa; outline-offset: 2px}
+.case-section h3 {font-size: 14px; color: #334d68}
+.case-statement {white-space: pre-wrap; line-height: 1.65}
+.case-encargo {margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line)}
+.case-encargo .empty, .case-section>.empty {padding: 8px 0 0; text-align: left; font-size: 13px}
+.case-section .record {padding: 10px 0}
+.case-section .record:last-child {padding-bottom: 0}
+
+@media (min-width: 981px) {
+  #desk .operator-rail {
+    top: var(--header-height);
+    min-height: calc(100dvh - var(--header-height));
+    max-height: calc(100dvh - var(--header-height));
+    overflow-y: auto;
+  }
+}
+@media (max-width: 980px) {
+  #desk {grid-template-columns: minmax(0, 1fr)}
+  #desk .operator-rail {position: static; min-height: auto; gap: 9px; padding: 8px 14px}
+  .nav-heading {padding: 0 2px}
+  .nav-heading strong {font-size: 16px}
+  .nav-footnote {display: none}
+  #rail-toggle {display: inline-flex; align-items: center; gap: 7px; min-height: 38px; padding: 6px 11px; background: #223b54; border-color: #395772; color: white; font-size: 13px}
+  #desk #operator-nav {display: none; gap: 13px; padding: 0 0 6px}
+  #desk .operator-rail:has(#rail-toggle[aria-expanded="true"]) #operator-nav {display: grid}
+  .nav-group {display: grid; grid-template-columns: repeat(2, minmax(0,1fr))}
+  .nav-group-label {grid-column: 1/-1}
+  .workspace {padding: 23px 16px 32px}
+}
+@media (max-width: 850px) {
+  .overview-banner {gap: 16px}
+  .overview-actions {flex: 0 1 auto}
+  .dashboard-grid, .case-layout {grid-template-columns: minmax(0,1fr)}
+  .case-side {display: contents}
+  .case-main {display: contents}
+  .case-layout {gap: 12px}
+  .case-layout>.case-main>.card, .case-layout>.case-side>.card {margin: 0}
+  #case-gestion {order: 0}
+  #case-difusion {order: 1}
+  #case-avistamientos {order: 2}
+  #case-evidencias {order: 3}
+  #case-equipo {order: 4}
+  #case-historial {order: 5}
+  .queue-card .filters {grid-template-columns: repeat(2, minmax(0,1fr))}
+}
+@media (max-width: 620px) {
+  header {position: relative}
+  header .user .operator-avatar {display: none}
+  header .user :is(.account-help>summary, #exit)>span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    clip-path: inset(50%);
+    overflow: hidden;
+  }
+  .user .account-help>summary, #exit {justify-content: center; width: 42px; height: 42px}
+  .account-panel {top: 100px; max-height: calc(100dvh - 115px)}
+  .case-section {scroll-margin-top: 12px}
+  .overview-banner {align-items: flex-start; flex-direction: column; padding: 19px}
+  .overview-actions {justify-content: flex-start}
+  .dashboard-stats {gap: 9px}
+  .dashboard-stats .stat {padding: 12px}
+  .dashboard-stats .stat strong {font-size: 30px}
+  .dashboard-grid .card, .queue-card, .case-section {padding: 15px}
+  .case-facts>div {padding: 9px}
+  .queue-metrics .stat {padding: 9px}
+  .queue-metrics .stat span {font-size: 11px}
+  .queue-metrics .stat strong {font-size: 24px}
+}

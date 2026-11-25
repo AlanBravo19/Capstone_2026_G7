@@ -40,7 +40,7 @@ if config.alertas_demo and (not DEMO or (os.getenv('VERCEL') and not ENSAYO_PUBL
 
 app = FastAPI(
     title="RutaAlerta API",
-    version="0.25.4-beta",
+    version="0.26.0-beta",
     description="Beta colaborativa: TOTP, seguimiento, publicación revisada y fotos privadas. Correo y SMS dependen de la configuración de proveedores.",
 )
 app.include_router(cuentas.router)
@@ -82,6 +82,9 @@ def ciudadania():return FileResponse(BASE/'web/index.html')
 
 @app.get('/operaciones.css',include_in_schema=False)
 def estilos_operaciones():return FileResponse(BASE/'public/operaciones.css',media_type='text/css')
+
+@app.get('/operaciones-manrope.ttf',include_in_schema=False)
+def fuente_operaciones():return FileResponse(BASE/'public/Manrope.ttf',media_type='font/ttf')
 
 @app.get('/clip-practica.mp4',include_in_schema=False)
 def video_practica():return FileResponse(BASE/'public/clip-practica.mp4',media_type='video/mp4')
