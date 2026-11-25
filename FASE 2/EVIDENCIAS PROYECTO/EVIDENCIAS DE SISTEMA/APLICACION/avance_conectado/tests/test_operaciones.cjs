@@ -12,7 +12,7 @@ function environment(initial='/operaciones',override={}){
     focus(){this.focused=true;},reset(){},replaceChildren(){this.innerHTML='';},
     querySelector(selector){if(selector==='[data-list]')return this.innerHTML.includes('data-list')?back:null;return null;}});
   const back=node();
-  for(const id of ['content','status','name','membership','account-help','account-content','desk','access','login','mfa','back','exit','refresh','title','page-description','updated'])nodes.set(id,node());
+  for(const id of ['content','status','name','membership','account-help','account-content','desk','access','login','mfa','back','exit','refresh','title','page-description','updated','restaurando'])nodes.set(id,node());
   const nav=node(),user=node();
   const window={location:{pathname:initial},addEventListener(name,fn){events[name]=fn;},history:{state:null,
     pushState(state,_,url){this.state=state;window.location.pathname=url;history.push(url);},
@@ -27,7 +27,8 @@ function environment(initial='/operaciones',override={}){
     '/gestion/mi-acceso':{organizaciones:[{id_organizacion:1,nombre:'Institución',rol:'operador',puede_asignar:false}],administrador_global:false,permisos:['Consultar estadísticas del ámbito institucional'],asignacion:'Ser responsable de un caso no cambia el rol ni amplía el ámbito institucional.'},
     '/casos':[], '/gestion/testigos':[], '/seguimiento/7':details,'/gestion/casos/7/aportes':[],
     '/gestion/casos/7/equipo':{responsable:'Ana',opciones:[],gestiones:[{accion:'nota',descripcion:'Antecedente privado del titular',creada_en:'2026-11-17T12:00:00Z'}],publicacion:null},
-    '/gestion/aportes/pendientes':[],'/gestion/camaras':{camaras:[],nota:'Inventario autorizado'},'/sesiones/cerrar':null,...override};
+    '/gestion/aportes/pendientes':[],'/gestion/camaras':{camaras:[],nota:'Inventario autorizado'},
+    '/institucional/sesiones/continuar':null,'/institucional/sesiones/cerrar':null,...override};
   const context=vm.createContext({window,document,crypto:require('node:crypto').webcrypto,URL,URLSearchParams,Image:class{},FormData:class{constructor(form){return Object.entries(form.values||{});}},
     setTimeout(){return 1;},clearTimeout(){},MapaOperador:{cerrar(){}},
     async fetch(url,options){calls.push({url,...options});const f=fixtures[url];if(f===undefined)throw Error('Unexpected request: '+url);
@@ -69,6 +70,28 @@ test('institutional login retains requested case and displays internal owner not
   assert.doesNotMatch(e.nodes.get('content').innerHTML,/Mantener imagen actual|load-error/);
   assert.doesNotMatch(e.nodes.get('content').innerHTML,/Asignar responsable/);
   assert.equal(e.calls.find(c=>c.url==='/seguimiento/7').headers.Authorization,'Bearer session');
+});
+
+test('a fresh page reuses the current session and opens the requested case',async()=>{
+  const e=environment('/operaciones/casos/7',{'/institucional/sesiones/continuar':{token:'session'}});
+  await e.events.DOMContentLoaded();
+  assert.equal(e.nodes.get('desk').hidden,false);
+  assert.equal(e.nodes.get('access').hidden,true);
+  assert.equal(e.nodes.get('restaurando').hidden,true);
+  assert.match(e.nodes.get('content').innerHTML,/RA-7/);
+  assert.equal(e.calls[0].headers['X-RutaAlerta-Portal'],'1');
+  await e.nodes.get('exit').onclick();
+  assert.equal(e.nodes.get('desk').hidden,true);
+  assert.equal(e.calls.at(-1).url,'/institucional/sesiones/cerrar');
+  assert.equal(e.calls.at(-1).headers.Authorization,'Bearer session');
+});
+
+test('an expired session displays login without fetching a private case',async()=>{
+  const e=environment('/operaciones/casos/7');
+  await e.events.DOMContentLoaded();
+  assert.equal(e.nodes.get('login').hidden,false);
+  assert.equal(e.run('token'),'');
+  assert.deepEqual(e.calls.map(c=>c.url),['/institucional/sesiones/continuar']);
 });
 
 test('an active alert only offers accepted, authorised report photos in the manual review',async()=>{

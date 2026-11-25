@@ -44,6 +44,25 @@ def emitir_token(cur, id_usuario: int, proposito: str, minutos: int, *, prefijo:
 
 
 bearer = HTTPBearer(auto_error=False)
+COOKIE_OPERADOR = '__Secure-rutaalerta_operador'
+RUTA_SESION_OPERADOR = '/institucional/sesiones'
+
+
+def peticion_portal(request) -> bool:
+    # La cabecera propia obliga a una comprobación CORS para peticiones entre orígenes.
+    return (request.headers.get('x-rutaalerta-portal') == '1'
+            and request.headers.get('sec-fetch-site', 'same-origin') == 'same-origin')
+
+
+def guardar_sesion_operador(request, response, token: str | None) -> None:
+    if token and peticion_portal(request):
+        response.set_cookie(COOKIE_OPERADOR, token, path=RUTA_SESION_OPERADOR,
+                            secure=True, httponly=True, samesite='strict')
+
+
+def borrar_sesion_operador(response) -> None:
+    response.delete_cookie(COOKIE_OPERADOR, path=RUTA_SESION_OPERADOR,
+                           secure=True, httponly=True, samesite='strict')
 
 
 def usuario_actual(credentials: HTTPAuthorizationCredentials | None = Depends(bearer), conn=Depends(obtener_conexion)) -> dict:

@@ -1,5 +1,6 @@
 """HU01 / RF01 / CU01: registro, inicio de sesión y recuperación de acceso."""
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
+from fastapi.security import HTTPAuthorizationCredentials
 
 from ..config import config
 from ..correo import correo_real, enviar_codigo, CorreoNoDisponible
@@ -9,7 +10,9 @@ from datetime import datetime, timedelta, timezone
 from ..db import fila_dict, obtener_conexion, ErrorBD
 from ..esquemas import (CuentaSalida, RecuperacionConfirmar, RecuperacionEntrada, RecuperacionSalida,
                         RegistroEntrada, SesionEntrada, SesionSalida)
-from ..seguridad import cifrar_clave, emitir_token, exigir_ingreso_institucional, huella, verificar_clave
+from ..seguridad import (COOKIE_OPERADOR, borrar_sesion_operador, cifrar_clave, emitir_token,
+                         exigir_ingreso_institucional, guardar_sesion_operador, huella,
+                         peticion_portal, usuario_actual, verificar_clave)
 from ..antifraude import limitar, limitar_ip
 
 router = APIRouter(tags=["cuentas"])
@@ -47,8 +50,30 @@ def iniciar_sesion(datos: SesionEntrada, request: Request, conn=Depends(obtener_
 
 
 @router.post("/institucional/sesiones", response_model=SesionSalida, status_code=201)
-def iniciar_sesion_institucional(datos: SesionEntrada, request: Request, conn=Depends(obtener_conexion)):
-    return autenticar(datos, request, conn, institucional=True)
+def iniciar_sesion_institucional(datos: SesionEntrada, request: Request, response: Response,
+                                conn=Depends(obtener_conexion)):
+    sesion = autenticar(datos, request, conn, institucional=True)
+    guardar_sesion_operador(request, response, sesion.token)
+    return sesion
+
+
+@router.post('/institucional/sesiones/continuar', include_in_schema=False)
+def continuar_sesion_institucional(request: Request, conn=Depends(obtener_conexion)):
+    if not peticion_portal(request):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, 'Solicitud fuera del portal institucional')
+    token = request.cookies.get(COOKIE_OPERADOR)
+    if not token:
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    try:
+        usuario = usuario_actual(HTTPAuthorizationCredentials(scheme='Bearer', credentials=token), conn)
+        exigir_ingreso_institucional(conn.cursor(), usuario['id_usuario'], usuario['estado'])
+    except HTTPException as error:
+        if error.status_code != status.HTTP_401_UNAUTHORIZED:
+            raise
+        response = Response(status_code=status.HTTP_204_NO_CONTENT)
+        borrar_sesion_operador(response)
+        return response
+    return {'token': token}
 
 
 def autenticar(datos, request, conn, *, institucional):

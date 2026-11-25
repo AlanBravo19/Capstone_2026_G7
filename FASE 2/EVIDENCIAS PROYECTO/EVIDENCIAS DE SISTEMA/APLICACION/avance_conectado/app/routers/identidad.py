@@ -4,12 +4,12 @@ import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Literal
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field, field_validator
 from ..antifraude import DEMO, administrador, limitar, limitar_ip, resumen, participante
 from ..correo import correo_real, enviar_codigo, CorreoNoDisponible
 from ..db import obtener_conexion, ErrorBD, es_unico
-from ..seguridad import usuario_actual, emitir_token, huella
+from ..seguridad import COOKIE_OPERADOR, borrar_sesion_operador, usuario_actual, emitir_token, huella
 
 router=APIRouter(tags=['identidad MVP'])
 
@@ -142,9 +142,13 @@ def mi_estado(usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):
             'canales_demo':DEMO,'transporte_correo':'smtp' if real else 'prueba','metodo_participacion':'correo_real_y_autenticador' if real else 'contactos_de_prueba'}
 
 @router.post('/sesiones/cerrar',status_code=204)
-def cerrar(request:Request,usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):
+@router.post('/institucional/sesiones/cerrar',status_code=204,include_in_schema=False)
+def cerrar(request:Request,response:Response,usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):
+    token = request.headers['authorization'].split(' ',1)[1].strip()
     conn.cursor().execute('UPDATE token_acceso SET revocado_en=CURRENT_TIMESTAMP WHERE token_hash=%s',
-        (huella(request.headers['authorization'].split(' ',1)[1].strip()),))
+        (huella(token),))
+    if request.cookies.get(COOKIE_OPERADOR) == token:
+        borrar_sesion_operador(response)
 
 @router.post('/moderacion/usuarios/{id_usuario}/sanciones',status_code=201)
 def sancionar(id_usuario:int,datos:SancionEntrada,admin=Depends(administrador),conn=Depends(obtener_conexion)):

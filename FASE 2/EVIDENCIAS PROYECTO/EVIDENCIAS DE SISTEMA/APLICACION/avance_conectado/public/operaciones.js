@@ -12,6 +12,7 @@ const empty=message=>`<p class="empty">${h(message)}</p>`;
 const motives='<label>Motivo de la decisión<textarea name="motivo" minlength="10" maxlength="500" required></textarea></label>';
 const selector=(name,label,values)=>`<label>${label}<select name="${name}">${Object.entries(values).map(([k,v])=>`<option value="${h(k)}">${h(v)}</option>`).join('')}</select></label>`;
 const action=(title,path,fields,submit=title)=>`<details class="record"><summary>${h(title)}</summary><form data-path="${h(path)}">${fields}<button class="primary">${h(submit)}</button></form></details>`;
+const rutaSesion='/institucional/sesiones';
 let token='', challenge='', view='cases', selected=null, generation=0, records=[], orgs=[], query='', filter='', priority='';
 let photos=[], noticeTimer;
 let mapOrg=null,originView='cases',resourceOffset=0;
@@ -150,9 +151,11 @@ function reset(){
 }
 async function api(path,body,binary=false,method=body===undefined?'GET':'POST'){
   const session=token;const headers={};
+  if(path===rutaSesion||path.startsWith(rutaSesion+'/'))headers['X-RutaAlerta-Portal']='1';
   if(session)headers.Authorization='Bearer '+session;
   if(body!==undefined)headers['Content-Type']='application/json';
-  const response=await fetch(path,{method,headers,body:body===undefined?undefined:JSON.stringify(body),cache:'no-store'});
+  const signal=path===rutaSesion+'/continuar'?globalThis.AbortSignal?.timeout?.(12000):undefined;
+  const response=await fetch(path,{method,headers,body:body===undefined?undefined:JSON.stringify(body),cache:'no-store',signal});
   if(!response.ok){
     if(response.status===401&&session&&session===token)reset();
     const problem=await response.json().catch(()=>({}));
@@ -161,7 +164,7 @@ async function api(path,body,binary=false,method=body===undefined?'GET':'POST'){
   if(response.status===204)return null;
   return binary?response.blob():response.json();
 }
-async function signin(result){
+async function signin(result,reanudada=false){
   if(result.requiere_mfa){challenge=result.id_desafio;el('login').hidden=true;el('mfa').hidden=false;el('mfa').elements.codigo.focus();return;}
   token=result.token;
   try{
@@ -174,18 +177,33 @@ async function signin(result){
     if(!routes[originView])originView='cases';
     if(window.location.pathname==='/')window.history.replaceState({},'',routes.dashboard);
     mapOrg=orgs[0]?.id_organizacion;await load();
-  }catch(err){try{if(token)await api('/sesiones/cerrar',{});}finally{reset();}throw err;}
+  }catch(err){try{if(token&&!reanudada)await api(rutaSesion+'/cerrar',{});}finally{reset();}throw err;}
 }
+async function restaurarSesion(){
+  const estado=el('restaurando');
+  estado.hidden=false;
+  el('login').hidden=true;
+  try{
+    const sesion=await api(rutaSesion+'/continuar',{});
+    if(sesion)await signin(sesion,true);
+  }catch{
+    notify('No se pudo comprobar la sesión. Puedes recargar o volver a ingresar.');
+  }finally{
+    estado.hidden=true;
+    if(!token)el('login').hidden=false;
+  }
+}
+window.addEventListener('DOMContentLoaded',restaurarSesion);
 async function handle(button,work){button.disabled=true;try{await work();}catch(err){notify(err.message);}finally{button.disabled=false;}}
 for(const id of ['login','mfa'])el(id).onsubmit=e=>{
   e.preventDefault();const f=e.currentTarget.elements;
   handle(e.submitter,async()=>{
-    if(id==='login'){const result=await api('/institucional/sesiones',{correo:f.correo.value.trim(),clave:f.clave.value});f.clave.value='';await signin(result);}
-    else{const result=await api('/institucional/sesiones/mfa',{id_desafio:challenge,codigo:f.codigo.value.trim()});f.codigo.value='';await signin(result);}
+    if(id==='login'){const result=await api(rutaSesion,{correo:f.correo.value.trim(),clave:f.clave.value});f.clave.value='';await signin(result);}
+    else{const result=await api(rutaSesion+'/mfa',{id_desafio:challenge,codigo:f.codigo.value.trim()});f.codigo.value='';await signin(result);}
   });
 };
 el('back').onclick=reset;
-el('exit').onclick=()=>handle(el('exit'),async()=>{try{await api('/sesiones/cerrar',{});}finally{reset();}});
+el('exit').onclick=()=>handle(el('exit'),async()=>{await api(rutaSesion+'/cerrar',{});reset();});
 document.querySelector('nav').onclick=e=>{const b=e.target.closest('[data-view]');if(b){e.preventDefault();navigate(b.dataset.view);}};
 function abrirCaso(cid){const id=Number(cid);if(Number.isSafeInteger(id)&&id>0)return navigate('cases',id);}
 el('refresh').onclick=()=>load();

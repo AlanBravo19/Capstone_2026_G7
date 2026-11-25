@@ -3,11 +3,12 @@ import base64, hashlib, hmac, secrets, struct, time, uuid
 from datetime import datetime, timedelta, timezone
 from urllib.parse import quote
 from cryptography.fernet import Fernet
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 from ..antifraude import SECRET, limitar, limitar_ip
 from ..db import obtener_conexion, fila_dict
 from ..seguridad import usuario_actual, verificar_clave, cifrar_clave, emitir_token, exigir_ingreso_institucional, organizaciones_del_operador, huella
+from ..seguridad import guardar_sesion_operador
 from ..config import config
 
 router=APIRouter(tags=['seguridad de cuenta'])
@@ -116,8 +117,10 @@ def completar(datos:Desafio,request:Request,conn=Depends(obtener_conexion)):
     return completar_factor(datos, request, conn, institucional=False)
 
 @router.post('/institucional/sesiones/mfa', status_code=201)
-def completar_institucional(datos:Desafio,request:Request,conn=Depends(obtener_conexion)):
-    return completar_factor(datos, request, conn, institucional=True)
+def completar_institucional(datos:Desafio,request:Request,response:Response,conn=Depends(obtener_conexion)):
+    sesion = completar_factor(datos, request, conn, institucional=True)
+    guardar_sesion_operador(request, response, sesion['token'])
+    return sesion
 
 def completar_factor(datos, request, conn, *, institucional):
     limitar_ip(conn,request,'mfa',30)
