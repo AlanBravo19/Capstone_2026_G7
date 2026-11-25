@@ -40,7 +40,7 @@ if config.alertas_demo and (not DEMO or (os.getenv('VERCEL') and not ENSAYO_PUBL
 
 app = FastAPI(
     title="RutaAlerta API",
-    version="0.25.3-beta",
+    version="0.25.4-beta",
     description="Beta colaborativa: TOTP, seguimiento, publicación revisada y fotos privadas. Correo y SMS dependen de la configuración de proveedores.",
 )
 app.include_router(cuentas.router)
@@ -128,6 +128,7 @@ def version_beta():
     return {"version": app.version, "modelo_tablas": 68, "cliente": "Flutter Android",
             "panel": "/operaciones", "padron_privado": padron_privado,
             "padron_prelectura": bool(padron_privado and operativa()),
+            "alertas_automaticas": config.alertas_automaticas,
             "ensayo": ENSAYO_PUBLICADO}
 
 @app.get('/leaflet/leaflet.css', include_in_schema=False)

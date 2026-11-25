@@ -48,24 +48,34 @@ def publicar_provisional(cur, caso, datos, usuario, ambiente):
           AND m.inicio<=CURRENT_TIMESTAMP AND u.estado='activo' AND u.id_usuario<>%s)""",(org,usuario))
     if not cur.fetchone():
         causas.append('Organización sin revisión operativa habilitada')
-    cur.execute("""SELECT 1 FROM caso WHERE id_vehiculo=%s AND entorno=%s
-        AND id_caso<>%s AND estado<>'cerrado'""",(vehiculo,ambiente,cid))
-    if cur.fetchone():
+    cur.execute("""SELECT id_usuario_reportante,folio FROM caso WHERE id_vehiculo=%s AND entorno=%s
+        AND id_caso<>%s AND estado<>'cerrado'
+        ORDER BY (id_usuario_reportante=%s) DESC,id_caso DESC LIMIT 1""",(vehiculo,ambiente,cid,usuario))
+    expediente = cur.fetchone()
+    if expediente:
         causas.append('Existe otro expediente activo del vehículo')
-    cur.execute("""SELECT 1 FROM solicitud_colaboracion s JOIN caso c USING(id_caso)
-        WHERE c.id_usuario_reportante=%s AND c.entorno=%s AND s.id_vinculo_verificado IS NOT NULL
-        AND s.inicio>CURRENT_TIMESTAMP-interval '24 hours'""",(usuario,ambiente))
-    if cur.fetchone():
-        causas.append('Ya se difundió una provisional para la cuenta en las últimas 24 horas')
     fecha = datos.fecha_hecho
     if fecha.tzinfo is None:
         fecha = fecha.replace(tzinfo=timezone.utc)
     if fecha < datetime.now(timezone.utc) - timedelta(hours=24):
         causas.append('El hecho fue informado con más de 24 horas de antigüedad')
+    if not causas:
+        # Serializa la cuota por cuenta también si reporta vehículos distintos.
+        cur.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s,0))",
+                    (f'rutaalerta:publicacion_provisional:{usuario}',))
+        cur.execute("""SELECT 1 FROM gestion_caso g JOIN caso c USING(id_caso)
+            WHERE c.id_usuario_reportante=%s AND c.entorno=%s AND g.accion='publicacion_provisional'
+            AND g.creada_en>CURRENT_TIMESTAMP-interval '24 hours' LIMIT 1""",(usuario,ambiente))
+        if cur.fetchone():
+            causas.append('Ya se difundió una provisional para la cuenta en las últimas 24 horas')
     if causas:
         cur.execute("UPDATE caso SET prioridad='alta' WHERE id_caso=%s",(cid,))
         bitacora(cur,cid,usuario,'prioridad_alerta',' · '.join(causas),'interna')
-        return 'pendiente', 'La organización revisará con prioridad el vínculo y los antecedentes.'
+        if expediente and expediente[0] == usuario:
+            return 'pendiente', f'Ya tienes el expediente {expediente[1]} abierto para este vehículo. Consulta su seguimiento.'
+        if not vinculo:
+            return 'pendiente', 'La organización receptora revisará el vínculo con el vehículo antes de publicarlo.'
+        return 'pendiente', 'La organización revisará el reporte antes de publicarlo.'
 
     # Solo se publican texto fijo, comuna reconocida y centro aproximado.
     # El relato, dirección y foto requieren revisión humana.
@@ -85,7 +95,7 @@ def publicar_provisional(cur, caso, datos, usuario, ambiente):
     bitacora(cur,cid,usuario,'publicacion_provisional',motivo,'interna')
     aviso(cur,usuario,cid,'Alerta provisional publicada','La organización revisará el caso y el encargo policial.',f'provisional:{sid}')
     avisar_equipo(cur,org,cid,'Alerta provisional nueva','Revisa el expediente y registra la consulta del encargo.',f'provisional:{sid}')
-    return 'provisional', 'Alerta provisional visible. El operador debe comprobar el encargo.'
+    return 'provisional', 'Alerta provisional publicada en Colaborar. La organización revisará el encargo.'
 
 def avisar_equipo(cur, org, cid, titulo, mensaje, clave):
     cur.execute("""INSERT INTO notificacion(id_usuario,id_caso,tipo,titulo,mensaje,clave_deduplicacion)

@@ -20,7 +20,9 @@ Android y el portal ciudadano permiten adjuntar una foto del padrón al registra
 
 [Verificación vehicular y publicación provisional](evidencias/Verificacion_Vehicular_0211.md)
 
-La publicación provisional requiere un vínculo previamente revisado, consentimiento y habilitación global y por organización. La configuración inicial mantiene la publicación automática apagada. La versión requiere la migración 09.
+Un reporte de sustracción reciente de un vehículo con vínculo vigente se publica de inmediato como alerta provisional en **Colaborar** al autorizar la difusión. El caso llega al equipo de la organización en la misma operación. Con un vínculo pendiente, el reporte queda en la bandeja institucional para revisión. La app muestra el resultado al guardar y permite consultar el seguimiento.
+
+La publicación automática requiere `ALERTAS_AUTOMATICAS=1`, una organización receptora habilitada con equipo activo y la [migración 09](sql/09_Alertas_Provisionales.sql). El servidor verifica el consentimiento, descarta duplicados activos y permite una provisional por cuenta en 24 horas. El operador conserva la revisión del caso, la consulta del encargo y la suspensión de la alerta.
 
 [Flujo, estados, configuración y guion de demostración](evidencias/Alertas_Provisionales_0210.md)
 

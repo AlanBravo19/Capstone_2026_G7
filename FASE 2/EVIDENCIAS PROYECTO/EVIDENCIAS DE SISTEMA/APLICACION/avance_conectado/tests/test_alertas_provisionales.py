@@ -64,6 +64,55 @@ def test_causas_de_no_publicacion(client,db,piloto,monkeypatch,control):
     assert r.status_code==201,r.text
     assert r.json()['publicacion']==('privada' if control=='sin_consentimiento' else 'pendiente')
     assert datos_alerta(client,piloto,r.json()['id_caso'])['alerta'] is None
+    if control == 'vinculo_pendiente':
+        assert 'revisará el vínculo' in r.json()['siguiente_paso']
+
+
+def test_reporte_previo_abierto_no_duplica_alerta_y_muestra_folio(client,piloto):
+    assert decision(client,piloto).status_code == 204
+    titular,_,_,vid,_ = piloto
+    anterior = client.post('/casos', headers={**titular,'Idempotency-Key':str(uuid4())},
+                         json=_reporte(id_vehiculo=vid)).json()
+    nuevo = reportar(client,piloto)
+    assert nuevo.status_code == 201
+    assert nuevo.json()['publicacion'] == 'pendiente'
+    assert anterior['folio'] in nuevo.json()['siguiente_paso']
+    assert datos_alerta(client,piloto,nuevo.json()['id_caso'])['alerta'] is None
+
+
+def test_publicacion_manual_previa_no_consume_cuota_automatica(client,piloto,monkeypatch):
+    assert decision(client,piloto).status_code == 204
+    _,_,op,_,_ = piloto
+    original = alertas.config
+    monkeypatch.setattr(alertas,'config',replace(original,alertas_automaticas=False))
+    monkeypatch.setattr(gestion,'config',replace(gestion.config,alertas_demo=False))
+    anterior = reportar(client,piloto)
+    assert anterior.status_code == 201 and anterior.json()['publicacion'] == 'pendiente'
+    cid = anterior.json()['id_caso']
+    url = f'/gestion/casos/{cid}'
+    ficha = datos_alerta(client,piloto,cid)
+    assert client.post(url+'/revision',headers=op,json={
+        'estado':'en_revision','motivo':'Primera revisión del caso ficticio',
+    }).status_code == 200
+    consulta = client.post(url+'/encargo',headers=op,json={
+        'revision':ficha['revision_alerta'],'resultado':'encontrado',
+        'referencia':'AS-ENSAYO-24','motivo':'Consulta del ejercicio de prueba',
+    })
+    assert consulta.status_code == 204,consulta.text
+    ficha = datos_alerta(client,piloto,cid)
+    publicada = client.post(url+'/publicacion',headers=op,json={
+        'revision':ficha['revision_alerta'],'zona':'Chillán',
+        'texto':'Alerta manual de un ejercicio ficticio.',
+        'motivo':'Publicación revisada del ejercicio',
+    })
+    assert publicada.status_code == 201,publicada.text
+    ficha = datos_alerta(client,piloto,cid)
+    assert client.post(url+'/cerrar',headers=op,json={
+        'revision':ficha['revision_alerta'],'motivo_cierre':'otro','motivo':'Cierre del ejercicio ficticio',
+    }).status_code == 204
+    monkeypatch.setattr(alertas,'config',original)
+    nuevo = reportar(client,piloto)
+    assert nuevo.status_code == 201 and nuevo.json()['publicacion'] == 'provisional',nuevo.text
 
 
 def test_provisional_reintento_avistamiento_y_suspension(client,db,piloto,operador_org2):
@@ -84,6 +133,8 @@ def test_provisional_reintento_avistamiento_y_suspension(client,db,piloto,operad
     path=f'/colaboracion/{sid}'
     publica=client.get(path,headers=colaborador).json()
     assert publica['modo_alerta']=='provisional' and publica['zona_publicable']=='Chillán'
+    visibles=client.get('/colaboracion',params={'zona':'chillan'},headers=colaborador).json()
+    assert any(f['id_solicitud_colaboracion']==sid for f in visibles['otras_zonas'])
     assert not {'referencia_revision','descripcion_privada','id_usuario_reportante'} & publica.keys()
     datos={'observado_en':datetime.now(timezone.utc).isoformat(),'zona':'Lugar de prueba',
            'descripcion':'Avistamiento ficticio del ejercicio','latitud':-36.61,'longitud':-72.10}
