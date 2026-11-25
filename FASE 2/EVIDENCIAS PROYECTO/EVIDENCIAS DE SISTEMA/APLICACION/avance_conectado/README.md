@@ -6,6 +6,12 @@ El cotejo externo se habilita en el servidor con `GROQ_PADRON_OPERACION=1` y `GR
 
 El mapa usa zonas históricas calculadas por PostGIS. El planificador prioriza alternativas con menos cruces. Android ofrece búsqueda de comuna, sugerencia geográfica y destinos por dirección o punto en el mapa.
 
+## Portal de pruebas y mapa de calor
+
+Con las dependencias de Python y `scripts/package.json` instaladas, ejecuta `python scripts/demostrar_alertas.py --poblar-portal` desde la carpeta de la API. El script muestra el enlace y la cuenta temporal. Carga diez vehículos ficticios, aprueba sus vínculos y publica diez alertas tras la revisión institucional simulada. También acepta tres avistamientos. La base funciona en memoria y se descarta al cerrar el proceso.
+
+En **Mapa operativo**, la capa de calor cuenta los reportes con una alerta vigente dentro de los filtros seleccionados. Los avistamientos aceptados se muestran como puntos. En el ensayo, los reportes se concentran en tres sectores ficticios con cinco, tres y dos alertas.
+
 [Flujo, datos ficticios y pruebas de la beta 0.22](evidencias/Zonas_Historicas_y_Verificacion_0220.md)
 
 Android y el portal ciudadano permiten adjuntar una foto del padrón al registrar un vehículo o enviarla después desde Mis vehículos. El supervisor de la organización receptora abre y resuelve la solicitud en **Verificar vínculos**. La imagen queda disponible únicamente durante la revisión. El historial conserva el momento de recepción y la decisión.

@@ -35,6 +35,7 @@ def test_recorrido_chillan(client, ciudadano, supervisor_org1, operador_org2):
         return [e for e in datos.json()["eventos"] if e["id_caso"] == cid]
     ubicados = eventos()
     assert len(ubicados) == 1 and ubicados[0]["tipo"] == "reporte"
+    assert ubicados[0]["alerta_activa"] is False
     assert abs(ubicados[0]["latitud"] - punto["latitud"]) < 1e-6
     assert abs(ubicados[0]["longitud"] - punto["longitud"]) < 1e-6
     base = f"/gestion/casos/{cid}"
@@ -42,6 +43,7 @@ def test_recorrido_chillan(client, ciudadano, supervisor_org1, operador_org2):
     r=client.post(base+"/publicacion",headers=op,json={"zona":"Chillán · simulación","texto":"Vehículo ficticio para la prueba local de colaboración.","motivo":"Ejercicio con consentimiento del titular ficticio"})
     assert r.status_code == 201
     sid = r.json()["id_solicitud_colaboracion"]
+    assert eventos()[0]["alerta_activa"] is True
     assert client.get(f"/seguimiento/{cid}",headers=titular).json()["estado_colaboracion"]=="Publicada en Colaborar"
     panorama=client.get("/territorio/panorama?lat=-36.606&lon=-72.104",headers=colaborador).json()
     ficha_publica=next(s for s in panorama["solicitudes"] if s["id_solicitud_colaboracion"]==sid)
@@ -79,6 +81,7 @@ def test_recorrido_chillan(client, ciudadano, supervisor_org1, operador_org2):
     assert client.post(f"/gestion/aportes/{aid}/revision",headers=op,json={"decision":"aceptado","motivo":"Aporte revisado en el ensayo","resumen":resumen}).status_code==200
     assert not pendientes(op)
     assert {e["tipo"] for e in eventos()} == {"reporte", "avistamiento"}
+    assert {e["tipo"]: e["alerta_activa"] for e in eventos()} == {"reporte": True, "avistamiento": False}
     seguimiento=client.get(f"/seguimiento/{cid}",headers=titular).json()
     assert seguimiento["aportes"][0]["resumen_para_afectado"]==resumen
     mensaje={"mensaje":"Actualización privada del ejercicio en Chillán.","clave_envio":str(uuid.uuid4())}

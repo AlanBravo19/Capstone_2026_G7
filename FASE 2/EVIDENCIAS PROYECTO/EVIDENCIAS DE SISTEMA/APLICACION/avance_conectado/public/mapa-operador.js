@@ -7,30 +7,32 @@ const MapaOperador = (() => {
   ];
   const normal = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   const etiqueta = tipo => tipo === 'reporte' ? 'Reporte' : 'Avistamiento aceptado';
-  let map, grupo;
+  let map, grupo, calor, renderer;
 
   function cerrar() {
     if (map) map.remove();
-    map = grupo = null;
+    map = grupo = calor = renderer = null;
   }
 
-  function plantilla(orgs, actual) {
+  function plantilla(orgs, actual, simulacion) {
     return `<section class="geo-board" aria-label="Eventos de casos abiertos">
+      ${simulacion?'<p class="geo-demo">Modo de pruebas · vehículos, alertas y ubicaciones ficticios</p>':''}
       <div class="geo-toolbar"><label>Organización<select id="geo-org">${orgs.map(o => `<option value="${Number(o.id_organizacion)}" ${o.id_organizacion===actual.id_organizacion?'selected':''}>${h(o.nombre)}</option>`).join('')}</select></label>
       <label>Tipo de evento<select id="geo-tipo"><option value="">Todos los eventos</option><option value="reporte">Reportes</option><option value="avistamiento">Avistamientos aceptados</option></select></label>
       <label>Buscar sector o folio<input type="search" id="geo-filtro" placeholder="Ej. Chillán"></label></div>
       <div class="geo-layout"><div class="geo-stage"><div id="geo-canvas" aria-label="Mapa de casos abiertos"></div>
-      <button class="geo-fit" id="geo-fit">Centrar vista</button>
-      <div class="geo-legend"><span><i></i>Reporte</span><span><i></i>Avistamiento aceptado</span></div></div>
+      <div class="geo-controls"><button type="button" id="geo-calor" aria-pressed="true">Mapa de calor</button><button type="button" id="geo-fit">Centrar vista</button></div>
+      <div class="geo-legend"><span><i></i>Reporte</span><span><i></i>Avistamiento aceptado</span><span id="geo-calor-leyenda"><i></i>Concentración de alertas activas</span></div></div>
       <section class="geo-feed"><div class="geo-feed-head"><small>Cobertura declarada</small><strong>${h(actual.territorio_cobertura)}</strong></div>
-      <h2>Eventos <span id="geo-total"></span></h2><p class="geo-message" id="geo-message" role="status"></p><div id="geo-items"></div></section></div></section>`;
+      <h2>Eventos <span id="geo-total"></span></h2><p class="geo-alert-total" id="geo-alert-total"></p><p class="geo-message" id="geo-message" role="status"></p><div id="geo-items"></div></section></div></section>`;
   }
 
   function montar(actual, data) {
     const canvas = el('geo-canvas'), lista = el('geo-items');
     const referencia = centros.find(([nombre]) => normal(actual.territorio_cobertura).includes(nombre));
     const tienePunto = e => Number.isFinite(e.latitud) && Number.isFinite(e.longitud);
-    let visibles = [], tileError = false;
+    const button = el('geo-calor');
+    let visibles = [], alertas = [], tileError = false;
     function explicar() {
       const mensajes = [];
       if (!map || tileError) mensajes.push('Cartografía no disponible. Puedes abrir las fichas desde la lista.');
@@ -56,12 +58,38 @@ const MapaOperador = (() => {
       capa.on('tileerror', () => { if(map){tileError=true;explicar();} });
       capa.on('tileload', () => { if(map && tileError){tileError=false;explicar();} });
       capa.addTo(map); grupo=L.layerGroup().addTo(map);
-    } else el('geo-fit').disabled=true;
+      const pane = map.createPane('geoHeat');
+      pane.style.zIndex = '350';
+      pane.style.pointerEvents = 'none';
+      renderer = L.canvas({pane:'geoHeat'});
+      calor = L.layerGroup().addTo(map);
+    } else {
+      el('geo-fit').disabled=true;
+      button.disabled=true;
+    }
+
+    function actualizarCalor() {
+      const activo = button.getAttribute('aria-pressed') === 'true';
+      el('geo-calor-leyenda').hidden = !map || !activo;
+      if (!map) return;
+      calor.clearLayers();
+      if (!activo) return;
+      const aros = [[720,'#ffa42d',.065],[610,'#ff9530',.075],[495,'#ff7835',.09],
+        [380,'#fa5941',.11],[270,'#eb3e42',.12],[150,'#cf2147',.15]];
+      for (const evento of alertas) {
+        for (const [radius, fillColor, fillOpacity] of aros) {
+          L.circle([evento.latitud,evento.longitud],{radius,fillColor,fillOpacity,stroke:false,
+            interactive:false,pane:'geoHeat',renderer}).addTo(calor);
+        }
+      }
+    }
 
     function actualizar() {
       const tipo=el('geo-tipo').value, texto=normal(el('geo-filtro').value.trim());
       visibles=data.eventos.filter(e => (!tipo || e.tipo===tipo) && normal(e.zona+' '+e.folio).includes(texto));
+      alertas=visibles.filter(e => e.tipo==='reporte' && e.alerta_activa && tienePunto(e));
       el('geo-total').textContent=String(visibles.length);
+      el('geo-alert-total').textContent=`${alertas.length} ${alertas.length===1?'alerta activa':'alertas activas'} en el mapa`;
       lista.innerHTML=visibles.map(e => `<article class="geo-event ${e.tipo==='reporte'?'report':'sighting'}">
         <small>${etiqueta(e.tipo)}</small><strong>${h(e.zona)}</strong><span>${h(date(e.fecha))}</span>
         <button data-case="${Number(e.id_caso)}">Abrir ${h(e.folio)} →</button></article>`).join('');
@@ -90,8 +118,12 @@ const MapaOperador = (() => {
           marker.bindPopup(popup,{maxHeight:220});
         }
       }
-      encuadrar(); explicar();
+      actualizarCalor(); encuadrar(); explicar();
     }
+    button.onclick=()=>{
+      button.setAttribute('aria-pressed',String(button.getAttribute('aria-pressed')!=='true'));
+      actualizarCalor();
+    };
     el('geo-fit').onclick=encuadrar;
     el('geo-tipo').onchange=actualizar; el('geo-filtro').oninput=actualizar;
     actualizar();

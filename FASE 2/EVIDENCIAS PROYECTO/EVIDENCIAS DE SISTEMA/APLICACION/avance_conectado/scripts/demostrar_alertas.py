@@ -2,7 +2,7 @@
 import argparse
 import base64
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 from io import BytesIO
 import os
@@ -173,6 +173,90 @@ def sembrar_zonas(c, operador, titular):
         }).raise_for_status()
 
 
+def poblar_portal(c, titular, colaborador, supervisor):
+    """Ejecuta el recorrido completo con documentos, ubicaciones y encargos ficticios."""
+    enviar(c, '/gestion/casos/1/cerrar', {
+        'motivo_cierre': 'otro', 'motivo': 'Cierre del ejemplo anterior en la base de pruebas.',
+    }, supervisor, 204)
+    ubicaciones = [
+        ('Sector A · Centro', -36.826, -73.050), ('Sector A · Centro', -36.827, -73.050),
+        ('Sector A · Centro', -36.825, -73.052), ('Sector A · Centro', -36.827, -73.048),
+        ('Sector A · Centro', -36.826, -73.051), ('Sector B · Norte', -36.808, -73.062),
+        ('Sector B · Norte', -36.809, -73.062), ('Sector B · Norte', -36.808, -73.064),
+        ('Sector C · Oriente', -36.837, -73.023), ('Sector C · Oriente', -36.836, -73.024),
+    ]
+    vehiculos = {}
+    for numero in range(1, len(ubicaciones) + 1):
+        patente = f'ZQXP{numero:02}'
+        vehiculos[patente] = registrar_auto(c, titular, patente, padron_prueba(patente))
+    vinculos = c.get('/gestion/vinculos', headers=supervisor).raise_for_status().json()
+    for fila in vinculos:
+        if fila['patente'] not in vehiculos:
+            continue
+        ruta = f"/gestion/vinculos/{fila['id_vinculo_vehiculo']}"
+        padron = c.get(f'{ruta}/padron', headers=supervisor).raise_for_status()
+        if padron.headers.get('content-type') != 'image/jpeg':
+            raise RuntimeError('El padrón de prueba no llegó como imagen privada.')
+        enviar(c, f'{ruta}/decision', {'decision': 'autorizado', 'estado_esperado': 'pendiente',
+              'motivo': 'padron_y_coincidencia', 'confirmar_padron': True}, supervisor, 204)
+
+    foto = base64.b64encode(imagen_prueba()).decode()
+    expedientes = []
+    ahora = datetime.now(timezone.utc)
+    for indice, ((patente, vid), (sector, lat, lon)) in enumerate(zip(vehiculos.items(), ubicaciones), 1):
+        zona = f'{sector} · Prueba en Concepción'
+        caso = enviar(c, '/casos', {
+            'id_vehiculo': vid, 'id_organizacion': 1, 'zona': zona,
+            'fecha_hecho': (ahora - timedelta(minutes=12 * indice)).isoformat(),
+            'descripcion': f'Reporte ficticio {indice} para probar el portal.',
+            'latitud': lat, 'longitud': lon, 'confirmar_sustraccion': True,
+            'solicitar_colaboracion': True, 'foto_base64': foto, 'autorizar_foto_publica': True,
+        }, {**titular, 'Idempotency-Key': str(uuid4())}, 201)
+        if caso['publicacion'] != 'pendiente':
+            raise RuntimeError('El reporte del ensayo debe quedar pendiente hasta la aprobación.')
+        cid = caso['id_caso']
+        gestion = f'/gestion/casos/{cid}'
+        enviar(c, f'{gestion}/revision', {'estado': 'en_gestion',
+              'motivo': 'Reporte ficticio revisado en la prueba local.'}, supervisor)
+        ficha = c.get(f'/seguimiento/{cid}', headers=supervisor).raise_for_status().json()
+        evidencia = ficha['evidencias'][0]['id_evidencia']
+        enviar(c, f'/gestion/evidencias/{evidencia}/revision',
+              {'decision': 'aceptada', 'motivo': 'Ilustración ficticia revisada.'}, supervisor, 204)
+        enviar(c, f'{gestion}/encargo', {
+            'revision': ficha['revision_alerta'], 'resultado': 'encontrado', 'simulada': True,
+            'referencia': f'ENSAYO-{indice:02}', 'motivo': 'Encargo simulado para este escenario.',
+        }, supervisor, 204)
+        ficha = c.get(f'/seguimiento/{cid}', headers=supervisor).raise_for_status().json()
+        alerta = enviar(c, f'{gestion}/publicacion', {
+            'revision': ficha['revision_alerta'], 'id_foto_vehiculo': evidencia, 'zona': zona,
+            'texto': f'Vehículo ficticio {patente} para practicar el flujo de colaboración.',
+            'motivo': 'Alerta aprobada para la prueba institucional.', 'horas': 24,
+        }, supervisor, 201)
+        if indice in (1, 4, 7):
+            aporte = enviar(c, f"/colaboracion/{alerta['id_solicitud_colaboracion']}/avistamientos", {
+                'zona': zona, 'observado_en': ahora.isoformat(), 'latitud': lat + .002, 'longitud': lon - .002,
+                'descripcion': 'Avistamiento ficticio para comprobar los filtros del mapa.', 'foto_base64': foto,
+            }, {**colaborador, 'Idempotency-Key': str(uuid4())}, 201)
+            enviar(c, f"/gestion/aportes/{aporte['id_avistamiento']}/revision", {
+                'decision': 'aceptado', 'motivo': 'Aporte ficticio revisado en el escenario.',
+                'resumen': 'Avistamiento aceptado para la prueba.',
+            }, supervisor)
+        expedientes.append(cid)
+
+    sembrar_zonas(c, supervisor, titular)
+    vista = c.get('/colaboracion', headers=colaborador).raise_for_status().json()
+    publicadas = {a['patente'] for a in vista['cercanos'] + vista['otras_zonas'] if a['foto_disponible']}
+    vinculos = c.get('/gestion/vinculos', headers=supervisor).raise_for_status().json()
+    aprobados = {v['patente'] for v in vinculos if v['estado'] == 'autorizado'}
+    mapa = c.get('/gestion/mapa?id_organizacion=1', headers=supervisor).raise_for_status().json()
+    activas = {e['id_caso'] for e in mapa['eventos'] if e['tipo'] == 'reporte' and e['alerta_activa']}
+    avistamientos = [e for e in mapa['eventos'] if e['tipo'] == 'avistamiento']
+    if not (set(vehiculos) == aprobados == publicadas and set(expedientes) == activas and len(avistamientos) == 3):
+        raise RuntimeError('No coinciden los vehículos verificados, las alertas activas y los aportes del mapa.')
+    print(f'Portal listo: {len(aprobados)} vehículos verificados, {len(activas)} alertas aprobadas y 3 avistamientos aceptados.',
+          flush=True)
+
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--puerto-api',type=int,default=5580)
@@ -180,6 +264,7 @@ def main():
     p.add_argument('--servidor-pglite',type=Path,default=BASE/'scripts/servidor_prueba_pglite.mjs')
     p.add_argument('--validar',action='store_true',help='Ejecuta el recorrido y termina.')
     p.add_argument('--validar-groq',action='store_true',help='Prueba GroqCloud con el padrón ficticio y termina.')
+    p.add_argument('--poblar-portal',action='store_true',help='Prepara vehículos y alertas aprobados para el mapa de calor.')
     p.add_argument('--guion-web',type=Path,help='Ejecuta un guion Node local con las cuentas efímeras vía entrada estándar.')
     args=p.parse_args()
     if args.validar_groq and not os.getenv('GROQ_API_KEY'):
@@ -189,6 +274,8 @@ def main():
         DB_PASSWORD='',DB_SSL='0',ENTORNO='prueba',CANALES_DEMO='1',CORREO_TRANSPORTE='demo',
         DEMO_ACCESS_KEY='',OTP_SECRET=secrets.token_urlsafe(48),ALERTAS_AUTOMATICAS='1',
         ALERTA_MINUTOS='60',ALERTAS_DEMO='1')
+    if args.poblar_portal:
+        env.update(ALERTAS_AUTOMATICAS='0', GROQ_API_KEY='')
     comando=['node',str(args.servidor_pglite.resolve()),str(BASE/'sql'),str(args.puerto_bd)]
     entorno_bd = {k:v for k,v in env.items() if k != 'GROQ_API_KEY'}
     with proceso(comando,entorno_bd,args.puerto_bd):
@@ -205,6 +292,8 @@ def main():
         with conectar() as conn:
             cur=conn.cursor()
             cur.execute("UPDATE organizacion SET alertas_provisionales_habilitadas=TRUE WHERE id_organizacion=1")
+            if args.poblar_portal:
+                cur.execute("UPDATE organizacion SET nombre='Centro de pruebas de RutaAlerta', territorio_cobertura='Concepción · escenario ficticio' WHERE id_organizacion=1")
             cur.execute("UPDATE usuario SET password_hash=%s WHERE correo=%s RETURNING id_usuario",(cifrar_clave(clave),operador))
             uid=cur.fetchone()[0]
             cur.execute("INSERT INTO usuario_rol(id_usuario,id_rol,asignado_por) SELECT %s,id_rol,%s FROM rol WHERE codigo='administrador' ON CONFLICT DO NOTHING",(uid,uid))
@@ -217,6 +306,14 @@ def main():
                 h=ciudadano(c,'Profesor 1 · Titular ficticio',mail_a,clave,'+56915270971')
                 b=ciudadano(c,'Profesor 2 · Colaborador ficticio',mail_b,clave,'+56915270972')
                 op=ingresar(c,operador,clave,institucional=True)
+                if args.poblar_portal:
+                    poblar_portal(c,h,b,op)
+                    if args.validar:
+                        return
+                    print(f'Portal: {base}/operaciones/mapa\nColaborar: {base}/ciudadania')
+                    print(f'Operador: {operador}\nColaborador: {mail_b}\nClave temporal: {clave}',flush=True)
+                    while True:
+                        time.sleep(1)
                 vid=registrar_auto(c,h,'ZQXT91',padron_prueba('ZQXT91'))
                 registrar_auto(c,h,PATENTE_ENSAYO,padron)
                 vinculos=c.get('/gestion/vinculos',headers=op).raise_for_status().json()

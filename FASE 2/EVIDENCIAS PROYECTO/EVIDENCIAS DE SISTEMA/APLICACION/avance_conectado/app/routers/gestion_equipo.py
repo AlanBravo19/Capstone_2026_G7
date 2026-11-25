@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 from ..db import obtener_conexion
 from ..seguridad import usuario_actual, organizaciones_del_operador
 from .colaboracion import caso_autorizado, bitacora, rows
-from ..alertas import VIGENTE
+from ..alertas import VIGENTE, entorno
 from ..config import config
 from ..antifraude import DEMO
 
@@ -42,25 +42,28 @@ def mapa_operativo(id_organizacion: int, usuario=Depends(usuario_actual), conn=D
     cur = conn.cursor()
     if id_organizacion not in organizaciones_del_operador(cur, usuario['id_usuario']):
         raise HTTPException(403, 'Organización fuera de tu ámbito')
-    cur.execute("""
+    cur.execute(f"""
         WITH abiertos AS (
-            SELECT id_caso, folio, estado, zona, ubicacion, fecha_hecho
-            FROM caso WHERE id_organizacion=%s AND estado<>'cerrado'
+            SELECT c.id_caso, c.folio, c.estado, c.zona, c.ubicacion, c.fecha_hecho,
+                   EXISTS (SELECT 1 FROM solicitud_colaboracion s
+                           WHERE s.id_caso=c.id_caso AND {VIGENTE}) AS alerta_activa
+            FROM caso c WHERE c.id_organizacion=%s AND c.entorno=%s AND c.estado<>'cerrado'
         ), eventos AS (
             SELECT 'reporte' AS tipo, id_caso AS id_evento, id_caso, folio, estado,
-                   zona, ubicacion, fecha_hecho AS fecha FROM abiertos
+                   zona, ubicacion, fecha_hecho AS fecha, alerta_activa FROM abiertos
             UNION ALL
             SELECT 'avistamiento', a.id_avistamiento, c.id_caso, c.folio, c.estado,
-                   a.zona, a.ubicacion, a.observado_en
+                   a.zona, a.ubicacion, a.observado_en, false
             FROM avistamiento a JOIN abiertos c USING(id_caso)
             WHERE a.estado_revision='aceptado'
         )
-        SELECT tipo, id_evento, id_caso, folio, estado, zona, fecha,
+        SELECT tipo, id_evento, id_caso, folio, estado, zona, fecha, alerta_activa,
                ST_Y(ubicacion::geometry) AS latitud, ST_X(ubicacion::geometry) AS longitud
         FROM eventos ORDER BY fecha DESC, tipo, id_evento DESC LIMIT 301
-    """, (id_organizacion,))
+    """, (id_organizacion, entorno()))
     items = rows(cur)
-    return {'eventos': items[:300], 'hay_mas': len(items) > 300}
+    return {'eventos': items[:300], 'hay_mas': len(items) > 300,
+            'simulacion': DEMO and config.alertas_demo}
 
 def supervisor(cur,uid,oid):
     cur.execute("""SELECT 1 FROM membresia WHERE id_usuario=%s AND id_organizacion=%s AND rol='supervisor'

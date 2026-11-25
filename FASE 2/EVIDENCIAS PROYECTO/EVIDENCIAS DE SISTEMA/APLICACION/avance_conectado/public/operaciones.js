@@ -344,7 +344,7 @@ async function load(focus=false){
       if(!actual){render=()=>empty('No hay una organización disponible para esta cuenta.');}
       else{
         const data=await api('/gestion/mapa?id_organizacion='+Number(mapOrg));
-        render=()=>MapaOperador.plantilla(orgs,actual);
+        render=()=>MapaOperador.plantilla(orgs,actual,data.simulacion);
         montar=()=>{el('geo-org').onchange=e=>{mapOrg=Number(e.target.value);load();};MapaOperador.montar(actual,data);};
       }
     }
