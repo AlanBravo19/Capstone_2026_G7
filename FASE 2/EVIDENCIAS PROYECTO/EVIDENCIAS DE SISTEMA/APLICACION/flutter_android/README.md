@@ -1,4 +1,8 @@
-# RutaAlerta · Beta 0.25.0
+# RutaAlerta · Beta 0.25.1
+
+En **Colaborar** escribe una comuna o sector para filtrar las solicitudes vigentes. La búsqueda acepta nombres sin tilde, palabras en distinto orden y coincidencias desde el inicio de una palabra. Por ejemplo, `concepcion centro` encuentra una alerta publicada como `Sector A · Centro · Prueba en Concepción`. El filtro usa la etiqueta territorial aprobada de cada publicación.
+
+## Beta 0.25.0
 
 **Colaborar → Ver mapa de zonas históricas** abre el mismo mapa de Inicio. El naranja agrupa 2 o 3 antecedentes revisados en un sector aproximado durante el último año. El rojo agrupa 4 o más. Los colores representan el volumen de registros revisados en RutaAlerta. Al tocar una zona, se muestra el total y cuántos antecedentes se clasificaron como encerronas.
 

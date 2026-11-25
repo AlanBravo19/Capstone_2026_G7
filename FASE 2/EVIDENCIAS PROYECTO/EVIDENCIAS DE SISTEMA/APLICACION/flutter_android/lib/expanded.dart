@@ -1001,6 +1001,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
   int revision = 0;
   DateTime consultado = DateTime.now();
   Timer? actualizacion;
+  Timer? busquedaPendiente;
   @override
   void initState() {
     super.initState();
@@ -1027,27 +1028,33 @@ class _CommunityScreenState extends State<CommunityScreen> {
     }
   }
 
-  final zone = TextEditingController(),
-      lat = TextEditingController(),
-      lon = TextEditingController();
+  final zone = TextEditingController();
   final searchFocus = FocusNode();
   String query = '';
+  String sectorBuscado = '';
   Map<String, String> proximity = {};
   void search([Map<String, String>? area]) {
+    busquedaPendiente?.cancel();
     setState(() {
       if (area != null) proximity = area;
-      query = Uri(queryParameters: {...proximity, 'zona': zone.text.trim()})
-          .query;
+      sectorBuscado = zone.text.trim();
+      query = Uri(
+        queryParameters: {
+          ...proximity,
+          if (sectorBuscado.isNotEmpty) 'zona': sectorBuscado,
+        },
+      ).query;
+      consultado = DateTime.now();
+      revision++;
     });
   }
 
   @override
   void dispose() {
     actualizacion?.cancel();
+    busquedaPendiente?.cancel();
     searchFocus.dispose();
     zone.dispose();
-    lat.dispose();
-    lon.dispose();
     super.dispose();
   }
 
@@ -1074,8 +1081,32 @@ class _CommunityScreenState extends State<CommunityScreen> {
               child: TextField(
                 controller: zone,
                 focusNode: searchFocus,
-                decoration: const InputDecoration(
+                textInputAction: TextInputAction.search,
+                maxLength: 200,
+                onChanged: (_) {
+                  busquedaPendiente?.cancel();
+                  busquedaPendiente = Timer(
+                    const Duration(milliseconds: 350),
+                    search,
+                  );
+                },
+                onSubmitted: (_) => search(),
+                decoration: InputDecoration(
                   labelText: 'Buscar comuna o sector',
+                  counterText: '',
+                  suffixIcon: ListenableBuilder(
+                    listenable: zone,
+                    builder: (context, _) => zone.text.isEmpty
+                        ? const SizedBox.shrink()
+                        : IconButton(
+                            tooltip: 'Limpiar búsqueda',
+                            icon: const Icon(Icons.close),
+                            onPressed: () {
+                              zone.clear();
+                              search();
+                            },
+                          ),
+                  ),
                 ),
               ),
             ),
@@ -1129,12 +1160,14 @@ class _CommunityScreenState extends State<CommunityScreen> {
           revision: revision,
           session: widget.session,
           title: 'Alertas de vehículos',
-          path: '/colaboracion?$query',
+          path: query.isEmpty ? '/colaboracion' : '/colaboracion?$query',
           render: (ctx, data, reload) => Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               if (data['demo_alertas'] == true)
                 const Note('DEMOSTRACIÓN AISLADA · Vehículos ficticios'),
+              if (sectorBuscado.isNotEmpty)
+                Note('Resultados para «$sectorBuscado»'),
               Text(
                 'Actualizado ${TimeOfDay.now().format(ctx)}',
                 style: const TextStyle(color: muted),
@@ -1152,8 +1185,10 @@ class _CommunityScreenState extends State<CommunityScreen> {
                         'Sin solicitudes vigentes para esta búsqueda',
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
-                      const Text(
-                        'El titular debe autorizar la colaboración y un operador debe publicar el caso. Puedes cambiar el sector o actualizar la lista.',
+                      Text(
+                        sectorBuscado.isEmpty
+                            ? 'Aquí aparecen las solicitudes públicas mientras estén vigentes.'
+                            : 'Prueba con otra comuna o sector, o limpia la búsqueda para ver todas las solicitudes vigentes.',
                       ),
                     ],
                   ),

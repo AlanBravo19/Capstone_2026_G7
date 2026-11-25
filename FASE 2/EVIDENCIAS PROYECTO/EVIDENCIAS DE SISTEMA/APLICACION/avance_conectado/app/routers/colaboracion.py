@@ -1,5 +1,5 @@
 """Colaboración revisada, seguimiento, fotos privadas y avisos internos persistentes."""
-import hashlib, uuid
+import hashlib, re, uuid
 from datetime import datetime, timezone
 from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, Header
@@ -10,6 +10,7 @@ from ..antifraude import DEMO, participante, limitar
 from ..alertas import VIGENTE, entorno, vinculo_vigente
 from ..config import config
 from ..imagenes import limpiar_imagen
+from .recursos_territorio import normalizar
 
 router=APIRouter(tags=['colaboración y seguimiento'])
 def rows(cur):return [fila_dict(cur,r) for r in cur.fetchall()]
@@ -168,6 +169,10 @@ FOTO_PUBLICABLE="""e.id_caso=c.id_caso AND e.id_usuario_autor=c.id_usuario_repor
 SOLICITUD_VIGENTE=VIGENTE
 
 def colaboraciones_publicas(cur,uid,lat=None,lon=None,zona='',sid=None):
+    terminos = re.findall(r'[a-z0-9]+', normalizar(zona))
+    if zona.strip() and not terminos:
+        return []
+    patrones_zona = [r'\m' + termino for termino in terminos]
     cur.execute(f'''SELECT s.id_solicitud_colaboracion,s.zona_publicable,s.texto_aprobado,s.vence_en,v.patente,v.color,v.tipo_vehiculo,ma.nombre AS marca,m.nombre AS modelo,
         c.id_usuario_reportante=%s AS es_mi_caso,
         s.modo_alerta,c.creado_en AS reportada_en,
@@ -180,9 +185,11 @@ def colaboraciones_publicas(cur,uid,lat=None,lon=None,zona='',sid=None):
         EXISTS(SELECT 1 FROM evidencia e JOIN archivo_evidencia f USING(id_evidencia)
                WHERE e.id_evidencia=s.id_foto_vehiculo AND {FOTO_PUBLICABLE}) AS foto_disponible
         FROM solicitud_colaboracion s JOIN caso c USING(id_caso) JOIN vehiculo v USING(id_vehiculo) JOIN modelo m USING(id_modelo) JOIN marca ma USING(id_marca)
-        WHERE {SOLICITUD_VIGENTE} AND c.entorno=%s AND s.zona_publicable ILIKE %s
+        WHERE {SOLICITUD_VIGENTE} AND c.entorno=%s
+        AND regexp_replace(lower(normalize(s.zona_publicable,NFD)),%s,'','g') ~ ALL(%s::text[])
         AND (%s::bigint IS NULL OR s.id_solicitud_colaboracion=%s)
-        ORDER BY distancia_km ASC NULLS LAST,s.inicio DESC LIMIT 100''',(uid,lat,lon,lat,entorno(),'%'+zona+'%',sid,sid))
+        ORDER BY distancia_km ASC NULLS LAST,s.inicio DESC LIMIT 100''',
+        (uid,lat,lon,lat,entorno(),'[\u0300-\u036f]',patrones_zona,sid,sid))
     found=rows(cur)
     for fila in found:
         fila['foto_url']=f"/colaboracion/{fila['id_solicitud_colaboracion']}/foto-vehiculo" if fila['foto_disponible'] else None

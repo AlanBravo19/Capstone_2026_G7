@@ -118,4 +118,37 @@ void main() {
     await t.tap(find.text('Ver mapa de zonas históricas'));
     expect(abrioMapa, isTrue);
   });
+
+  testWidgets('Buscar por texto, enviar con el teclado y limpiar el filtro', (
+    t,
+  ) async {
+    final queries = <String?>[];
+    final session = Session(
+      RutaApi(
+        client: MockClient((request) async {
+          queries.add(request.url.queryParameters['zona']);
+          return http.Response('{"cercanos":[],"otras_zonas":[]}', 200);
+        }),
+      ),
+    );
+    await t.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: CommunityScreen(session: session)),
+      ),
+    );
+    await t.pumpAndSettle();
+    final field = find.byType(TextField);
+    await t.enterText(field, 'concepcion centro');
+    await t.pump(const Duration(milliseconds: 400));
+    await t.pumpAndSettle();
+    expect(queries, [null, 'concepcion centro']);
+    expect(find.text('Resultados para «concepcion centro»'), findsOneWidget);
+    await t.enterText(field, 'Sector A');
+    await t.testTextInput.receiveAction(TextInputAction.search);
+    await t.pumpAndSettle();
+    expect(queries, [null, 'concepcion centro', 'Sector A']);
+    await t.tap(find.byTooltip('Limpiar búsqueda'));
+    await t.pumpAndSettle();
+    expect(queries, [null, 'concepcion centro', 'Sector A', null]);
+  });
 }

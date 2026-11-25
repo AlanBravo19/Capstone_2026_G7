@@ -40,7 +40,7 @@ def test_recorrido_chillan(client, ciudadano, supervisor_org1, operador_org2):
     assert abs(ubicados[0]["longitud"] - punto["longitud"]) < 1e-6
     base = f"/gestion/casos/{cid}"
     assert client.post(base+"/revision",headers=op,json={"estado":"en_revision","motivo":"Revisión supervisada del ejercicio"}).status_code == 200
-    r=client.post(base+"/publicacion",headers=op,json={"zona":"Chillán · simulación","texto":"Vehículo ficticio para la prueba local de colaboración.","motivo":"Ejercicio con consentimiento del titular ficticio"})
+    r=client.post(base+"/publicacion",headers=op,json={"zona":"Sector A · Centro · Chillán","texto":"Vehículo ficticio para la prueba local de colaboración.","motivo":"Ejercicio con consentimiento del titular ficticio"})
     assert r.status_code == 201
     sid = r.json()["id_solicitud_colaboracion"]
     assert eventos()[0]["alerta_activa"] is True
@@ -53,6 +53,13 @@ def test_recorrido_chillan(client, ciudadano, supervisor_org1, operador_org2):
     for lat,lon,grupo in [(-36.606,-72.104,"cercanos"),(-33.45,-70.66,"otras_zonas")]:
         resultado=client.get("/colaboracion",params={"lat":lat,"lon":lon,"radio_km":30,"zona":"Chillán"},headers=colaborador).json()
         assert any(s["id_solicitud_colaboracion"]==sid for s in resultado[grupo])
+    for zona in ("chillan", "CENTRO chillÁn", "sector   a", "chilla", "Chilla\u0301n"):
+        r = client.get("/colaboracion", params={"zona": zona}, headers=colaborador)
+        assert r.status_code == 200, r.text
+        assert any(s["id_solicitud_colaboracion"] == sid for s in r.json()["otras_zonas"]), zona
+    for zona in ("sector b", "simulación", "%_"):
+        datos = client.get("/colaboracion", params={"zona": zona}, headers=colaborador).json()
+        assert all(s["id_solicitud_colaboracion"] != sid for s in datos["otras_zonas"]), zona
     url=f"/colaboracion/{sid}/avistamientos"
     h={**colaborador,"Idempotency-Key":str(uuid.uuid4())}
     datos={**punto,"observado_en":datetime.now(timezone.utc).isoformat(),"zona":"Chillán de ensayo",
