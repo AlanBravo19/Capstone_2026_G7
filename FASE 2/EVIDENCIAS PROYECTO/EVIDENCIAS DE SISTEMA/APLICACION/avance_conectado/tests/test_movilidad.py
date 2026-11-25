@@ -68,8 +68,8 @@ def test_zonas_agregadas_y_rutas_con_menos_cruces(client, ciudadano, supervisor_
  ids = []
  rev = {'decision':'validado','latitud':-36.82,'longitud':-73.05,'precision_m':300,
         'radio_m':800,'motivo':'Ubicación y fuente ficticias revisadas para la prueba.'}
- for _ in range(3):
-  r = client.post('/gestion/antecedentes', headers=supervisor_org1, json=ficha())
+ for tipo in ('encerrona','portonazo','encerrona'):
+  r = client.post('/gestion/antecedentes', headers=supervisor_org1, json={**ficha(),'tipo':tipo})
   assert r.status_code == 201, r.text
   ids.append(r.json()['id_antecedente'])
  for aid in ids[:2]:
@@ -80,6 +80,13 @@ def test_zonas_agregadas_y_rutas_con_menos_cruces(client, ciudadano, supervisor_
   assert len(data['zonas']) == 1 and not data['simulacion']
   assert data['zonas'][0]['antecedentes'] == 2 and data['zonas'][0]['radio_m'] == 800
   assert data['zonas'][0]['geometria']['type'] == 'Polygon'
+  zona = data['zonas'][0]
+  assert zona['nivel'] == 'moderada' and zona['encerronas'] == 1
+  ubicacion = {'latitud':-36.82,'longitud':-73.05}
+  descarga = client.post('/territorio/avisos/descargar',headers=h,json=ubicacion)
+  assert descarga.status_code == 200, descarga.text
+  assert descarga.json()['zonas'] == [{k:v for k,v in zona.items() if k != 'geometria'}]
+  assert datetime.fromisoformat(descarga.json()['cache_hasta']) < datetime.fromisoformat(zona['vigente_hasta'])
   real_client = httpx.Client
   def responder(_):
    def ruta(pts, segundos):
@@ -97,6 +104,16 @@ def test_zonas_agregadas_y_rutas_con_menos_cruces(client, ciudadano, supervisor_
   assert [r['cruces_zonas'] for r in r.json()['rutas']] == [1, 0]
   db("UPDATE antecedente_publico SET entorno='prueba' WHERE id_antecedente=%s", (ids[0],))
   assert client.get('/territorio/zonas?lat=-36.82&lon=-73.05', headers=h).json()['zonas'] == []
+  assert client.post('/territorio/avisos/descargar',headers=h,json=ubicacion).json()['zonas'] == []
+  # Un tercer y cuarto registro aprobado eleva el nivel de la misma zona.
+  r = client.post('/gestion/antecedentes', headers=supervisor_org1, json=ficha())
+  assert r.status_code == 201, r.text
+  ids.append(r.json()['id_antecedente'])
+  for aid in ids[2:]:
+   assert client.post(f'/gestion/antecedentes/{aid}/revision', headers=supervisor_org1, json=rev).status_code == 204
+  db("UPDATE antecedente_publico SET entorno='operacion' WHERE id_antecedente=%s", (ids[0],))
+  alta = client.post('/territorio/avisos/descargar',headers=h,json=ubicacion).json()['zonas'][0]
+  assert (alta['id_zona'],alta['nivel'],alta['antecedentes'],alta['encerronas']) == (zona['id_zona'],'alta',4,2)
  finally:
   db("UPDATE antecedente_publico SET estado='descartado' WHERE id_antecedente=ANY(%s::uuid[])", (ids,))
 

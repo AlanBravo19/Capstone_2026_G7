@@ -1,5 +1,7 @@
 import 'dart:math' as math;
 
+import 'zonas_historicas.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:maplibre_gl/maplibre_gl.dart' as m;
@@ -765,16 +767,23 @@ class _RouteMapState extends State<RouteMap> {
           'type': 'FeatureCollection',
           'features': [
             for (final z in widget.zones)
-              {'type': 'Feature', 'properties': {}, 'geometry': z['geometria']},
+              {
+                'type': 'Feature',
+                'properties': {
+                  'color':
+                      '#${(concentracionAlta(z) ? zonaAlta : zonaModerada).toARGB32().toRadixString(16).substring(2)}',
+                },
+                'geometry': z['geometria'],
+              },
           ],
         });
         await controller!.addFillLayer(
           'zonas-historicas',
           'manchas-historicas',
           const m.FillLayerProperties(
-            fillColor: '#ea384a',
+            fillColor: ['get', 'color'],
             fillOpacity: .42,
-            fillOutlineColor: '#ff6b77',
+            fillOutlineColor: ['get', 'color'],
           ),
         );
       }
@@ -829,6 +838,11 @@ class _RouteMapState extends State<RouteMap> {
               'Recorrido vial calculado. No incluye tráfico en vivo ni calificación de seguridad.',
             ),
           ),
+          if (widget.zones.isNotEmpty)
+            const Padding(
+              padding: EdgeInsets.fromLTRB(12, 0, 12, 10),
+              child: LeyendaZonas(),
+            ),
           if (error != null) Note(error!),
           Expanded(
             child: m.MapLibreMap(

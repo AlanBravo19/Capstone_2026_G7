@@ -1,7 +1,18 @@
 package cl.rutaalerta.rutaalerta_movil
 import kotlin.math.*
 
-data class TerritorialNotice(val id:String,val lat:Double,val lon:Double,val radius:Double,val expires:Long,val zone:String,val source:String,val url:String,val published:String)
+data class TerritorialNotice(
+ val id: String, val lat: Double, val lon: Double, val radius: Double,
+ val expires: Long, val zone: String, val source: String = "",
+ val url: String = "", val published: String = "", val total: Int = 0,
+ val encerronas: Int = 0,
+) {
+ fun speech(ensayo: Boolean): String? {
+  if (encerronas <= 0) return null
+  val mensaje = "Atención. Zona con antecedentes de encerronas. Mantén la atención en el camino."
+  return if (ensayo) "Aviso de ensayo. $mensaje" else mensaje
+ }
+}
 /** Reglas geométricas, no estima probabilidad ni certifica seguridad. */
 object ProximityRules {
  fun distance(a:Double,b:Double,c:Double,d:Double):Double {

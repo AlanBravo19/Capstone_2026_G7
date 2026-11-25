@@ -60,7 +60,7 @@ class MainActivity : FlutterActivity() {
                 }
                 "status" -> {
                     val loc = TripLocationService.lastLocation
-                    result.success(mapOf("running" to TripLocationService.running, "lat" to loc?.latitude, "lng" to loc?.longitude, "accuracy" to loc?.accuracy?.toInt(), "error" to TripLocationService.error,"noticeCount" to TripLocationService.noticeCount,"cacheUntil" to TripLocationService.cacheUntil))
+                    result.success(mapOf("running" to TripLocationService.running, "lat" to loc?.latitude, "lng" to loc?.longitude, "accuracy" to loc?.accuracy?.toInt(), "error" to TripLocationService.error,"noticeCount" to TripLocationService.noticeCount,"cacheUntil" to TripLocationService.cacheUntil, "voiceState" to TripLocationService.voiceState, "grouped" to TripLocationService.grouped))
                 }
                 "openAttribution" -> {
                     try { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.openstreetmap.org/copyright"))); result.success(null) }

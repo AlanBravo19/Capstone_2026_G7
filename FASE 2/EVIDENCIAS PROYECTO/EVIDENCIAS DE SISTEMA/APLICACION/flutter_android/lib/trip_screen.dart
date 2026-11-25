@@ -18,6 +18,7 @@ class _TripScreenState extends State<TripScreen> with WidgetsBindingObserver {
   Map<String, dynamic> status = {'running': false};
   Timer? timer;
   bool busy = false;
+  bool voz = true;
   @override
   void initState() {
     super.initState();
@@ -66,7 +67,7 @@ class _TripScreenState extends State<TripScreen> with WidgetsBindingObserver {
       builder: (context) => AlertDialog(
         title: const Text('Iniciar trayecto'),
         content: const Text(
-          'RutaAlerta utilizará la ubicación mientras el trayecto esté activo, incluso si abres Waze u otra app. Verás una notificación y podrás detenerlo desde allí.\n\nLa ubicación permanece en memoria en este teléfono; no se envía a la plataforma. Se consultará una vez el área actual para descargar antecedentes revisados; los avisos de cercanía se calculan después en este teléfono por hasta dos horas. No se lee la ruta de Waze ni se envía un historial continuo de ubicación. No ofrece seguimiento del vehículo robado.',
+          'RutaAlerta usa el GPS mientras el trayecto está activo, incluso con otra app abierta o la pantalla apagada. Puedes detenerlo desde la notificación.\n\nAl iniciar se consulta un área aproximada de 30 km. Luego el teléfono calcula la cercanía a las zonas descargadas durante un máximo de dos horas.',
         ),
         actions: [
           TextButton(
@@ -84,7 +85,9 @@ class _TripScreenState extends State<TripScreen> with WidgetsBindingObserver {
     setState(() => busy = true);
     try {
       List<dynamic> notices = [];
+      List<dynamic>? zonas;
       DateTime? expiry;
+      var ensayo = false;
       if (widget.session != null) {
         try {
           final p = await Mobility.location();
@@ -97,7 +100,9 @@ class _TripScreenState extends State<TripScreen> with WidgetsBindingObserver {
             },
           );
           notices = r['avisos'] as List;
+          zonas = r['zonas'] as List?;
           expiry = DateTime.tryParse(r['cache_hasta'] as String);
+          ensayo = r['simulacion'] == true;
         } catch (_) {
           if (mounted) {
             feedback(
@@ -107,7 +112,13 @@ class _TripScreenState extends State<TripScreen> with WidgetsBindingObserver {
           }
         }
       }
-      await TripService.start(avisos: notices, cacheHasta: expiry);
+      await TripService.start(
+        avisos: notices,
+        zonas: zonas,
+        cacheHasta: expiry,
+        voz: voz,
+        ensayo: ensayo,
+      );
       await Future<void>.delayed(const Duration(milliseconds: 500));
       await refresh();
     } catch (e) {
@@ -164,6 +175,19 @@ class _TripScreenState extends State<TripScreen> with WidgetsBindingObserver {
                     style: TextStyle(color: muted),
                   ),
                   gap(),
+                  if (!running)
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Avisos por voz'),
+                      subtitle: const Text(
+                        'Al acercarte a zonas con antecedentes de encerronas.',
+                      ),
+                      secondary: const Icon(Icons.volume_up_outlined),
+                      value: voz,
+                      onChanged: busy
+                          ? null
+                          : (value) => setState(() => voz = value),
+                    ),
                   FilledButton.icon(
                     onPressed: busy
                         ? null
@@ -185,8 +209,14 @@ class _TripScreenState extends State<TripScreen> with WidgetsBindingObserver {
                   ),
                   if (running)
                     Note(
-                      'Antecedentes descargados: ${status['noticeCount'] ?? 0}. ${((status['noticeCount'] ?? 0) as num) == 0 ? 'No hay avisos disponibles para este trayecto.' : 'Se avisará al acercarte a un sector revisado mientras el caché esté vigente.'}',
+                      '${status['noticeCount'] ?? 0} ${status['grouped'] == true ? 'zonas descargadas' : 'antecedentes descargados'} · Área inicial de 30 km.',
                     ),
+                  if (running && status['voiceState'] != 'off')
+                    Note(switch (status['voiceState']) {
+                      'ready' => 'Voz en español disponible.',
+                      'unavailable' => 'Voz no disponible. Instala una voz en español sin conexión desde los ajustes de Android. Las notificaciones siguen activas.',
+                      _ => 'Preparando la voz del teléfono…',
+                    }),
                   if (status['lat'] != null)
                     Note(
                       'Última ubicación del dispositivo: ${(status['lat'] as num).toStringAsFixed(5)}, ${(status['lng'] as num).toStringAsFixed(5)}. Precisión aproximada: ${status['accuracy']} m.',
@@ -208,7 +238,7 @@ class _TripScreenState extends State<TripScreen> with WidgetsBindingObserver {
                     style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
                   ),
                   Note(
-                    'Los avisos se basan sólo en antecedentes revisados descargados al iniciar: no son delitos en curso ni predicción. El caché vence en un máximo de dos horas; fuera del área descargada pueden faltar antecedentes. No lee Waze ni rastrea vehículos. Depende del GPS, permisos y batería.',
+                    'Los avisos usan antecedentes revisados del último año. Para consultar nuevas zonas, inicia otro trayecto cuando estés estacionado. Ajusta el volumen antes de salir.',
                   ),
                 ],
               ),

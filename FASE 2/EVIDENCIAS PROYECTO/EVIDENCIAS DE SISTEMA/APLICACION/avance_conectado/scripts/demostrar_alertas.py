@@ -159,7 +159,8 @@ def sembrar_zonas(c, operador, titular):
         id_ficha = enviar(c, '/gestion/antecedentes', {
             'id_organizacion': 1, 'url_fuente': f'https://example.invalid/ensayo/{i}',
             'nombre_fuente': 'Datos ficticios de RutaAlerta', 'titulo': f'Antecedente ficticio {i}',
-            'resumen': 'Registro simulado para mostrar el mapa a los profesores.', 'tipo': 'otro',
+            'resumen': 'Registro simulado para mostrar el mapa a los profesores.',
+            'tipo': 'encerrona' if i in (1, 2, 5) else 'otro',
             'fecha_publicacion': fecha, 'fecha_hecho': fecha, 'zona': sector,
         }, operador, 201)['id_antecedente']
         enviar(c, f'/gestion/antecedentes/{id_ficha}/revision', {

@@ -13,4 +13,10 @@ class ProximityRulesTest {
  @Test fun farAwayDoesNotAlert(){assertFalse(ProximityRules.eligible(n,-33.44,-70.66,20.0,now,now,now+7200000L,0,0))}
  @Test fun cooldownPerNoticeAndGlobal(){assertFalse(ProximityRules.eligible(n,-36.82,-73.05,20.0,now,now,now+7200000L,now-1000,0));assertFalse(ProximityRules.eligible(n,-36.82,-73.05,20.0,now,now,now+7200000L,0,now-1000))}
  @Test fun invalidFixDoesNotAlert(){assertFalse(ProximityRules.eligible(n,Double.NaN,-73.05,20.0,now,now,now+7200000L,0,0))}
+ @Test fun speechRequiresEncerronasAndLabelsTestData() {
+  assertNull(n.copy(total = 4).speech(false))
+  val zona = n.copy(total = 2, encerronas = 1)
+  assertTrue(zona.speech(false)!!.contains("antecedentes de encerronas"))
+  assertTrue(zona.speech(true)!!.startsWith("Aviso de ensayo."))
+ }
 }

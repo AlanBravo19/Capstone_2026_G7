@@ -269,7 +269,11 @@ class _MobileShellState extends State<MobileShell> {
         else
           const SizedBox.shrink(),
         if (visited.contains(4))
-          CommunityScreen(session: widget.session, active: index == 4)
+          CommunityScreen(
+            session: widget.session,
+            active: index == 4,
+            openMap: () => navigate(3),
+          )
         else
           const SizedBox.shrink(),
         ListView(

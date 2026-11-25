@@ -174,4 +174,10 @@ def noticias(usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):
 @router.post('/territorio/avisos/descargar')
 def descargar_avisos(area:Punto,usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):
  # Búsqueda por cuerpo JSON y centro redondeado, sin coordenadas precisas en URL de acceso.
- return avisos(round(area.latitud,2),round(area.longitud,2),30,usuario,conn)
+ lat, lon = round(area.latitud,2), round(area.longitud,2)
+ ambiente = ambiente_historico()
+ datos = avisos(lat,lon,30,usuario,conn)
+ zonas = consultar_zonas(conn.cursor(), {'type':'Point','coordinates':[lon,lat]}, ambiente, 30000)
+ zonas.sort(key=lambda zona: zona['encerronas'] > 0, reverse=True)
+ return {**datos, 'zonas': [{k:v for k,v in zona.items() if k != 'geometria'} for zona in zonas[:200]],
+         'simulacion': ambiente == 'prueba'}

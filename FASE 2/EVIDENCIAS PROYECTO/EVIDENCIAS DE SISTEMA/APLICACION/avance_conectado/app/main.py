@@ -40,7 +40,7 @@ if config.alertas_demo and (not DEMO or (os.getenv('VERCEL') and not ENSAYO_PUBL
 
 app = FastAPI(
     title="RutaAlerta API",
-    version="0.23.0-beta",
+    version="0.25.0-beta",
     description="Beta colaborativa: TOTP, seguimiento, publicación revisada y fotos privadas. Correo y SMS dependen de la configuración de proveedores.",
 )
 app.include_router(cuentas.router)

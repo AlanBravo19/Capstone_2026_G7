@@ -7,6 +7,7 @@ import 'expanded.dart';
 import 'movilidad.dart' show Mobility;
 import 'ui.dart';
 import 'location_picker.dart';
+import 'zonas_historicas.dart';
 
 import 'dart:math' as math;
 
@@ -102,6 +103,10 @@ class _PanoramaZonalState extends State<PanoramaZonal> {
               Text(
                 '${item['antecedentes']} antecedentes revisados · radio ${item['radio_m']} m',
               ),
+              if (((item['encerronas'] as num?) ?? 0) > 0)
+                Text(
+                  'Encerronas entre los antecedentes: ${item['encerronas']}',
+                ),
               const Text('Concentración aproximada de los últimos 365 días.'),
             ],
           ),
@@ -217,7 +222,6 @@ class _PanoramaZonalState extends State<PanoramaZonal> {
   );
   @override
   Widget build(BuildContext context) {
-    const rojo = Color(0xffda3c49);
     final circulos = <CircleMarker>[], marcas = <Marker>[];
     if (sector == 'Mi ubicación') {
       marcas.add(
@@ -230,20 +234,19 @@ class _PanoramaZonalState extends State<PanoramaZonal> {
         ),
       );
     }
-    for (final z in zonas.whereType<Map>()) {
+    for (final z in zonas.whereType<Map>().toList().reversed) {
       final p = punto(z, 'latitud', 'longitud');
       if (p == null) continue;
       final radius = z['radio_m'] as num;
-      final intensity = ((z['antecedentes'] as num) / 18)
-          .clamp(.10, .35)
-          .toDouble();
-      for (final ratio in [1.0, .82, .64, .46]) {
+      final alta = concentracionAlta(z);
+      final color = alta ? zonaAlta : zonaModerada;
+      for (var capa = 0; capa < 7; capa++) {
         circulos.add(
           CircleMarker(
             point: p,
-            radius: radius * ratio,
+            radius: radius * (1 - capa * .11),
             useRadiusInMeter: true,
-            color: rojo.withValues(alpha: intensity),
+            color: color.withValues(alpha: .08 + capa * .021),
             borderStrokeWidth: 0,
           ),
         );
@@ -252,7 +255,7 @@ class _PanoramaZonalState extends State<PanoramaZonal> {
         marca(
           p,
           Icons.history,
-          rojo,
+          color,
           '${z['antecedentes']} antecedentes históricos',
           () => detalleZona(z),
         ),
@@ -396,9 +399,10 @@ class _PanoramaZonalState extends State<PanoramaZonal> {
                     'ENSAYO · zonas y antecedentes ficticios',
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
+                if (zonas.isNotEmpty) const LeyendaZonas(),
                 if (!widget.compacto)
                   const Text(
-                    'Azul · solicitud activa. Rojo · concentración aproximada de antecedentes revisados.',
+                    'Azul · solicitud activa. Las manchas agrupan antecedentes revisados del último año.',
                     style: TextStyle(color: muted),
                   ),
                 if (!widget.compacto) ...[
@@ -410,7 +414,7 @@ class _PanoramaZonalState extends State<PanoramaZonal> {
                   ),
                   for (final h in historia)
                     ListTile(
-                      leading: const Icon(Icons.history, color: rojo),
+                      leading: const Icon(Icons.history, color: zonaModerada),
                       title: Text('${h['titulo']}'),
                       subtitle: Text(
                         '${h['zona']} · ${h['fecha_publicacion']}',

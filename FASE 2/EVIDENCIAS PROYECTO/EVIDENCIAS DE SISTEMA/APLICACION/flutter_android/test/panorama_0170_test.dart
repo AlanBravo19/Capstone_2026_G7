@@ -2,12 +2,14 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:rutaalerta_movil/api.dart';
 import 'package:rutaalerta_movil/session.dart';
 import 'package:rutaalerta_movil/panorama.dart';
 import 'package:rutaalerta_movil/expanded.dart';
+import 'package:rutaalerta_movil/zonas_historicas.dart';
 
 void main() {
   testWidgets(
@@ -22,6 +24,24 @@ void main() {
               utf8.encode(
                 jsonEncode({
                   'solicitudes': [],
+                  'zonas': [
+                    {
+                      'latitud': -36.60,
+                      'longitud': -72.10,
+                      'radio_m': 800,
+                      'antecedentes': 4,
+                      'encerronas': 1,
+                      'nivel': 'alta',
+                    },
+                    {
+                      'latitud': -36.62,
+                      'longitud': -72.10,
+                      'radio_m': 800,
+                      'antecedentes': 2,
+                      'encerronas': 1,
+                      'nivel': 'moderada',
+                    },
+                  ],
                   'antecedentes': [
                     {
                       'latitud': -36.60,
@@ -51,6 +71,15 @@ void main() {
       );
       await t.pumpAndSettle();
       expect(find.text('Simular alerta de proximidad'), findsNothing);
+      final circles = t
+          .widget<CircleLayer<Object>>(find.byType(CircleLayer<Object>))
+          .circles;
+      expect(circles.map((c) => c.color.withValues(alpha: 1)).toSet(), {
+        zonaModerada,
+        zonaAlta,
+      });
+      expect(find.text('2–3 antecedentes'), findsOneWidget);
+      expect(find.text('4 o más antecedentes'), findsOneWidget);
       final source = find.text('Antecedente para prueba');
       await t.ensureVisible(source);
       await t.pumpAndSettle();
@@ -61,6 +90,7 @@ void main() {
     },
   );
   testWidgets('La lista vacía no ofrece un vehículo ficticio', (t) async {
+    var abrioMapa = false;
     final session = Session(
       RutaApi(
         client: MockClient((r) async {
@@ -71,7 +101,12 @@ void main() {
     );
     await t.pumpWidget(
       MaterialApp(
-        home: Scaffold(body: CommunityScreen(session: session)),
+        home: Scaffold(
+          body: CommunityScreen(
+            session: session,
+            openMap: () => abrioMapa = true,
+          ),
+        ),
       ),
     );
     await t.pumpAndSettle();
@@ -80,5 +115,7 @@ void main() {
       findsOneWidget,
     );
     expect(find.textContaining('DEMO01'), findsNothing);
+    await t.tap(find.text('Ver mapa de zonas históricas'));
+    expect(abrioMapa, isTrue);
   });
 }

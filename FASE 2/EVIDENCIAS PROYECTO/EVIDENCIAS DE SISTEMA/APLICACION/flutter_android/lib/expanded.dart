@@ -986,7 +986,13 @@ class InboxScreen extends StatelessWidget {
 class CommunityScreen extends StatefulWidget {
   final Session session;
   final bool active;
-  const CommunityScreen({super.key, required this.session, this.active = true});
+  final VoidCallback? openMap;
+  const CommunityScreen({
+    super.key,
+    required this.session,
+    this.active = true,
+    this.openMap,
+  });
   @override
   State<CommunityScreen> createState() => _CommunityScreenState();
 }
@@ -1048,6 +1054,18 @@ class _CommunityScreenState extends State<CommunityScreen> {
   @override
   Widget build(BuildContext context) => Column(
     children: [
+      if (widget.openMap != null)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+          child: SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: widget.openMap,
+              icon: const Icon(Icons.layers_outlined),
+              label: const Text('Ver mapa de zonas históricas'),
+            ),
+          ),
+        ),
       Padding(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
         child: Row(

@@ -5,13 +5,15 @@ from .db import fila_dict
 
 RADIO_M = 800
 MINIMO = 2
+CONCENTRACION_ALTA = 4
 PERIODO_DIAS = 365
 
 _ZONAS = """
     WITH alcance AS (
         SELECT ST_SetSRID(ST_GeomFromGeoJSON(%s),4326)::geography AS geometria
     ), antecedentes AS (
-        SELECT ST_SnapToGrid(a.centro::geometry,0.01) AS celda, a.zona
+        SELECT ST_SnapToGrid(a.centro::geometry,0.01) AS celda, a.zona, a.tipo,
+               least(a.vence_en,(coalesce(a.fecha_hecho,a.fecha_publicacion)+%s+1)::timestamptz) AS vigente_hasta
         FROM antecedente_publico a CROSS JOIN alcance p
         WHERE a.entorno=%s AND a.estado='validado' AND a.centro IS NOT NULL
           AND vence_en>CURRENT_TIMESTAMP
@@ -19,17 +21,23 @@ _ZONAS = """
           AND coalesce(fecha_hecho,fecha_publicacion)>=CURRENT_DATE-%s
           AND ST_DWithin(a.centro,p.geometria,%s)
     ), sectores AS (
-        SELECT celda,count(*) AS antecedentes,min(zona) AS sector
+        SELECT celda,count(*) AS antecedentes,min(zona) AS sector,
+               count(*) FILTER (WHERE tipo='encerrona') AS encerronas,
+               min(vigente_hasta) AS vigente_hasta
         FROM antecedentes GROUP BY celda HAVING count(*)>=%s
     )
-    SELECT ST_Y(celda) AS latitud,ST_X(celda) AS longitud,%s AS radio_m,
-           antecedentes,sector,ST_AsGeoJSON(ST_Buffer(celda::geography,%s)::geometry,6)::jsonb AS geometria
+    SELECT concat(round(ST_Y(celda)::numeric,2),':',round(ST_X(celda)::numeric,2)) AS id_zona,
+           ST_Y(celda) AS latitud,ST_X(celda) AS longitud,%s AS radio_m,
+           antecedentes,sector,encerronas,vigente_hasta,
+           CASE WHEN antecedentes>=%s THEN 'alta' ELSE 'moderada' END AS nivel,
+           ST_AsGeoJSON(ST_Buffer(celda::geography,%s)::geometry,6)::jsonb AS geometria
     FROM sectores ORDER BY antecedentes DESC,ST_Y(celda),ST_X(celda)
 """
 
 
 def consultar_zonas(cur, alcance, ambiente, radio_m):
-    cur.execute(_ZONAS, (json.dumps(alcance), ambiente, RADIO_M, PERIODO_DIAS, radio_m, MINIMO, RADIO_M, RADIO_M))
+    cur.execute(_ZONAS, (json.dumps(alcance), PERIODO_DIAS, ambiente, RADIO_M,
+                        PERIODO_DIAS, radio_m, MINIMO, RADIO_M, CONCENTRACION_ALTA, RADIO_M))
     return [fila_dict(cur, row) for row in cur.fetchall()]
 
 

@@ -1,4 +1,10 @@
-# RutaAlerta · Beta 0.24.0
+# RutaAlerta · Beta 0.25.0
+
+**Colaborar → Ver mapa de zonas históricas** abre el mismo mapa de Inicio. El naranja agrupa 2 o 3 antecedentes revisados en un sector aproximado durante el último año. El rojo agrupa 4 o más. Los colores representan el volumen de registros revisados en RutaAlerta. Al tocar una zona, se muestra el total y cuántos antecedentes se clasificaron como encerronas.
+
+**Modo trayecto → Avisos por voz → Iniciar trayecto** descarga zonas en 30 km del punto de partida para consultarlas localmente durante un máximo de dos horas. Con el trayecto activo, Android compara el GPS con esas zonas incluso si otra aplicación está al frente o se bloquea la pantalla. Las zonas que incluyen antecedentes de encerronas generan un mensaje breve en español si el teléfono dispone de una voz instalada sin conexión. La notificación queda disponible para revisar al estacionarse. Para actualizar los antecedentes o cambiar de área, inicia otro trayecto.
+
+## Beta 0.24.0
 
 La interfaz usa una paleta oscura, tipografía Manrope y una barra de navegación compartida. Inicio prioriza los avisos y el mapa. Cuenta agrupa las opciones de participación y seguridad. La fuente está incluida con su [licencia SIL Open Font License](assets/fonts/Manrope-OFL.txt).
 
