@@ -22,7 +22,7 @@ function environment(initial='/operaciones',override={}){
     if(nodes.get('content').innerHTML.includes(`id="${id}"`)){nodes.set(id,node());return nodes.get(id);}
     return null;
   },querySelector(selector){return selector==='nav'?nav:user;},querySelectorAll(){return [];}};
-  const details={id_caso:7,folio:'RA-7',estado:'en_revision',patente:'ABCD12',zona:'Chillán',denuncia_estado:'pendiente',historial:[],evidencias:[],relato_para_revision:'Relato privado'};
+  const details={id_caso:7,folio:'RA-7',estado:'en_revision',patente:'ABCD12',zona:'Chillán',denuncia_estado:'pendiente',historial:[],evidencias:[],relato_para_revision:'Relato privado',revision_alerta:3,simulacion_disponible:false};
   const fixtures={'/mi-perfil':{nombre_visible:'Operador',organizaciones:[1]},'/organizaciones':[{id_organizacion:1,nombre:'Institución',territorio_cobertura:'Chillán'}],
     '/gestion/mi-acceso':{organizaciones:[{id_organizacion:1,nombre:'Institución',rol:'operador',puede_asignar:false}],administrador_global:false,permisos:['Consultar estadísticas del ámbito institucional'],asignacion:'Ser responsable de un caso no cambia el rol ni amplía el ámbito institucional.'},
     '/casos':[], '/gestion/testigos':[], '/seguimiento/7':details,'/gestion/casos/7/aportes':[],
@@ -64,8 +64,26 @@ test('institutional login retains requested case and displays internal owner not
   assert.equal(e.window.location.pathname,'/operaciones/casos/7');
   assert.match(e.nodes.get('content').innerHTML,/Relato privado|Antecedente privado del titular/);
   assert.match(e.nodes.get('content').innerHTML,/Antecedente privado del titular/);
+  assert.match(e.nodes.get('content').innerHTML,/Registrar consulta manual/);
+  assert.match(e.nodes.get('content').innerHTML,/name="captura_encargo"/);
+  assert.doesNotMatch(e.nodes.get('content').innerHTML,/Mantener imagen actual|load-error/);
   assert.doesNotMatch(e.nodes.get('content').innerHTML,/Asignar responsable/);
   assert.equal(e.calls.find(c=>c.url==='/seguimiento/7').headers.Authorization,'Bearer session');
+});
+
+test('an active alert only offers accepted, authorised report photos in the manual review',async()=>{
+  const e=environment('/operaciones/casos/7');
+  Object.assign(e.fixtures['/seguimiento/7'],{alerta:{visible:true},evidencias:[
+    {id_evidencia:101,estado_revision:'aceptada',autorizada_publicacion_en:'2026-11-25T12:00:00Z'},
+    {id_evidencia:102,estado_revision:'aceptada',autorizada_publicacion_en:null},
+    {id_evidencia:103,estado_revision:'pendiente',autorizada_publicacion_en:'2026-11-25T12:00:00Z'}
+  ]});
+  await e.run("signin({token:'session'})");
+  const html=e.nodes.get('content').innerHTML;
+  assert.match(html,/Registrar consulta manual/);
+  assert.match(html,/Mantener imagen actual/);
+  assert.match(html,/Foto del titular #101/);
+  assert.doesNotMatch(html,/Foto del titular #10[23]|load-error/);
 });
 
 test('navigation pushes a case URL and popstate restores the originating view',async()=>{

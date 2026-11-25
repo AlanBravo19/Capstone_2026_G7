@@ -49,7 +49,8 @@ function alertReview(c,base){
   const simulation=c.simulacion_disponible&&accountAccess?.administrador_global?
     action('Registrar resultado simulado',base+'/encargo','<input type="hidden" name="simulada" value="true">'+versionField(c)+options+ref+motives):'';
   const captura='<label>Captura privada de la consulta (opcional, 2 MB)<input type="file" name="captura_encargo" accept="image/jpeg,image/png,image/webp"></label>';
-  const manual=c.simulacion_disponible?'':action('Registrar consulta manual',base+'/encargo',versionField(c)+options+ref+motives+captura+photoPublicationOptions(c));
+  const fotoAlerta=c.alerta?.visible?publicPhotoField(c,'Mantener imagen actual'):'';
+  const manual=c.simulacion_disponible?'':action('Registrar consulta manual',base+'/encargo',versionField(c)+options+ref+motives+captura+fotoAlerta);
   const controls=c.estado==='cerrado'?'':manual+simulation+
     (c.alerta?.visible?action('Suspender alerta',base+'/suspender-alerta',versionField(c)+motives):'');
   return `<section class="card"><h2>Difusión y consulta del encargo</h2><p>${h(c.estado_colaboracion)}</p>
@@ -221,10 +222,10 @@ function queue(data){
   return `<div class="stats">${stats.map(([label,n])=>`<div class="stat"><span>${label}</span><strong>${n}</strong></div>`).join('')}</div>
     <section class="card"><h2>Reportes recibidos</h2><div class="filters"><label>Buscar folio<input id="search" type="search" value="${h(query)}"></label>${selector('estado','Filtrar por estado',{'':'Todos los estados',open:'Solo abiertos',...states})}${selector('prioridad','Prioridad',{'':'Todas',alta:'Alta',normal:'Normal',baja:'Baja'})}${selector('filtro_alerta','Alertas y revisión',{'':'Todos los reportes',provisional:'Provisionales activas',pendiente:'Pendientes de publicar',vencimiento:'Vencen en 15 minutos',vencida:'Vencidas',suspendida:'Suspendidas',aportes:'Con nuevos avistamientos',encargo:'Requieren consulta de encargo'})}</div><div id="results">${caseRows()}</div></section>`;
 }
-function publicPhotoField(c,current=null){
+function publicPhotoField(c,emptyLabel='Sin foto real · imagen de referencia'){
   // Seguimiento only exposes initial-report evidence from this case.
   const eligible=(c.evidencias||[]).filter(e=>e.estado_revision==='aceptada'&&e.autorizada_publicacion_en!=null);
-  return '<label>Foto pública del vehículo<select name="id_foto_vehiculo"><option value="">Sin foto real · imagen de referencia</option>'+eligible.map(e=>`<option value="${Number(e.id_evidencia)}"${Number(current)===Number(e.id_evidencia)?' selected':''}>Foto del titular #${Number(e.id_evidencia)}</option>`).join('')+'</select></label><p class="consent-note">Requiere autorización explícita del titular y una foto del reporte aceptada por el operador. Las fotos de avistamientos permanecen privadas.</p>';
+  return '<label>Foto pública del vehículo<select name="id_foto_vehiculo"><option value="">'+h(emptyLabel)+'</option>'+eligible.map(e=>`<option value="${Number(e.id_evidencia)}">Foto del titular #${Number(e.id_evidencia)}</option>`).join('')+'</select></label><p class="consent-note">Requiere autorización explícita del titular y una foto del reporte aceptada por el operador. Las fotos de avistamientos permanecen privadas.</p>';
 }
 function detail(c,contributions,equipo){
   const base=`/gestion/casos/${Number(c.id_caso)}`;const open=c.estado!=='cerrado';
