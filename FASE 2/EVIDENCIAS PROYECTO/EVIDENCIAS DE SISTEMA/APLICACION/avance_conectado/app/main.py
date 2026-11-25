@@ -1,6 +1,6 @@
 """API RutaAlerta: incremento inicial del Sprint 1 (HT01, HU01, HU03 y HU13)."""
 from fastapi import Depends, FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pathlib import Path
 import os
 import secrets
@@ -15,19 +15,27 @@ from .config import config
 from .antifraude import DEMO, SECRET
 from .correo import correo_real, configuracion_smtp
 
-# Esta entrega falla cerrada: no es una API de producción con códigos expuestos.
+ENSAYO_PUBLICADO = os.getenv('RUTAALERTA_ENSAYO_PUBLICADO') == '1'
+if ENSAYO_PUBLICADO and (
+    not DEMO or not config.alertas_demo or config.db_name != 'rutaalerta_ensayo'
+    or config.db_user.split('.', 1)[0] != 'ra_ensayo' or not config.db_ssl
+    or os.getenv('GROQ_API_KEY')
+):
+    raise RuntimeError('El ensayo publicado exige la base y el usuario exclusivos de pruebas.')
+
+# La beta operativa exige correo real y una conexión TLS.
 if not DEMO:
     if not correo_real():
         raise RuntimeError('Configura el envío SMTP real para operar sin códigos de prueba.')
     configuracion_smtp()
 if len(SECRET)<32:
     raise RuntimeError('OTP_SECRET debe tener al menos 32 bytes')
-if os.getenv('VERCEL'):
+if os.getenv('VERCEL') and not ENSAYO_PUBLICADO:
     if os.getenv('ENTORNO')!='operacion' or DEMO or len(os.getenv('OTP_SECRET',''))<32:
         raise RuntimeError('El registro público requiere correo operativo y una clave OTP estable.')
     if os.getenv('DB_SSL')!='1':
         raise RuntimeError('La conexión remota exige DB_SSL=1')
-if config.alertas_demo and (not DEMO or os.getenv('VERCEL')):
+if config.alertas_demo and (not DEMO or (os.getenv('VERCEL') and not ENSAYO_PUBLICADO)):
     raise RuntimeError('La simulación de encargos requiere una instancia aislada de prueba.')
 
 app = FastAPI(
@@ -52,7 +60,13 @@ BASE=Path(__file__).resolve().parents[1]
 
 @app.middleware('http')
 async def cabeceras_respuesta(request:Request,call_next):
-    response=await call_next(request)
+    ruta=request.url.path.rstrip('/')
+    if ENSAYO_PUBLICADO and request.method=='POST' and (
+        ruta == '/cuentas' or ruta.startswith(('/cuentas/recuperacion', '/identidad/'))
+    ):
+        response=JSONResponse({'detail':'Usa las cuentas ficticias preparadas para este ensayo.'},status_code=403)
+    else:
+        response=await call_next(request)
     response.headers['Cache-Control']='no-store'
     response.headers['X-Content-Type-Options']='nosniff'
     response.headers['Referrer-Policy']='same-origin'
@@ -113,7 +127,8 @@ def version_beta():
         padron_privado = False
     return {"version": app.version, "modelo_tablas": 68, "cliente": "Flutter Android",
             "panel": "/operaciones", "padron_privado": padron_privado,
-            "padron_prelectura": bool(padron_privado and operativa())}
+            "padron_prelectura": bool(padron_privado and operativa()),
+            "ensayo": ENSAYO_PUBLICADO}
 
 @app.get('/leaflet/leaflet.css', include_in_schema=False)
 def estilos_cartografia(): return FileResponse(BASE/'public/leaflet/leaflet.css', media_type='text/css')

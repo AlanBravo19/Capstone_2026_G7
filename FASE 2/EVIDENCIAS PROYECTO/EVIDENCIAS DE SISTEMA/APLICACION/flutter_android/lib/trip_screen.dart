@@ -151,7 +151,7 @@ class _TripScreenState extends State<TripScreen> with WidgetsBindingObserver {
                           style: const TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.w800,
-                            color: navy,
+                            color: ink,
                           ),
                         ),
                       ),

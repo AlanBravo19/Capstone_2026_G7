@@ -1,4 +1,6 @@
-# RutaAlerta · Beta 0.23.1
+# RutaAlerta · Beta 0.24.0
+
+La interfaz usa una paleta oscura, tipografía Manrope y una barra de navegación compartida. Inicio prioriza los avisos y el mapa. Cuenta agrupa las opciones de participación y seguridad. La fuente está incluida con su [licencia SIL Open Font License](assets/fonts/Manrope-OFL.txt).
 
 El mapa de Inicio se puede tocar para ampliarlo. El color rojo muestra concentraciones de antecedentes históricos revisados. En **Mis lugares y rutas** se puede buscar una dirección puntual, seleccionar un punto en el mapa o usar Casa y Trabajo guardados. La API 0.22 prioriza las alternativas que cruzan menos zonas consultadas. En **Reportar**, se selecciona primero el punto del hecho y después se confirma la comuna sugerida o se busca en el catálogo. La referencia de calle del reporte es opcional.
 

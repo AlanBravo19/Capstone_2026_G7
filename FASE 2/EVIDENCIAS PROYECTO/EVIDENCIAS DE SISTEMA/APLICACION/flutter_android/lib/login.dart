@@ -98,7 +98,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       child: const Icon(
                         Icons.radar_rounded,
-                        color: Colors.white,
+                        color: paper,
                         size: 30,
                       ),
                     ),
@@ -108,18 +108,18 @@ class _LoginScreenState extends State<LoginScreen> {
                       style: TextStyle(
                         fontSize: 27,
                         fontWeight: FontWeight.w900,
-                        color: navy,
+                        color: ink,
                       ),
                     ),
                   ],
                 ),
                 gap(32),
                 const Text(
-                  'RutaAlerta ciudadana',
+                  'Bienvenido a RutaAlerta',
                   style: TextStyle(
                     fontSize: 34,
                     height: 1.12,
-                    color: navy,
+                    color: ink,
                     fontWeight: FontWeight.w800,
                     letterSpacing: -1.2,
                   ),

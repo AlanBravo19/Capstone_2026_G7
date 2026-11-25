@@ -301,7 +301,7 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: const Color(0xffe8effb),
+                  color: blueHighlight,
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: const Icon(Icons.directions_car_rounded, color: teal),
@@ -317,7 +317,7 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
                         fontSize: 20,
                         letterSpacing: 1.5,
                         fontWeight: FontWeight.w800,
-                        color: navy,
+                        color: ink,
                       ),
                     ),
                     Text(

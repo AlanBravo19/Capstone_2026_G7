@@ -201,12 +201,8 @@ class _MobileShellState extends State<MobileShell> {
     }
   }
 
-  Widget accountEntry(String key, IconData icon, String name) => ListTile(
-    leading: Icon(icon),
-    title: Text(name),
-    trailing: const Icon(Icons.chevron_right),
-    onTap: () => accountAction(key),
-  );
+  Widget accountEntry(String key, IconData icon, String name) =>
+      ActionRow(icon: icon, title: name, onTap: () => accountAction(key));
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -216,11 +212,24 @@ class _MobileShellState extends State<MobileShell> {
           : null,
       title: const Row(
         children: [
-          Icon(Icons.radar_rounded, color: teal),
-          SizedBox(width: 8),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: blueHighlight,
+              borderRadius: BorderRadius.all(Radius.circular(11)),
+            ),
+            child: Padding(
+              padding: EdgeInsets.all(7),
+              child: Icon(Icons.radar_rounded, color: teal, size: 20),
+            ),
+          ),
+          SizedBox(width: 10),
           Text(
             'RutaAlerta',
-            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 23),
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 21,
+              letterSpacing: -.6,
+            ),
           ),
         ],
       ),
@@ -266,87 +275,119 @@ class _MobileShellState extends State<MobileShell> {
         ListView(
           padding: const EdgeInsets.all(20),
           children: [
-            SectionTitle(
-              widget.session.profile?['nombre_visible'] ?? 'Mi cuenta',
-              eyebrow: 'Mi cuenta',
-            ),
             Panel(
-              child: Column(
+              child: Row(
                 children: [
-                  ListTile(
-                    leading: const Icon(Icons.record_voice_over_outlined),
-                    title: const Text('Mis avisos de testigo'),
-                    onTap: () =>
-                        openScreen(context, witnessHistory(widget.session)),
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.person_outline),
-                    title: const Text('Cómo participo'),
-                    subtitle: Text(
-                      widget.session.profile?['modalidad_ciudadana'] ==
-                              'con_vehiculo'
-                          ? 'Con vehículo y colaborador'
-                          : 'Colaborador',
+                  const CircleAvatar(
+                    radius: 26,
+                    backgroundColor: blueHighlight,
+                    child: Icon(
+                      Icons.person_outline_rounded,
+                      color: teal,
+                      size: 28,
                     ),
-                    onTap: () => perform(context, () async {
-                      final choice = await showDialog<String>(
-                        context: context,
-                        builder: (ctx) => SimpleDialog(
-                          title: const Text('Cómo participo'),
-                          children: [
-                            SimpleDialogOption(
-                              onPressed: () =>
-                                  Navigator.pop(ctx, 'colaborador'),
-                              child: const Text(
-                                'Colaborar sin registrar vehículo',
-                              ),
-                            ),
-                            SimpleDialogOption(
-                              onPressed: () =>
-                                  Navigator.pop(ctx, 'con_vehiculo'),
-                              child: const Text(
-                                'Registrar mi vehículo y colaborar',
-                              ),
-                            ),
-                          ],
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.session.profile?['nombre_visible'] ??
+                              'Mi cuenta',
+                          style: const TextStyle(
+                            color: ink,
+                            fontSize: 21,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
-                      );
-                      if (choice == null) return;
-                      await widget.session.api.request(
-                        '/mi-perfil/modalidad',
-                        method: 'PUT',
-                        body: {'modalidad_ciudadana': choice},
-                      );
-                      await widget.session.refresh();
-                    }),
-                  ),
-                  accountEntry(
-                    'security',
-                    Icons.security,
-                    'Seguridad y segundo factor',
-                  ),
-                  accountEntry(
-                    'lock',
-                    Icons.fingerprint,
-                    'Bloquear con biometría',
-                  ),
-                  accountEntry(
-                    'contributions',
-                    Icons.visibility_outlined,
-                    'Mis avistamientos',
-                  ),
-                  accountEntry(
-                    'shared',
-                    Icons.group_outlined,
-                    'Casos compartidos conmigo',
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.logout),
-                    title: const Text('Cerrar sesión'),
-                    onTap: logout,
+                        const SizedBox(height: 4),
+                        Text(
+                          widget.session.profile?['modalidad_ciudadana'] ==
+                                  'con_vehiculo'
+                              ? 'Con vehículo y colaborador'
+                              : 'Colaborador',
+                          style: const TextStyle(color: muted),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
+            ),
+            ActionGroup(
+              title: 'Participación',
+              children: [
+                ActionRow(
+                  icon: Icons.record_voice_over_outlined,
+                  title: 'Mis avisos de testigo',
+                  onTap: () =>
+                      openScreen(context, witnessHistory(widget.session)),
+                ),
+                ActionRow(
+                  icon: Icons.person_outline,
+                  title: 'Cómo participo',
+                  onTap: () => perform(context, () async {
+                    final choice = await showDialog<String>(
+                      context: context,
+                      builder: (ctx) => SimpleDialog(
+                        title: const Text('Cómo participo'),
+                        children: [
+                          SimpleDialogOption(
+                            onPressed: () => Navigator.pop(ctx, 'colaborador'),
+                            child: const Text(
+                              'Colaborar sin registrar vehículo',
+                            ),
+                          ),
+                          SimpleDialogOption(
+                            onPressed: () => Navigator.pop(ctx, 'con_vehiculo'),
+                            child: const Text(
+                              'Registrar mi vehículo y colaborar',
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (choice == null) return;
+                    await widget.session.api.request(
+                      '/mi-perfil/modalidad',
+                      method: 'PUT',
+                      body: {'modalidad_ciudadana': choice},
+                    );
+                    await widget.session.refresh();
+                  }),
+                ),
+                accountEntry(
+                  'contributions',
+                  Icons.visibility_outlined,
+                  'Mis avistamientos',
+                ),
+                accountEntry(
+                  'shared',
+                  Icons.group_outlined,
+                  'Casos compartidos conmigo',
+                ),
+              ],
+            ),
+            ActionGroup(
+              title: 'Seguridad',
+              children: [
+                accountEntry(
+                  'security',
+                  Icons.shield_outlined,
+                  'Seguridad y segundo factor',
+                ),
+                accountEntry(
+                  'lock',
+                  Icons.fingerprint,
+                  'Bloquear con biometría',
+                ),
+              ],
+            ),
+            OutlinedButton.icon(
+              onPressed: logout,
+              icon: const Icon(Icons.logout_rounded),
+              label: const Text('Cerrar sesión'),
             ),
           ],
         ),

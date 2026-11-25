@@ -172,7 +172,7 @@ class _LocationPickerState extends State<LocationPicker> {
               validLocation(widget.value)
                   ? 'Lugar seleccionado'
                   : 'Ubicación sin seleccionar',
-              style: const TextStyle(color: navy, fontWeight: FontWeight.w700),
+              style: const TextStyle(color: ink, fontWeight: FontWeight.w700),
             ),
           ),
           if (widget.value != null)

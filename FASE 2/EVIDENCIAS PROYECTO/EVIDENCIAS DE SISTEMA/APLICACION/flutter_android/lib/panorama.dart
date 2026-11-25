@@ -273,7 +273,7 @@ class _PanoramaZonalState extends State<PanoramaZonal> {
       }
     }
     return Material(
-      color: Colors.white,
+      color: cardSurface,
       borderRadius: BorderRadius.circular(22),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -368,7 +368,7 @@ class _PanoramaZonalState extends State<PanoramaZonal> {
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: navy,
+                          color: ink,
                         ),
                       ),
                     ),

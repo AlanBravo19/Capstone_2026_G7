@@ -326,7 +326,9 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                 Container(
                   height: 160,
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(colors: [navy, teal]),
+                    gradient: const LinearGradient(
+                      colors: [navy, Color(0xff294873)],
+                    ),
                     borderRadius: BorderRadius.circular(22),
                   ),
                   child: const Icon(
@@ -341,7 +343,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                   style: TextStyle(
                     fontSize: 25,
                     fontWeight: FontWeight.w800,
-                    color: navy,
+                    color: ink,
                   ),
                 ),
                 gap(12),
@@ -420,7 +422,7 @@ class _MapScreenState extends State<MapScreen> with WidgetsBindingObserver {
                         icon: Text(
                           perspective ? '2D' : '3D',
                           style: const TextStyle(
-                            color: navy,
+                            color: ink,
                             fontWeight: FontWeight.bold,
                           ),
                         ),

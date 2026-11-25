@@ -3,43 +3,62 @@ import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 
 const navy = Color(0xff10213c);
-const teal = Color(0xff2867d8);
-const paper = Color(0xffeaf1fb);
-const muted = Color(0xff50647f);
+const teal = Color(0xff8ec9ff);
+const paper = Color(0xff10151e);
+const ink = Color(0xfff1f5fc);
+const muted = Color(0xffaab8cc);
+const cardSurface = Color(0xff191f2b);
+const raisedSurface = Color(0xff222c3b);
+const outline = Color(0xff343f51);
+const blueHighlight = Color(0xff253850);
 
 ThemeData appTheme() => ThemeData(
   useMaterial3: true,
-  colorScheme: ColorScheme.fromSeed(
-    seedColor: teal,
-    primary: teal,
-    surface: Colors.white,
-  ),
+  fontFamily: 'Manrope',
+  brightness: Brightness.dark,
+  colorScheme:
+      ColorScheme.fromSeed(
+        seedColor: teal,
+        brightness: Brightness.dark,
+        primary: teal,
+        secondary: const Color(0xffb7aff1),
+        surface: cardSurface,
+      ).copyWith(
+        onPrimary: paper,
+        onSurface: ink,
+        onSurfaceVariant: muted,
+        outline: outline,
+      ),
   scaffoldBackgroundColor: paper,
+  dividerColor: outline,
   navigationBarTheme: const NavigationBarThemeData(
     backgroundColor: Colors.transparent,
     surfaceTintColor: Colors.transparent,
     elevation: 0,
-    height: 66,
-    indicatorColor: Color(0xffd4e5ff),
+    height: 63,
+    indicatorColor: blueHighlight,
     labelTextStyle: WidgetStatePropertyAll(
-      TextStyle(color: navy, fontSize: 12, fontWeight: FontWeight.w600),
+      TextStyle(color: ink, fontSize: 11, fontWeight: FontWeight.w700),
     ),
   ),
   appBarTheme: const AppBarTheme(
     backgroundColor: paper,
-    foregroundColor: navy,
+    foregroundColor: ink,
     centerTitle: false,
+    surfaceTintColor: Colors.transparent,
+    systemOverlayStyle: SystemUiOverlayStyle.light,
   ),
+  listTileTheme: const ListTileThemeData(iconColor: teal, textColor: ink),
   inputDecorationTheme: InputDecorationTheme(
     filled: true,
-    fillColor: const Color(0xfff7f9fd),
+    fillColor: raisedSurface,
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),
-      borderSide: const BorderSide(color: Color(0xffdce4f0)),
+      borderSide: const BorderSide(color: outline),
     ),
     enabledBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),
-      borderSide: const BorderSide(color: Color(0xffdce4f0)),
+      borderSide: const BorderSide(color: outline),
     ),
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
   ),
@@ -64,20 +83,9 @@ class Panel extends StatelessWidget {
     padding: padding,
     margin: const EdgeInsets.only(bottom: 16),
     decoration: BoxDecoration(
-      gradient: const LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [Color(0xfffbfdff), Color(0xffeff6ff)],
-      ),
-      borderRadius: BorderRadius.circular(22),
-      border: Border.all(color: Colors.white),
-      boxShadow: const [
-        BoxShadow(
-          color: Color(0x11274470),
-          offset: Offset(0, 4),
-          blurRadius: 14,
-        ),
-      ],
+      color: cardSurface,
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: outline),
     ),
     child: Material(type: MaterialType.transparency, child: child),
   );
@@ -90,9 +98,8 @@ class GlassDock extends StatelessWidget {
   @override
   Widget build(BuildContext context) => DecoratedBox(
     decoration: const BoxDecoration(
-      gradient: LinearGradient(
-        colors: [Color(0xffe9f0fa), Color(0xffc4dcf6), Color(0xffdce9fa)],
-      ),
+      color: paper,
+      border: Border(top: BorderSide(color: outline)),
     ),
     child: SafeArea(
       top: false,
@@ -102,9 +109,9 @@ class GlassDock extends StatelessWidget {
           borderRadius: BorderRadius.circular(26),
           child: DecoratedBox(
             decoration: BoxDecoration(
-              color: const Color(0xd9ffffff),
+              color: const Color(0xf018202c),
               borderRadius: BorderRadius.circular(26),
-              border: Border.all(color: Colors.white),
+              border: Border.all(color: outline),
             ),
             child: child,
           ),
@@ -128,7 +135,7 @@ class ActionGroup extends StatelessWidget {
         child: Text(
           title,
           style: const TextStyle(
-            color: navy,
+            color: ink,
             fontSize: 18,
             fontWeight: FontWeight.w700,
             letterSpacing: -.35,
@@ -145,7 +152,7 @@ class ActionGroup extends StatelessWidget {
                   height: 1,
                   indent: 66,
                   endIndent: 12,
-                  color: Color(0xffdbe6f4),
+                  color: outline,
                 ),
               children[index],
             ],
@@ -177,15 +184,15 @@ class ActionRow extends StatelessWidget {
       height: 39,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: const Color(0xffdfebff),
+        color: blueHighlight,
         borderRadius: BorderRadius.circular(13),
       ),
-      child: Icon(icon, color: const Color(0xff205bb5), size: 22),
+      child: Icon(icon, color: teal, size: 22),
     ),
     title: Text(
       title,
       style: const TextStyle(
-        color: navy,
+        color: ink,
         fontWeight: FontWeight.w600,
         fontSize: 16,
       ),
@@ -223,7 +230,7 @@ class SectionTitle extends StatelessWidget {
           style: const TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.w800,
-            color: navy,
+            color: ink,
             letterSpacing: -.7,
           ),
         ),
@@ -263,7 +270,7 @@ class FormSection extends StatelessWidget {
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w700,
-              color: navy,
+              color: ink,
             ),
           ),
         ),
@@ -297,7 +304,7 @@ class StateChip extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
     decoration: BoxDecoration(
-      color: const Color(0xffe7efff),
+      color: blueHighlight,
       borderRadius: BorderRadius.circular(20),
     ),
     child: Text(

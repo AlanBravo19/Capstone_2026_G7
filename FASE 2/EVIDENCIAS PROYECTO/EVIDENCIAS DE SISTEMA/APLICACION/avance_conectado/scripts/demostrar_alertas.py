@@ -175,9 +175,11 @@ def sembrar_zonas(c, operador, titular):
 
 def poblar_portal(c, titular, colaborador, supervisor):
     """Ejecuta el recorrido completo con documentos, ubicaciones y encargos ficticios."""
-    enviar(c, '/gestion/casos/1/cerrar', {
-        'motivo_cierre': 'otro', 'motivo': 'Cierre del ejemplo anterior en la base de pruebas.',
-    }, supervisor, 204)
+    base_demo = c.get('/seguimiento/1', headers=supervisor).raise_for_status().json()
+    if base_demo['estado'] != 'cerrado':
+        enviar(c, '/gestion/casos/1/cerrar', {
+            'motivo_cierre': 'otro', 'motivo': 'Cierre del ejemplo anterior en la base de pruebas.',
+        }, supervisor, 204)
     ubicaciones = [
         ('Sector A · Centro', -36.826, -73.050), ('Sector A · Centro', -36.827, -73.050),
         ('Sector A · Centro', -36.825, -73.052), ('Sector A · Centro', -36.827, -73.048),
@@ -185,13 +187,15 @@ def poblar_portal(c, titular, colaborador, supervisor):
         ('Sector B · Norte', -36.809, -73.062), ('Sector B · Norte', -36.808, -73.064),
         ('Sector C · Oriente', -36.837, -73.023), ('Sector C · Oriente', -36.836, -73.024),
     ]
+    registrados = {v['patente']: v['id_vehiculo']
+                   for v in c.get('/vehiculos', headers=titular).raise_for_status().json()}
     vehiculos = {}
     for numero in range(1, len(ubicaciones) + 1):
         patente = f'ZQXP{numero:02}'
-        vehiculos[patente] = registrar_auto(c, titular, patente, padron_prueba(patente))
+        vehiculos[patente] = registrados.get(patente) or registrar_auto(c, titular, patente, padron_prueba(patente))
     vinculos = c.get('/gestion/vinculos', headers=supervisor).raise_for_status().json()
     for fila in vinculos:
-        if fila['patente'] not in vehiculos:
+        if fila['patente'] not in vehiculos or fila['estado'] == 'autorizado':
             continue
         ruta = f"/gestion/vinculos/{fila['id_vinculo_vehiculo']}"
         padron = c.get(f'{ruta}/padron', headers=supervisor).raise_for_status()

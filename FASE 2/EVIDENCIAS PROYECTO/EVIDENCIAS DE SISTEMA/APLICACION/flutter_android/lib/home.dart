@@ -36,6 +36,7 @@ class HomeScreen extends StatelessWidget {
               compacto: true,
               ampliar: () => navigate(3),
             ),
+          if (active) gap(20),
           if (session.storageNotice != null) Note(session.storageNotice!),
           if (!session.canReport)
             Panel(
@@ -226,9 +227,12 @@ class WelcomeBanner extends StatelessWidget {
     margin: const EdgeInsets.only(bottom: 20),
     clipBehavior: Clip.antiAlias,
     decoration: BoxDecoration(
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(22),
+      border: Border.all(color: outline),
       gradient: const LinearGradient(
-        colors: [Color(0xff112d51), Color(0xff205a91)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Color(0xff1b2537), Color(0xff1c304a)],
       ),
     ),
     child: Stack(
@@ -241,32 +245,34 @@ class WelcomeBanner extends StatelessWidget {
           child: ExcludeSemantics(child: CustomPaint(painter: _RoutePattern())),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 18, 70, 20),
+          padding: const EdgeInsets.fromLTRB(18, 20, 18, 18),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
-                'Colaboración ciudadana',
-                style: TextStyle(
-                  color: Color(0xffc5e4ff),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 5),
               Text(
                 name.isEmpty ? 'Te damos la bienvenida' : 'Hola, $name',
                 style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 26,
-                  fontWeight: FontWeight.w700,
-                  height: 1.15,
+                  color: ink,
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -.8,
+                  height: 1.14,
                 ),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 7),
+              const Text(
+                'Consulta alertas de tu zona o comparte un avistamiento.',
+                style: TextStyle(color: muted, fontSize: 14, height: 1.4),
+              ),
+              const SizedBox(height: 18),
               FilledButton.icon(
                 style: FilledButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: const Color(0xff164977),
+                  backgroundColor: teal,
+                  foregroundColor: paper,
+                  textStyle: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                  ),
                 ),
                 icon: const Icon(Icons.visibility_outlined, size: 19),
                 label: const Text('Vi un vehículo'),

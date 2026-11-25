@@ -12,6 +12,8 @@ Con las dependencias de Python y `scripts/package.json` instaladas, ejecuta `pyt
 
 En **Mapa operativo**, la capa de calor cuenta los reportes con una alerta vigente dentro de los filtros seleccionados. Los avistamientos aceptados se muestran como puntos. En el ensayo, los reportes se concentran en tres sectores ficticios con cinco, tres y dos alertas.
 
+El [portal de ensayo en línea](https://rutaalerta-ensayo-g7-ruta-alerta.vercel.app/operaciones/mapa) tiene su propia base PostgreSQL y cuentas ficticias preparadas. El [portal de uso real](https://rutaalerta-mvp-g7.vercel.app/operaciones/mapa) concentra las alertas vigentes de cada organización autorizada.
+
 [Flujo, datos ficticios y pruebas de la beta 0.22](evidencias/Zonas_Historicas_y_Verificacion_0220.md)
 
 Android y el portal ciudadano permiten adjuntar una foto del padrón al registrar un vehículo o enviarla después desde Mis vehículos. El supervisor de la organización receptora abre y resuelve la solicitud en **Verificar vínculos**. La imagen queda disponible únicamente durante la revisión. El historial conserva el momento de recepción y la decisión.
