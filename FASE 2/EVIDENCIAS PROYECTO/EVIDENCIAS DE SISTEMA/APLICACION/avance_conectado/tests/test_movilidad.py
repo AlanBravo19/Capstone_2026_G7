@@ -63,6 +63,43 @@ def test_ruta_error_no_inventa_trazado(client,ciudadano,monkeypatch):
  r=client.post('/rutas/calcular',headers=ciudadano['headers'],json=body);assert r.status_code==503
  assert 'rutas' not in r.json()
 
+
+def test_zonas_agregadas_y_rutas_con_menos_cruces(client, ciudadano, supervisor_org1, db, monkeypatch):
+ ids = []
+ rev = {'decision':'validado','latitud':-36.82,'longitud':-73.05,'precision_m':300,
+        'radio_m':800,'motivo':'Ubicación y fuente ficticias revisadas para la prueba.'}
+ for _ in range(3):
+  r = client.post('/gestion/antecedentes', headers=supervisor_org1, json=ficha())
+  assert r.status_code == 201, r.text
+  ids.append(r.json()['id_antecedente'])
+ for aid in ids[:2]:
+  assert client.post(f'/gestion/antecedentes/{aid}/revision', headers=supervisor_org1, json=rev).status_code == 204
+ h = ciudadano['headers']
+ try:
+  data = client.get('/territorio/zonas?lat=-36.82&lon=-73.05', headers=h).json()
+  assert len(data['zonas']) == 1 and not data['simulacion']
+  assert data['zonas'][0]['antecedentes'] == 2 and data['zonas'][0]['radio_m'] == 800
+  assert data['zonas'][0]['geometria']['type'] == 'Polygon'
+  real_client = httpx.Client
+  def responder(_):
+   def ruta(pts, segundos):
+    return {'distance':4200,'duration':segundos,'geometry':{'type':'LineString','coordinates':pts}}
+   return httpx.Response(200, json={'code':'Ok','routes':[
+       ruta([[-73.07,-36.82],[-73.03,-36.82]],360),
+       ruta([[-73.07,-36.82],[-73.06,-36.84],[-73.04,-36.84],[-73.03,-36.82]],480),
+   ]})
+  monkeypatch.setattr(movilidad.httpx,'Client',lambda **kw:real_client(transport=httpx.MockTransport(responder),**kw))
+  body = {'origen':{'latitud':-36.82,'longitud':-73.07},'destino':{'latitud':-36.82,'longitud':-73.03},'consentimiento_proveedor':True}
+  r = client.post('/rutas/calcular', headers=h, json=body)
+  assert r.status_code == 200, r.text
+  assert [r['cruces_zonas'] for r in r.json()['rutas']] == [0, 1]
+  r = client.post('/rutas/calcular', headers=h, json={**body,'evitar_zonas':False})
+  assert [r['cruces_zonas'] for r in r.json()['rutas']] == [1, 0]
+  db("UPDATE antecedente_publico SET entorno='prueba' WHERE id_antecedente=%s", (ids[0],))
+  assert client.get('/territorio/zonas?lat=-36.82&lon=-73.05', headers=h).json()['zonas'] == []
+ finally:
+  db("UPDATE antecedente_publico SET estado='descartado' WHERE id_antecedente=ANY(%s::uuid[])", (ids,))
+
 def test_participacion_real_no_acepta_contactos_simulados(client,ciudadano,db,monkeypatch):
  # Correo real + TOTP evita depender de SMS y no reetiqueta contactos de prueba.
  monkeypatch.setenv('CORREO_TRANSPORTE','smtp')

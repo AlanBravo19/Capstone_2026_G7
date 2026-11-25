@@ -8,12 +8,14 @@ class CommunePicker extends StatefulWidget {
   final String? value;
   final ValueChanged<String?> onChanged;
   final bool enabled;
+  final List<String> suggestions;
   const CommunePicker({
     super.key,
     required this.api,
     required this.value,
     required this.onChanged,
     this.enabled = true,
+    this.suggestions = const [],
   });
 
   @override
@@ -39,31 +41,144 @@ class _CommunePickerState extends State<CommunePicker> {
         );
       }
       if (!snapshot.hasData) return const LinearProgressIndicator();
-      return DropdownButtonFormField<String>(
+      final catalog = (snapshot.data as List).cast<Map>();
+      final current = catalog
+          .where((row) => row['codigo_comuna'] == widget.value)
+          .firstOrNull;
+      final suggestion = widget.suggestions
+          .map(
+            (name) => catalog
+                .where(
+                  (row) =>
+                      searchKey(row['nombre'] as String) == searchKey(name),
+                )
+                .firstOrNull,
+          )
+          .whereType<Map>()
+          .firstOrNull;
+      return FormField<String>(
         key: ValueKey(widget.value),
         initialValue: widget.value,
-        isExpanded: true,
-        menuMaxHeight: 360,
-        decoration: const InputDecoration(
-          labelText: 'Comuna del hecho',
-          prefixIcon: Icon(Icons.location_city_outlined),
-        ),
-        items: [
-          for (final commune in snapshot.data as List)
-            DropdownMenuItem(
-              value: commune['codigo_comuna'] as String,
-              child: Text(
-                commune['nombre'] as String,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-        ],
-        onChanged: widget.enabled ? widget.onChanged : null,
         validator: (value) =>
-            value == null ? 'Selecciona una comuna del catálogo' : null,
+            value == null ? 'Elige una comuna del catálogo' : null,
+        builder: (field) => Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            OutlinedButton.icon(
+              icon: const Icon(Icons.search),
+              label: Text(current?['nombre'] as String? ?? 'Buscar comuna'),
+              onPressed: !widget.enabled
+                  ? null
+                  : () async {
+                      final code = await showDialog<String>(
+                        context: context,
+                        builder: (_) => _CommuneSearch(catalog),
+                      );
+                      if (mounted && code != null) widget.onChanged(code);
+                    },
+            ),
+            if (suggestion != null && current == null)
+              TextButton.icon(
+                onPressed: !widget.enabled
+                    ? null
+                    : () => widget.onChanged(
+                        suggestion['codigo_comuna'] as String,
+                      ),
+                icon: const Icon(Icons.near_me_outlined),
+                label: Text('Usar comuna sugerida: ${suggestion['nombre']}'),
+              ),
+            if (field.errorText case final String message)
+              Text(
+                message,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+          ],
+        ),
       );
     },
   );
+}
+
+String searchKey(String value) {
+  const accents = {
+    'á': 'a',
+    'é': 'e',
+    'í': 'i',
+    'ó': 'o',
+    'ú': 'u',
+    'ü': 'u',
+    'ñ': 'n',
+  };
+  return value.trim().toLowerCase().replaceAllMapped(
+    RegExp('[áéíóúüñ]'),
+    (m) => accents[m[0]]!,
+  );
+}
+
+class _CommuneSearch extends StatefulWidget {
+  final List<Map> catalog;
+  const _CommuneSearch(this.catalog);
+  @override
+  State<_CommuneSearch> createState() => _CommuneSearchState();
+}
+
+class _CommuneSearchState extends State<_CommuneSearch> {
+  String query = '';
+
+  @override
+  Widget build(BuildContext context) {
+    final matching = query.isEmpty
+        ? <Map>[]
+        : widget.catalog
+              .where(
+                (row) =>
+                    searchKey(row['nombre'] as String).contains(query) ||
+                    (row['codigo_comuna'] as String).contains(query),
+              )
+              .take(30)
+              .toList();
+    return AlertDialog(
+      title: const Text('Comuna del hecho'),
+      content: SizedBox(
+        width: 420,
+        height: 305,
+        child: Column(
+          children: [
+            TextField(
+              autofocus: true,
+              onChanged: (value) => setState(() => query = searchKey(value)),
+              decoration: const InputDecoration(
+                labelText: 'Escribe una comuna',
+                hintText: 'Ej. Concepción',
+              ),
+            ),
+            Expanded(
+              child: matching.isEmpty
+                  ? Center(
+                      child: Text(
+                        query.isEmpty
+                            ? 'Escribe parte del nombre.'
+                            : 'No se encontraron comunas.',
+                      ),
+                    )
+                  : ListView(
+                      children: [
+                        for (final row in matching)
+                          ListTile(
+                            title: Text(row['nombre'] as String),
+                            onTap: () => Navigator.pop(
+                              context,
+                              row['codigo_comuna'] as String,
+                            ),
+                          ),
+                      ],
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 Future<String> validatedZone(
@@ -80,7 +195,7 @@ Future<String> validatedZone(
     method: 'POST',
     body: {
       'codigo_comuna': commune,
-      'sector': sector.trim(),
+      if (sector.trim().isNotEmpty) 'sector': sector.trim(),
       'latitud': point.latitude,
       'longitud': point.longitude,
     },

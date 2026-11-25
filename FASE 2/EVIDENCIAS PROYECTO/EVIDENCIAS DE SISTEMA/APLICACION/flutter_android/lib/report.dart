@@ -9,6 +9,7 @@ import 'case_photos.dart';
 import 'session.dart';
 import 'location_picker.dart';
 import 'commune_picker.dart';
+import 'movilidad.dart' show Mobility;
 
 import 'package:latlong2/latlong.dart';
 
@@ -28,12 +29,15 @@ class _ReportScreenState extends State<ReportScreen> {
   int? vehicle;
   int? organization;
   String? commune;
+  List<String> suggestedCommunes = [];
+  int locationRequest = 0;
   late Future<List<dynamic>> recipients;
   Future<List<dynamic>> loadRecipients() async =>
       await widget.session.api.request('/organizaciones') as List<dynamic>;
   bool busy = false;
   Uint8List? foto;
   bool colaborar = false;
+  bool confirmaSustraccion = false;
   bool autorizarFotoPublica = false;
   LatLng? appliedPoint;
   DateTime date = DateTime.now();
@@ -56,6 +60,27 @@ class _ReportScreenState extends State<ReportScreen> {
   void syncPoint() {
     final p = widget.session.selectedPoint;
     if (p != null) appliedPoint = p;
+  }
+
+  Future<void> useIncidentPoint(LatLng? point) async {
+    final call = ++locationRequest;
+    setState(() {
+      appliedPoint = point;
+      suggestedCommunes = [];
+    });
+    widget.session.selectedPoint = point;
+    if (point == null || commune != null) return;
+    try {
+      final names = await Mobility.channel.invokeListMethod<String>(
+        'reverseGeocode',
+        {'lat': point.latitude, 'lon': point.longitude},
+      );
+      if (mounted && call == locationRequest) {
+        setState(() => suggestedCommunes = names ?? []);
+      }
+    } catch (_) {
+      // El punto sigue disponible aunque el proveedor no sugiera una comuna.
+    }
   }
 
   @override
@@ -92,7 +117,12 @@ class _ReportScreenState extends State<ReportScreen> {
   }
 
   Future<void> save() async {
+    if (busy) return;
     if (!form.currentState!.validate()) return;
+    if (!confirmaSustraccion) {
+      feedback(context, 'Confirma que reportas una sustracción real.');
+      return;
+    }
     if (!validLocation(appliedPoint)) {
       feedback(
         context,
@@ -112,7 +142,7 @@ class _ReportScreenState extends State<ReportScreen> {
         zone.text,
         appliedPoint!,
       );
-      final folio = await widget.session.report({
+      final receipt = await widget.session.reportReceipt({
         'id_vehiculo': vehicle,
         'id_organizacion': organization,
         'fecha_hecho': date.toUtc().toIso8601String(),
@@ -120,7 +150,9 @@ class _ReportScreenState extends State<ReportScreen> {
         'descripcion': description.text.trim(),
         if (foto != null) 'foto_base64': base64Encode(foto!),
         'solicitar_colaboracion': colaborar,
-        'autorizar_foto_publica': foto != null && colaborar && autorizarFotoPublica,
+        'confirmar_sustraccion': confirmaSustraccion,
+        'autorizar_foto_publica':
+            foto != null && colaborar && autorizarFotoPublica,
         'latitud': appliedPoint!.latitude,
         'longitud': appliedPoint!.longitude,
       });
@@ -128,20 +160,21 @@ class _ReportScreenState extends State<ReportScreen> {
       zone.clear();
       description.clear();
       appliedPoint = null;
-      final conSolicitud = colaborar;
+      widget.session.selectedPoint = null;
+      ++locationRequest;
       setState(() {
         foto = null;
         colaborar = false;
+        confirmaSustraccion = false;
         autorizarFotoPublica = false;
         vehicle = null;
         commune = null;
+        suggestedCommunes = [];
         date = DateTime.now();
       });
       feedback(
         context,
-        conSolicitud
-            ? 'Reporte $folio recibido. El operador revisará tu solicitud de publicación.'
-            : 'Reporte privado $folio recibido.',
+        'Reporte ${receipt['folio']} recibido. ${receipt['siguiente_paso'] ?? 'Consulta el seguimiento del caso.'}',
       );
       try {
         await widget.session.refresh();
@@ -172,7 +205,7 @@ class _ReportScreenState extends State<ReportScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const Note(
-                'El reporte es privado y queda pendiente de revisión. No reemplaza una denuncia ni genera un encargo policial.',
+                'Si autorizas la colaboración, un vínculo vigente puede publicar una alerta provisional. La denuncia y el encargo se tramitan por el canal oficial.',
               ),
               const FormSection(
                 'Vehículo y destinatario',
@@ -194,7 +227,24 @@ class _ReportScreenState extends State<ReportScreen> {
                       ),
                     )
                     .toList(),
-                onChanged: busy ? null : (v) => setState(() => vehicle = v),
+                onChanged: busy
+                    ? null
+                    : (v) => setState(() {
+                        vehicle = v;
+                        final selected = widget.session.vehicles.firstWhere(
+                          (item) => item['id_vehiculo'] == v,
+                          orElse: () => {},
+                        );
+                        final validUntil = DateTime.tryParse(
+                          '${selected['vence_revision_en']}',
+                        );
+                        if (selected['estado_vinculo'] == 'autorizado' &&
+                            validUntil != null &&
+                            validUntil.isAfter(DateTime.now())) {
+                          organization =
+                              selected['id_organizacion_revision'] as int?;
+                        }
+                      }),
                 validator: (v) => v == null ? 'Selecciona tu vehículo' : null,
               ),
               gap(),
@@ -211,7 +261,13 @@ class _ReportScreenState extends State<ReportScreen> {
                   }
                   if (!result.hasData) return const LinearProgressIndicator();
                   return DropdownButtonFormField<int>(
-                    initialValue: organization,
+                    key: ValueKey('receptora/$vehicle'),
+                    initialValue:
+                        result.data!.any(
+                          (o) => o['id_organizacion'] == organization,
+                        )
+                        ? organization
+                        : null,
                     isExpanded: true,
                     decoration: const InputDecoration(
                       labelText: 'Organización que recibirá el reporte',
@@ -245,10 +301,18 @@ class _ReportScreenState extends State<ReportScreen> {
                 'Lugar del incidente',
                 icon: Icons.place_outlined,
               ),
+              LocationPicker(
+                value: appliedPoint,
+                center: widget.session.centroZonal,
+                enabled: !busy,
+                onChanged: useIncidentPoint,
+              ),
+              gap(),
               CommunePicker(
                 api: widget.session.api,
                 value: commune,
                 enabled: !busy,
+                suggestions: suggestedCommunes,
                 onChanged: (value) => setState(() => commune = value),
               ),
               gap(),
@@ -256,25 +320,10 @@ class _ReportScreenState extends State<ReportScreen> {
                 controller: zone,
                 maxLength: 200,
                 decoration: const InputDecoration(
-                  labelText: 'Calle o sector del incidente',
-                  hintText: 'Ej.: Av. Ecuador con 18 de Septiembre, Chillán',
-                  helperText:
-                      'Escribe la calle, cruce o referencia del lugar marcado.',
-                  helperMaxLines: 2,
+                  labelText: 'Calle o referencia (opcional)',
+                  hintText: 'Ej. cruce, número o lugar cercano',
                   prefixIcon: Icon(Icons.signpost_outlined),
                 ),
-                validator: (v) =>
-                    (v?.trim().length ?? 0) >= 2 ? null : 'Indica el sector',
-              ),
-              gap(),
-              LocationPicker(
-                value: appliedPoint,
-                center: widget.session.centroZonal,
-                enabled: !busy,
-                onChanged: (point) {
-                  setState(() => appliedPoint = point);
-                  widget.session.selectedPoint = point;
-                },
               ),
               gap(24),
               const FormSection(
@@ -311,6 +360,17 @@ class _ReportScreenState extends State<ReportScreen> {
                 style: TextStyle(color: muted),
               ),
               CheckboxListTile(
+                value: confirmaSustraccion,
+                onChanged: busy
+                    ? null
+                    : (v) => setState(() => confirmaSustraccion = v == true),
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Declaro que reporto una sustracción real'),
+                subtitle: const Text(
+                  'El reporte ciudadano y la denuncia policial son trámites separados.',
+                ),
+              ),
+              CheckboxListTile(
                 value: colaborar,
                 onChanged: busy
                     ? null
@@ -321,14 +381,16 @@ class _ReportScreenState extends State<ReportScreen> {
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Solicitar colaboración ciudadana'),
                 subtitle: const Text(
-                  'Autorizo que el operador publique la descripción del vehículo y el sector tras la revisión.',
+                  'Autorizo publicar patente, características y sector aproximado. RutaAlerta mostrará el estado de la revisión.',
                 ),
               ),
               if (foto != null && colaborar)
                 CheckboxListTile(
                   contentPadding: EdgeInsets.zero,
                   value: autorizarFotoPublica,
-                  onChanged: busy ? null : (v) => setState(() => autorizarFotoPublica = v == true),
+                  onChanged: busy
+                      ? null
+                      : (v) => setState(() => autorizarFotoPublica = v == true),
                   title: const Text(publicPhotoConsentText),
                   subtitle: const Text(publicPhotoReviewText),
                 ),
@@ -338,7 +400,7 @@ class _ReportScreenState extends State<ReportScreen> {
                     ? null
                     : save,
                 icon: const Icon(Icons.send_outlined),
-                label: Text(busy ? 'Guardando…' : 'Registrar reporte privado'),
+                label: Text(busy ? 'Guardando…' : 'Enviar reporte'),
               ),
               if (!widget.session.canReport)
                 const Note(

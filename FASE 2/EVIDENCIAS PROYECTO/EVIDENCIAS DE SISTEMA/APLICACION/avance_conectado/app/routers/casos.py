@@ -11,14 +11,26 @@ from ..esquemas import BandejaItem, CasoEntrada, CasoSalida
 from ..seguridad import organizaciones_del_operador, usuario_actual
 from ..antifraude import participante
 from ..config import config
+from ..alertas import VIGENTE, publicar_provisional
 
 router = APIRouter(tags=["casos"])
 
 
 def _caso_existente(cur, id_usuario, clave):
-    cur.execute("""SELECT id_caso, folio, estado, creado_en FROM caso
+    cur.execute("""SELECT id_caso, folio, estado, creado_en, colaboracion_consentida_en
+                    FROM caso
                     WHERE id_usuario_reportante = %s AND clave_envio = %s::uuid""", (id_usuario, clave))
     return fila_dict(cur, cur.fetchone())
+
+def _reintento(cur, caso, response):
+    cur.execute(f"""SELECT s.modo_alerta FROM solicitud_colaboracion s JOIN caso c USING(id_caso)
+        WHERE c.id_caso=%s AND {VIGENTE} ORDER BY s.id_solicitud_colaboracion DESC LIMIT 1""",(caso["id_caso"],))
+    activa = cur.fetchone()
+    resultado = activa[0] if activa else ('pendiente' if caso["colaboracion_consentida_en"] else 'privada')
+    response.status_code = status.HTTP_200_OK
+    return CasoSalida(id_caso=caso["id_caso"],folio=caso["folio"],estado=caso["estado"],
+                      recibido_en=caso["creado_en"],reintento=True,publicacion=resultado,
+                      siguiente_paso="Consulta el estado actual desde el seguimiento del caso.")
 
 
 @router.post("/casos", response_model=CasoSalida, status_code=status.HTTP_201_CREATED)
@@ -31,16 +43,16 @@ def reportar_caso(datos: CasoEntrada, response: Response, idempotency_key: str =
     cur = conn.cursor()
     previo = _caso_existente(cur, usuario["id_usuario"], clave)
     if previo:
-        # Reintento con la misma clave: se devuelve el mismo caso, sin duplicarlo (CP43).
-        response.status_code = status.HTTP_200_OK
-        return CasoSalida(id_caso=previo["id_caso"], folio=previo["folio"], estado=previo["estado"],
-                          recibido_en=previo["creado_en"], reintento=True)
+        return _reintento(cur, previo, response)
     fecha = datos.fecha_hecho if datos.fecha_hecho.tzinfo else datos.fecha_hecho.replace(tzinfo=timezone.utc)
     if fecha > datetime.now(timezone.utc):
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "La fecha del hecho no puede ser futura")
     # Conocer un vehículo no basta: el usuario debe tener un vínculo no rechazado ni revocado.
     # Coordinar el alta del caso con el retiro o cambio de titular.
     cur.execute('SELECT id_vehiculo FROM vehiculo WHERE id_vehiculo=%s FOR UPDATE',(datos.id_vehiculo,))
+    previo = _caso_existente(cur, usuario["id_usuario"], clave)
+    if previo:
+        return _reintento(cur, previo, response)
     cur.execute("""SELECT 1 FROM vinculo_vehiculo WHERE id_usuario = %s AND id_vehiculo = %s
                     AND estado IN ('pendiente', 'autorizado') AND fin IS NULL""", (usuario["id_usuario"], datos.id_vehiculo))
     if cur.fetchone() is None:
@@ -49,16 +61,26 @@ def reportar_caso(datos: CasoEntrada, response: Response, idempotency_key: str =
         cur.execute("SELECT 1 FROM organizacion WHERE id_organizacion = %s AND estado = 'activa'", (datos.id_organizacion,))
         if cur.fetchone() is None:
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Organización receptora no habilitada")
+    ambiente = 'operacion' if config.entorno=='operacion' else 'prueba'
+    if datos.confirmar_sustraccion:
+        cur.execute("""SELECT folio FROM caso WHERE id_vehiculo=%s AND id_usuario_reportante=%s
+            AND entorno=%s AND estado<>'cerrado' AND sustraccion_declarada_en IS NOT NULL""",
+            (datos.id_vehiculo,usuario["id_usuario"],ambiente))
+        duplicado = cur.fetchone()
+        if duplicado:
+            raise HTTPException(409,f'Ya tienes un reporte activo para este vehículo. Añade los antecedentes en {duplicado[0]}.')
     folio = f"RA-{datetime.now(timezone.utc):%Y%m%d}-{secrets.token_hex(3).upper()}"
     try:
         cur.execute(
             """INSERT INTO caso(folio, id_usuario_reportante, id_vehiculo, id_organizacion, fecha_hecho, zona,
-                                ubicacion, precision_m, descripcion_privada, clave_envio, tipo_incidente, entorno)
-               VALUES (%s, %s, %s, %s, %s, %s, ST_SetSRID(ST_Point(%s, %s), 4326)::geography, %s, %s, %s::uuid, %s, %s)
+                                ubicacion, precision_m, descripcion_privada, clave_envio, tipo_incidente, entorno,
+                                sustraccion_declarada_en)
+               VALUES (%s, %s, %s, %s, %s, %s, ST_SetSRID(ST_Point(%s, %s), 4326)::geography, %s, %s, %s::uuid, %s, %s,
+                       CASE WHEN %s THEN CURRENT_TIMESTAMP END)
                RETURNING id_caso, folio, estado, creado_en""",
             (folio, usuario["id_usuario"], datos.id_vehiculo, datos.id_organizacion, fecha, datos.zona,
              datos.longitud, datos.latitud, datos.precision_m, datos.descripcion, clave, datos.tipo_incidente,
-             'operacion' if config.entorno=='operacion' else 'prueba'),
+             ambiente,datos.confirmar_sustraccion),
         )
     except ErrorBD as e:
         if "ck_caso_17" in str(e):
@@ -67,9 +89,7 @@ def reportar_caso(datos: CasoEntrada, response: Response, idempotency_key: str =
             cur = conn.cursor()
             cur.execute("SET search_path TO rutaalerta, public")
             previo = _caso_existente(cur, usuario["id_usuario"], clave)
-            response.status_code = status.HTTP_200_OK
-            return CasoSalida(id_caso=previo["id_caso"], folio=previo["folio"], estado=previo["estado"],
-                              recibido_en=previo["creado_en"], reintento=True)
+            return _reintento(cur, previo, response)
         raise
     caso = fila_dict(cur, cur.fetchone())
     if datos.foto_base64:
@@ -83,13 +103,17 @@ def reportar_caso(datos: CasoEntrada, response: Response, idempotency_key: str =
         cur.execute("UPDATE caso SET colaboracion_consentida_en=CURRENT_TIMESTAMP WHERE id_caso=%s",(caso["id_caso"],))
         bitacora(cur, caso["id_caso"], usuario["id_usuario"], "solicitar_colaboracion",
                  "El titular solicitó colaboración al crear el reporte. Pendiente de revisión humana.")
-    # Evento en la misma transacción (cola transaccional): el trabajador avisará al panel.
+    publicacion, paso = ('pendiente','La organización revisará el reporte.') if datos.solicitar_colaboracion else ('privada','Consulta el seguimiento del caso.')
+    if datos.confirmar_sustraccion:
+        publicacion, paso = publicar_provisional(cur, caso, datos, usuario["id_usuario"], ambiente)
+    # El evento, el caso, la publicación y los avisos internos se guardan juntos.
     cur.execute(
         """INSERT INTO evento_salida(tipo, agregado_tipo, agregado_id, clave_evento, payload)
            VALUES ('caso_reportado', 'caso', %s, %s, %s::jsonb)""",
         (caso["id_caso"], f"caso_reportado:{caso['id_caso']}", json.dumps({"folio": caso["folio"]})),
     )
-    return CasoSalida(id_caso=caso["id_caso"], folio=caso["folio"], estado=caso["estado"], recibido_en=caso["creado_en"])
+    return CasoSalida(id_caso=caso["id_caso"], folio=caso["folio"], estado=caso["estado"],
+                      recibido_en=caso["creado_en"],publicacion=publicacion,siguiente_paso=paso)
 
 
 @router.get("/casos", response_model=list[BandejaItem])
@@ -100,14 +124,24 @@ def bandeja(estado: str | None = None, prioridad: str | None = None,
     orgs = organizaciones_del_operador(cur, usuario["id_usuario"])
     if not orgs:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "La cuenta no tiene ámbito institucional")
-    sql = """SELECT id_caso, id_organizacion, folio, estado, prioridad, creado_en, aportes_pendientes, primera_revision_en
-               FROM v_bandeja_institucional WHERE id_organizacion = ANY(%s)"""
+    sql = f"""SELECT b.*, a.modo_alerta, a.vence_en, a.suspendida_en, a.estado AS estado_difusion,
+        a.visible AS difusion_visible,
+        q.resultado AS consulta_encargo, responsable.nombre_visible AS responsable,
+        c.colaboracion_consentida_en IS NOT NULL AS solicita_colaboracion
+        FROM v_bandeja_institucional b JOIN caso c USING(id_caso)
+        LEFT JOIN LATERAL (SELECT modo_alerta,vence_en,suspendida_en,estado,({VIGENTE}) AS visible FROM solicitud_colaboracion s
+            WHERE s.id_caso=b.id_caso ORDER BY id_solicitud_colaboracion DESC LIMIT 1) a ON TRUE
+        LEFT JOIN LATERAL (SELECT resultado FROM consulta_encargo q WHERE q.id_caso=b.id_caso
+            ORDER BY id_consulta_encargo DESC LIMIT 1) q ON TRUE
+        LEFT JOIN LATERAL (SELECT u.nombre_visible FROM asignacion_caso ac JOIN membresia m USING(id_membresia)
+            JOIN usuario u USING(id_usuario) WHERE ac.id_caso=b.id_caso AND ac.fin IS NULL LIMIT 1) responsable ON TRUE
+        WHERE b.id_organizacion = ANY(%s)"""
     params = [orgs]
     if estado:
-        sql += " AND estado = %s"; params.append(estado)
+        sql += " AND b.estado = %s"; params.append(estado)
     if prioridad:
-        sql += " AND prioridad = %s"; params.append(prioridad)
-    cur.execute(sql + " ORDER BY creado_en ASC", params)
+        sql += " AND b.prioridad = %s"; params.append(prioridad)
+    cur.execute(sql + " ORDER BY b.creado_en ASC", params)
     return [BandejaItem(**fila_dict(cur, f)) for f in cur.fetchall()]
 
 

@@ -1,6 +1,7 @@
 import 'foto_aporte.dart';
 
 import 'dart:convert';
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -80,12 +81,14 @@ class DataScreen extends StatefulWidget {
   final Session session;
   final String title, path;
   final Widget Function(BuildContext, dynamic, VoidCallback) render;
+  final int revision;
   const DataScreen({
     super.key,
     required this.session,
     required this.title,
     required this.path,
     required this.render,
+    this.revision = 0,
   });
   @override
   State<DataScreen> createState() => _DataScreenState();
@@ -106,6 +109,15 @@ class _DataScreenState extends State<DataScreen> {
   }
 
   @override
+  void didUpdateWidget(covariant DataScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.revision != widget.revision ||
+        oldWidget.path != widget.path) {
+      future = widget.session.api.request(widget.path);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
       title: Text(widget.title),
@@ -114,7 +126,7 @@ class _DataScreenState extends State<DataScreen> {
     body: FutureBuilder(
       future: future,
       builder: (ctx, s) {
-        if (s.connectionState != ConnectionState.done) {
+        if (s.connectionState != ConnectionState.done && !s.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
         if (s.hasError) {
@@ -490,6 +502,46 @@ class CaseScreen extends StatelessWidget {
   final Session session;
   final int cid;
   const CaseScreen({super.key, required this.session, required this.cid});
+  Future<void> cambiarDifusion(
+    BuildContext context,
+    VoidCallback reload,
+    String accion,
+  ) async {
+    final recuperacion = accion == 'informar_recuperacion';
+    final confirmado = await showDialog<bool>(
+      context: context,
+      builder: (dialog) => AlertDialog(
+        title: Text(
+          recuperacion ? '¿Informar recuperación?' : '¿Retirar consentimiento?',
+        ),
+        content: Text(
+          recuperacion
+              ? 'La difusión se suspenderá y la organización revisará tu aviso. El encargo se gestiona por el canal oficial.'
+              : 'La difusión se suspenderá y el expediente seguirá disponible para revisión.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialog, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialog, true),
+            child: const Text('Confirmar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmado != true || !context.mounted) return;
+    await perform(context, () async {
+      await session.api.request(
+        '/mis-casos/$cid/alerta',
+        method: 'POST',
+        body: {'accion': accion},
+      );
+      if (context.mounted) reload();
+    });
+  }
+
   @override
   Widget build(BuildContext context) => DataScreen(
     session: session,
@@ -506,36 +558,50 @@ class CaseScreen extends StatelessWidget {
         OutlinedButton.icon(
           onPressed: () {
             final comuna = '${d['zona']}'.split(' · ').first;
-            openScreen(ctx, DataScreen(
-              session: session,
-              title: 'Recursos de apoyo',
-              path: '/recursos-apoyo?territorio=${Uri.encodeQueryComponent(comuna)}',
-              render: (context, data, reload) => Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  SectionTitle('Orientación en $comuna'),
-                  if ((data as List).isEmpty)
-                    const Note('El equipo todavía no ha publicado canales vigentes para esta comuna.'),
-                  for (final recurso in data)
-                    Panel(child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('${recurso['titulo']}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                        gap(),
-                        Text('${recurso['descripcion']}'),
-                        gap(),
-                        SelectableText('Canal: ${recurso['canal']}'),
-                        if (recurso['url_oficial'] != null)
-                          SelectableText('${recurso['url_oficial']}'),
-                        gap(),
-                        Text('Responsable: ${recurso['responsable']}'),
-                        Text('Verificado: ${recurso['verificado_en']}'),
-                        Text('Vigente hasta: ${recurso['vence_en']}'),
-                      ],
-                    )),
-                ],
+            openScreen(
+              ctx,
+              DataScreen(
+                session: session,
+                title: 'Recursos de apoyo',
+                path:
+                    '/recursos-apoyo?territorio=${Uri.encodeQueryComponent(comuna)}',
+                render: (context, data, reload) => Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SectionTitle('Orientación en $comuna'),
+                    if ((data as List).isEmpty)
+                      const Note(
+                        'El equipo todavía no ha publicado canales vigentes para esta comuna.',
+                      ),
+                    for (final recurso in data)
+                      Panel(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${recurso['titulo']}',
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            gap(),
+                            Text('${recurso['descripcion']}'),
+                            gap(),
+                            SelectableText('Canal: ${recurso['canal']}'),
+                            if (recurso['url_oficial'] != null)
+                              SelectableText('${recurso['url_oficial']}'),
+                            gap(),
+                            Text('Responsable: ${recurso['responsable']}'),
+                            Text('Verificado: ${recurso['verificado_en']}'),
+                            Text('Vigente hasta: ${recurso['vence_en']}'),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
               ),
-            ));
+            );
           },
           icon: const Icon(Icons.support_agent),
           label: const Text('Ver recursos de apoyo de la comuna'),
@@ -632,7 +698,40 @@ class CaseScreen extends StatelessWidget {
                 ),
                 gap(),
                 if (d['estado_colaboracion'] != null)
-                  Note('Portal colaborativo: ${d['estado_colaboracion']}'),
+                  Note('Alertas de vehículos · ${d['estado_colaboracion']}'),
+                if (d['encargo'] case final Map consulta)
+                  Note(
+                    (consulta['simulada'] == true ? 'Simulación · ' : '') +
+                        (switch (consulta['resultado']) {
+                          'encontrado' =>
+                            'Encargo encontrado en la consulta registrada.',
+                          'sin_resultado' => 'La consulta no encontró un encargo en ese momento.',
+                          _ => 'Fuente de consulta no disponible.',
+                        }),
+                  ),
+                if (d['estado'] != 'cerrado')
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      if (d['colaboracion_consentida_en'] != null)
+                        TextButton(
+                          onPressed: () => cambiarDifusion(
+                            ctx,
+                            reload,
+                            'retirar_consentimiento',
+                          ),
+                          child: const Text('Retirar consentimiento'),
+                        ),
+                      TextButton(
+                        onPressed: () => cambiarDifusion(
+                          ctx,
+                          reload,
+                          'informar_recuperacion',
+                        ),
+                        child: const Text('Informar recuperación'),
+                      ),
+                    ],
+                  ),
                 OutlinedButton.icon(
                   onPressed: d['estado'] == 'cerrado'
                       ? null
@@ -643,7 +742,8 @@ class CaseScreen extends StatelessWidget {
                             builder: (_) => CasePhotoUpload(
                               api: session.api,
                               cid: cid,
-                              collaborationRequested: d['colaboracion_consentida_en'] != null,
+                              collaborationRequested:
+                                  d['colaboracion_consentida_en'] != null,
                             ),
                           );
                           if (saved == true && ctx.mounted) reload();
@@ -667,24 +767,30 @@ class CaseScreen extends StatelessWidget {
             Panel(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [ListTile(
-                leading: const Icon(Icons.image_outlined),
-                title: Text('Foto #${e['id_evidencia']}'),
-                subtitle: Text('${e['estado_revision']}'),
-                onTap: () => openScreen(
-                  ctx,
-                  PhotoScreen(session: session, id: e['id_evidencia'] as int),
-                ),
-              ),
-                if (d['es_propietario'] == true)
-                  PhotoPublicationControl(
-                    api: session.api,
-                    cid: cid,
-                    eid: e['id_evidencia'] as int,
-                    authorized: e['autorizada_publicacion_en'] != null,
-                    canGrant: d['estado'] != 'cerrado' && d['colaboracion_consentida_en'] != null,
-                    onChanged: reload,
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.image_outlined),
+                    title: Text('Foto #${e['id_evidencia']}'),
+                    subtitle: Text('${e['estado_revision']}'),
+                    onTap: () => openScreen(
+                      ctx,
+                      PhotoScreen(
+                        session: session,
+                        id: e['id_evidencia'] as int,
+                      ),
+                    ),
                   ),
+                  if (d['es_propietario'] == true)
+                    PhotoPublicationControl(
+                      api: session.api,
+                      cid: cid,
+                      eid: e['id_evidencia'] as int,
+                      authorized: e['autorizada_publicacion_en'] != null,
+                      canGrant:
+                          d['estado'] != 'cerrado' &&
+                          d['colaboracion_consentida_en'] != null,
+                      onChanged: reload,
+                    ),
                 ],
               ),
             ),
@@ -888,6 +994,22 @@ class CommunityScreen extends StatefulWidget {
 class _CommunityScreenState extends State<CommunityScreen> {
   int revision = 0;
   DateTime consultado = DateTime.now();
+  Timer? actualizacion;
+  @override
+  void initState() {
+    super.initState();
+    actualizacion = Timer.periodic(const Duration(seconds: 20), (_) {
+      if (widget.active &&
+          (ModalRoute.of(context)?.isCurrent ?? false) &&
+          !searchFocus.hasFocus) {
+        setState(() {
+          revision++;
+          consultado = DateTime.now();
+        });
+      }
+    });
+  }
+
   @override
   void didUpdateWidget(covariant CommunityScreen anterior) {
     super.didUpdateWidget(anterior);
@@ -902,6 +1024,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
   final zone = TextEditingController(),
       lat = TextEditingController(),
       lon = TextEditingController();
+  final searchFocus = FocusNode();
   String query = '';
   Map<String, String> proximity = {};
   void search([Map<String, String>? area]) {
@@ -914,6 +1037,8 @@ class _CommunityScreenState extends State<CommunityScreen> {
 
   @override
   void dispose() {
+    actualizacion?.cancel();
+    searchFocus.dispose();
     zone.dispose();
     lat.dispose();
     lon.dispose();
@@ -930,6 +1055,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
             Expanded(
               child: TextField(
                 controller: zone,
+                focusNode: searchFocus,
                 decoration: const InputDecoration(
                   labelText: 'Buscar comuna o sector',
                 ),
@@ -981,13 +1107,20 @@ class _CommunityScreenState extends State<CommunityScreen> {
       ),
       Expanded(
         child: DataScreen(
-          key: ValueKey((query, revision)),
+          key: ValueKey(query),
+          revision: revision,
           session: widget.session,
-          title: 'Colaborar',
+          title: 'Alertas de vehículos',
           path: '/colaboracion?$query',
           render: (ctx, data, reload) => Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              if (data['demo_alertas'] == true)
+                const Note('DEMOSTRACIÓN AISLADA · Vehículos ficticios'),
+              Text(
+                'Actualizado ${TimeOfDay.now().format(ctx)}',
+                style: const TextStyle(color: muted),
+              ),
               const Note(
                 'Sólo aparecen solicitudes revisadas y vigentes. No sigas vehículos ni confrontes a nadie.',
               ),
@@ -1003,16 +1136,6 @@ class _CommunityScreenState extends State<CommunityScreen> {
                       ),
                       const Text(
                         'El titular debe autorizar la colaboración y un operador debe publicar el caso. Puedes cambiar el sector o actualizar la lista.',
-                      ),
-                      OutlinedButton.icon(
-                        icon: const Icon(Icons.add_a_photo_outlined),
-                        label: const Text(
-                          'Probar con el vehículo ficticio DEMO01',
-                        ),
-                        onPressed: () => openScreen(
-                          ctx,
-                          SightingScreen(session: widget.session, sid: null),
-                        ),
                       ),
                     ],
                   ),
@@ -1055,7 +1178,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
 
 class SightingScreen extends StatefulWidget {
   final Session session;
-  final int? sid;
+  final int sid;
   const SightingScreen({super.key, required this.session, required this.sid});
   @override
   State<SightingScreen> createState() => _SightingScreenState();
@@ -1067,15 +1190,6 @@ class _SightingScreenState extends State<SightingScreen> {
   String? commune;
   final key = const Uuid().v4();
   Uint8List? photo;
-  @override
-  void initState() {
-    super.initState();
-    if (widget.sid == null) {
-      zone.text = 'Chillán · ensayo';
-      location = const LatLng(-36.606, -72.104);
-    }
-  }
-
   DateTime date = DateTime.now();
   bool busy = false;
   @override
@@ -1088,25 +1202,16 @@ class _SightingScreenState extends State<SightingScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: Text(
-        widget.sid == null ? 'Ensayo · DEMO01' : 'Aportar avistamiento',
-      ),
-    ),
+    appBar: AppBar(title: const Text('Aportar avistamiento')),
     body: ListView(
       padding: const EdgeInsets.all(24),
       children: [
-        if (widget.sid != null)
-          PublicVehicleHeader(api: widget.session.api, sid: widget.sid!),
+        PublicVehicleHeader(api: widget.session.api, sid: widget.sid),
         Panel(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SectionTitle('Lo que observaste'),
-              if (widget.sid == null)
-                const Note(
-                  'Simulación local. Puedes practicar con una foto de prueba. El ejercicio se descarta al salir.',
-                ),
               const Note(
                 'Indica una observación real y su lugar. Nunca es una orden de búsqueda o persecución.',
               ),
@@ -1141,15 +1246,13 @@ class _SightingScreenState extends State<SightingScreen> {
               ),
               gap(),
               const FormSection('Lugar observado', icon: Icons.place_outlined),
-              if (widget.sid != null) ...[
-                CommunePicker(
-                  api: widget.session.api,
-                  value: commune,
-                  enabled: !busy,
-                  onChanged: (value) => setState(() => commune = value),
-                ),
-                gap(),
-              ],
+              CommunePicker(
+                api: widget.session.api,
+                value: commune,
+                enabled: !busy,
+                onChanged: (value) => setState(() => commune = value),
+              ),
+              gap(),
               TextField(
                 controller: zone,
                 enabled: !busy,
@@ -1215,25 +1318,6 @@ class _SightingScreenState extends State<SightingScreen> {
                               'Completa el sector y describe lo observado en al menos 10 caracteres.',
                             );
                           }
-                          if (widget.sid == null) {
-                            await showDialog<void>(
-                              context: context,
-                              builder: (d) => AlertDialog(
-                                title: const Text('Ensayo completado'),
-                                content: Text(
-                                  '${zone.text} · ${photo == null ? 'Sin foto' : 'Con foto'}. Este aporte de práctica quedó fuera de los casos publicados.',
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(d),
-                                    child: const Text('Listo'),
-                                  ),
-                                ],
-                              ),
-                            );
-                            if (context.mounted) Navigator.pop(context);
-                            return;
-                          }
                           final validated = await validatedZone(
                             widget.session.api,
                             commune,
@@ -1265,13 +1349,7 @@ class _SightingScreenState extends State<SightingScreen> {
                           if (mounted) setState(() => busy = false);
                         }
                       }),
-                child: Text(
-                  busy
-                      ? 'Procesando…'
-                      : widget.sid == null
-                      ? 'Completar ensayo'
-                      : 'Enviar para revisión',
-                ),
+                child: Text(busy ? 'Procesando…' : 'Enviar para revisión'),
               ),
             ],
           ),

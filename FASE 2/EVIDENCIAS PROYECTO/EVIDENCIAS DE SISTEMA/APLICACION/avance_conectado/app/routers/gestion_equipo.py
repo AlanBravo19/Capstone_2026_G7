@@ -4,6 +4,9 @@ from pydantic import BaseModel, Field
 from ..db import obtener_conexion
 from ..seguridad import usuario_actual, organizaciones_del_operador
 from .colaboracion import caso_autorizado, bitacora, rows
+from ..alertas import VIGENTE
+from ..config import config
+from ..antifraude import DEMO
 
 router=APIRouter(tags=['gestión institucional'])
 
@@ -28,8 +31,10 @@ def mi_acceso(usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):
               'Mantener recursos de apoyo del equipo']
     if any(o['puede_asignar'] for o in organizaciones):
         permisos.append('Asignar responsables en las organizaciones donde eres supervisor')
+        permisos.append('Revisar padrones privados y resolver vínculos vehiculares de esas organizaciones')
     if admin:permisos.append('Administrar restricciones de cuentas')
     return {'organizaciones':organizaciones,'administrador_global':admin,'permisos':permisos,
+            'demo_alertas':config.alertas_demo and DEMO,
             'asignacion':'Ser responsable de un caso no cambia el rol ni amplía el ámbito institucional.'}
 
 @router.get('/gestion/mapa')
@@ -78,8 +83,8 @@ def equipo(cid:int,usuario=Depends(usuario_actual),conn=Depends(obtener_conexion
     cur.execute("""SELECT accion,descripcion,creada_en FROM gestion_caso WHERE id_caso=%s AND visibilidad='interna'
                    ORDER BY id_gestion_caso DESC LIMIT 100""",(cid,))
     gestiones=rows(cur)
-    cur.execute("""SELECT id_solicitud_colaboracion,vence_en,id_foto_vehiculo FROM solicitud_colaboracion WHERE id_caso=%s
-                   AND estado='publicada' AND vence_en>CURRENT_TIMESTAMP""",(cid,))
+    cur.execute(f"""SELECT s.id_solicitud_colaboracion,s.vence_en,s.id_foto_vehiculo,s.modo_alerta
+        FROM solicitud_colaboracion s JOIN caso c USING(id_caso) WHERE c.id_caso=%s AND {VIGENTE}""",(cid,))
     publica=rows(cur)
     return {'responsable':actual[0] if actual else None,
             'responsable_rol':actual[1] if actual else None,
@@ -88,6 +93,7 @@ def equipo(cid:int,usuario=Depends(usuario_actual),conn=Depends(obtener_conexion
             'opciones':opciones,'gestiones':gestiones,'publicacion':publica[0] if publica else None}
 
 class Renovacion(BaseModel):
+    revision:int|None=Field(default=None,ge=0)
     motivo:str=Field(min_length=10,max_length=500)
     horas:int=Field(ge=1,le=72)
     id_solicitud_colaboracion:int
@@ -95,12 +101,17 @@ class Renovacion(BaseModel):
 @router.post('/gestion/casos/{cid}/renovacion',status_code=204)
 def renovar(cid:int,d:Renovacion,usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):
     cur=conn.cursor();c=caso_autorizado(cur,cid,usuario,operador=True)
+    cur.execute('SELECT revision_alerta FROM caso WHERE id_caso=%s',(cid,))
+    if d.revision is not None and cur.fetchone()[0]!=d.revision:
+        raise HTTPException(409,'El expediente cambió. Recarga antes de renovar.')
     if c['estado'] not in ('en_revision','en_gestion') or not c['colaboracion_consentida_en']:
         raise HTTPException(409,'La renovación requiere un caso en gestión o revisión con consentimiento.')
     cur.execute("""UPDATE solicitud_colaboracion SET vence_en=CURRENT_TIMESTAMP+(%s*interval '1 hour')
                    WHERE id_caso=%s AND id_solicitud_colaboracion=%s AND estado='publicada' AND vence_en>CURRENT_TIMESTAMP
+                   AND suspendida_en IS NULL AND modo_alerta<>'provisional' AND id_vinculo_verificado IS NULL
                    AND vence_en<CURRENT_TIMESTAMP+(%s*interval '1 hour') RETURNING vence_en""",(d.horas,cid,d.id_solicitud_colaboracion,d.horas))
     if not cur.fetchone():raise HTTPException(409,'Selecciona una publicación vigente y un plazo que amplíe su duración.')
+    cur.execute('UPDATE caso SET revision_alerta=revision_alerta+1 WHERE id_caso=%s',(cid,))
     bitacora(cur,cid,usuario['id_usuario'],'renovacion',d.motivo,'interna')
 
 class Asignacion(BaseModel):

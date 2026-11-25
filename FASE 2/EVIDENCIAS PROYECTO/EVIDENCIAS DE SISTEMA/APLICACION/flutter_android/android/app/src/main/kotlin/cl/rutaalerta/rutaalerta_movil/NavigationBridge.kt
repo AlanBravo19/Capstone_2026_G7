@@ -63,6 +63,18 @@ class NavigationBridge(private val activity:Activity) {
      }catch(_:Exception){activity.runOnUiThread{result.error("geocoder","La búsqueda no está disponible. Selecciona el punto en el mapa.",null)}}
     }.start()
    }
+   "reverseGeocode" -> {
+    val lat=call.argument<Number>("lat")?.toDouble()
+    val lon=call.argument<Number>("lon")?.toDouble()
+    if(!valid(lat,lon) || !Geocoder.isPresent()){result.success(emptyList<String>());return}
+    Thread {
+     val names=try {
+      @Suppress("DEPRECATION") val found=Geocoder(activity,Locale("es","CL")).getFromLocation(lat!!,lon!!,1)?.firstOrNull()
+      listOfNotNull(found?.subLocality,found?.locality,found?.subAdminArea).distinct()
+     }catch(_:Exception){emptyList()}
+     activity.runOnUiThread{result.success(names)}
+    }.start()
+   }
    "location" -> {
     if(locationResult!=null){result.error("busy","Hay una búsqueda de ubicación en curso.",null);return}
     val fine=activity.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)==PackageManager.PERMISSION_GRANTED

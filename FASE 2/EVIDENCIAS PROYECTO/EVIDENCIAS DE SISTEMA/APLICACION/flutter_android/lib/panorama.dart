@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -9,6 +7,8 @@ import 'expanded.dart';
 import 'movilidad.dart' show Mobility;
 import 'ui.dart';
 import 'location_picker.dart';
+
+import 'dart:math' as math;
 
 class PanoramaZonal extends StatefulWidget {
   final Session session;
@@ -33,15 +33,11 @@ class _PanoramaZonalState extends State<PanoramaZonal> {
   final mapa = MapController();
   late LatLng centro;
   late String sector;
-  List<dynamic> solicitudes = [], historia = [];
+  List<dynamic> solicitudes = [], historia = [], zonas = [];
+  bool escenarioDemo = false;
   String? error;
   bool cargando = false, gpsOcupado = false;
-  int peticion = 0, paso = 0;
-  Timer? animacion;
-  LatLng get centroPrueba =>
-      LatLng(centro.latitude + .005, centro.longitude + .005);
-  LatLng get movilPrueba =>
-      LatLng(centroPrueba.latitude + .009 * (3 - paso), centroPrueba.longitude);
+  int peticion = 0;
   @override
   void initState() {
     super.initState();
@@ -52,7 +48,6 @@ class _PanoramaZonalState extends State<PanoramaZonal> {
 
   @override
   void dispose() {
-    animacion?.cancel();
     mapa.dispose();
     super.dispose();
   }
@@ -64,6 +59,8 @@ class _PanoramaZonalState extends State<PanoramaZonal> {
       error = null;
       solicitudes = [];
       historia = [];
+      zonas = [];
+      escenarioDemo = false;
     });
     try {
       final data = await widget.session.api.request(
@@ -73,6 +70,8 @@ class _PanoramaZonalState extends State<PanoramaZonal> {
       setState(() {
         solicitudes = List.of(data['solicitudes']);
         historia = List.of(data['antecedentes']);
+        zonas = List.of(data['zonas'] as List? ?? []);
+        escenarioDemo = data['simulacion'] == true;
       });
     } catch (_) {
       if (mounted && turno == peticion) {
@@ -83,12 +82,38 @@ class _PanoramaZonalState extends State<PanoramaZonal> {
     }
   }
 
+  void detalleZona(Map item) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(22, 0, 22, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                escenarioDemo
+                    ? 'Zona ficticia · ${item['sector']}'
+                    : '${item['sector']}',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              Text(
+                '${item['antecedentes']} antecedentes revisados · radio ${item['radio_m']} m',
+              ),
+              const Text('Concentración aproximada de los últimos 365 días.'),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void cambiar(String nombre, LatLng posicion) {
-    animacion?.cancel();
     setState(() {
       sector = nombre;
       centro = posicion;
-      paso = 0;
     });
     widget.session.centroZonal = centro;
     widget.session.nombreZona = sector;
@@ -114,34 +139,6 @@ class _PanoramaZonalState extends State<PanoramaZonal> {
     } finally {
       if (mounted) setState(() => gpsOcupado = false);
     }
-  }
-
-  void simular() {
-    animacion?.cancel();
-    if (paso != 0) {
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      setState(() => paso = 0);
-      return;
-    }
-    setState(() => paso = 1);
-    mapa.move(centroPrueba, 13);
-    animacion = Timer.periodic(const Duration(seconds: 2), (t) {
-      if (!mounted) {
-        t.cancel();
-        return;
-      }
-      setState(() => paso++);
-      if (const Distance().as(LengthUnit.Meter, movilPrueba, centroPrueba) <=
-          500) {
-        t.cancel();
-        if (ModalRoute.of(context)?.isCurrent == true) {
-          feedback(
-            context,
-            'Simulación · Entraste al radio de aviso de 500 m.',
-          );
-        }
-      }
-    });
   }
 
   LatLng? punto(dynamic d, String lat, String lon) {
@@ -220,7 +217,7 @@ class _PanoramaZonalState extends State<PanoramaZonal> {
   );
   @override
   Widget build(BuildContext context) {
-    const rojo = Color(0xffb84438);
+    const rojo = Color(0xffda3c49);
     final circulos = <CircleMarker>[], marcas = <Marker>[];
     if (sector == 'Mi ubicación') {
       marcas.add(
@@ -233,26 +230,31 @@ class _PanoramaZonalState extends State<PanoramaZonal> {
         ),
       );
     }
-    for (final h in historia) {
-      final p = punto(h, 'latitud', 'longitud');
+    for (final z in zonas.whereType<Map>()) {
+      final p = punto(z, 'latitud', 'longitud');
       if (p == null) continue;
-      circulos.add(
-        CircleMarker(
-          point: p,
-          radius: (h['radio_m'] as num).toDouble(),
-          useRadiusInMeter: true,
-          color: rojo.withValues(alpha: .15),
-          borderColor: rojo,
-          borderStrokeWidth: 1,
-        ),
-      );
+      final radius = z['radio_m'] as num;
+      final intensity = ((z['antecedentes'] as num) / 18)
+          .clamp(.10, .35)
+          .toDouble();
+      for (final ratio in [1.0, .82, .64, .46]) {
+        circulos.add(
+          CircleMarker(
+            point: p,
+            radius: radius * ratio,
+            useRadiusInMeter: true,
+            color: rojo.withValues(alpha: intensity),
+            borderStrokeWidth: 0,
+          ),
+        );
+      }
       marcas.add(
         marca(
           p,
           Icons.history,
           rojo,
-          'Antecedente histórico',
-          () => detalle(h, true),
+          '${z['antecedentes']} antecedentes históricos',
+          () => detalleZona(z),
         ),
       );
     }
@@ -270,21 +272,6 @@ class _PanoramaZonalState extends State<PanoramaZonal> {
         );
       }
     }
-    if (paso > 0) {
-      circulos.add(
-        CircleMarker(
-          point: centroPrueba,
-          radius: 500,
-          useRadiusInMeter: true,
-          color: rojo.withValues(alpha: .23),
-          borderColor: rojo,
-          borderStrokeWidth: 2,
-        ),
-      );
-      marcas.add(
-        marca(movilPrueba, Icons.navigation, teal, 'Recorrido simulado', null),
-      );
-    }
     return Material(
       color: Colors.white,
       borderRadius: BorderRadius.circular(22),
@@ -293,7 +280,9 @@ class _PanoramaZonalState extends State<PanoramaZonal> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SizedBox(
-            height: widget.compacto ? 205 : 320,
+            height: widget.compacto
+                ? 230
+                : math.min(570, MediaQuery.sizeOf(context).height * .60),
             child: Stack(
               children: [
                 RutaMap(
@@ -303,6 +292,17 @@ class _PanoramaZonalState extends State<PanoramaZonal> {
                   circles: circulos,
                   markers: marcas,
                 ),
+                if (widget.compacto && widget.ampliar != null)
+                  Positioned.fill(
+                    child: Semantics(
+                      button: true,
+                      label: 'Ampliar mapa zonal',
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: widget.ampliar,
+                      ),
+                    ),
+                  ),
                 Positioned(
                   top: 10,
                   left: 10,
@@ -389,32 +389,18 @@ class _PanoramaZonalState extends State<PanoramaZonal> {
                   cargando
                       ? 'Consultando el sector…'
                       : error ??
-                            '${solicitudes.length} solicitudes · ${historia.length} antecedentes históricos en 30 km',
+                            '${solicitudes.length} solicitudes · ${zonas.length} zonas históricas en 30 km',
                 ),
+                if (escenarioDemo)
+                  const Text(
+                    'ENSAYO · zonas y antecedentes ficticios',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                 if (!widget.compacto)
                   const Text(
-                    'Azul: sector de una solicitud. Rojo: radio de aviso de un antecedente revisado.',
+                    'Azul · solicitud activa. Rojo · concentración aproximada de antecedentes revisados.',
                     style: TextStyle(color: muted),
                   ),
-                if (paso > 0)
-                  Text(
-                    paso == 3
-                        ? 'SIMULACIÓN · Dentro del radio de aviso'
-                        : 'SIMULACIÓN · Acercándose al sector',
-                    style: const TextStyle(
-                      color: rojo,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                TextButton.icon(
-                  onPressed: simular,
-                  icon: const Icon(Icons.play_circle_outline),
-                  label: Text(
-                    paso == 0
-                        ? 'Simular alerta de proximidad'
-                        : 'Terminar simulación',
-                  ),
-                ),
                 if (!widget.compacto) ...[
                   OutlinedButton.icon(
                     onPressed: () =>

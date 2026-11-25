@@ -9,11 +9,13 @@ class FotoAporte extends StatefulWidget {
   final Uint8List? foto;
   final bool ocupado;
   final ValueChanged<Uint8List?> cambiar;
+  final double ladoMaximo;
   const FotoAporte({
     super.key,
     required this.foto,
     required this.ocupado,
     required this.cambiar,
+    this.ladoMaximo = 1600,
   });
   @override
   State<FotoAporte> createState() => _FotoAporteState();
@@ -27,8 +29,8 @@ class _FotoAporteState extends State<FotoAporte> {
     try {
       final file = await ImagePicker().pickImage(
         source: origen,
-        maxWidth: 1600,
-        maxHeight: 1600,
+        maxWidth: widget.ladoMaximo,
+        maxHeight: widget.ladoMaximo,
         imageQuality: 82,
       );
       if (file == null) return;

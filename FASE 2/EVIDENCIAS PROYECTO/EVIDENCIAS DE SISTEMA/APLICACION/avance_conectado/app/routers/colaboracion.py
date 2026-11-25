@@ -1,13 +1,15 @@
 """Colaboración revisada, seguimiento, fotos privadas y avisos internos persistentes."""
-import base64, binascii, hashlib, io, uuid
+import hashlib, uuid
 from datetime import datetime, timezone
 from typing import Literal
-from PIL import Image, UnidentifiedImageError, ImageOps
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, Header
 from pydantic import BaseModel, Field, model_validator
 from ..db import obtener_conexion, fila_dict
 from ..seguridad import usuario_actual, organizaciones_del_operador
-from ..antifraude import participante, limitar
+from ..antifraude import DEMO, participante, limitar
+from ..alertas import VIGENTE, entorno, vinculo_vigente
+from ..config import config
+from ..imagenes import limpiar_imagen
 
 router=APIRouter(tags=['colaboración y seguimiento'])
 def rows(cur):return [fila_dict(cur,r) for r in cur.fetchall()]
@@ -54,32 +56,50 @@ def seguimiento(cid:int,usuario=Depends(usuario_actual),conn=Depends(obtener_con
     cur.execute("SELECT accion,descripcion,creada_en,estado_nuevo FROM gestion_caso WHERE id_caso=%s AND visibilidad='afectado' ORDER BY creada_en,id_gestion_caso",(cid,));timeline=rows(cur)
     c['es_propietario']=own;c['es_operador']=org;c['historial']=timeline
     if own or org:
-        cur.execute("""SELECT estado,vence_en>CURRENT_TIMESTAMP AS vigente FROM solicitud_colaboracion
-            WHERE id_caso=%s ORDER BY id_solicitud_colaboracion DESC LIMIT 1""",(cid,))
-        ultima=cur.fetchone()
+        from .alertas import resumen_alerta
+        estado_alerta=resumen_alerta(cur,cid)
+        ultima=estado_alerta['alerta']
         if c['estado']=='cerrado': paso='Caso cerrado'
-        elif ultima and ultima[0]=='publicada' and ultima[1]: paso='Publicada en Colaborar'
+        elif ultima and ultima['visible']:
+            paso={'provisional':'Alerta ciudadana provisional activa',
+                  'encargo_comprobado':'Activa con encargo comprobado',
+                  'revisada':'Publicada en Colaborar'}[ultima['modo_alerta']]
+        elif ultima and ultima['suspendida_en']: paso='Alerta suspendida'
+        elif ultima and ultima['estado']=='publicada' and ultima['vence_en']>datetime.now(timezone.utc):
+            paso='Alerta suspendida por pérdida de condiciones'
         elif ultima: paso='Publicación retirada o vencida'
         elif c['colaboracion_consentida_en']: paso='Pendiente de publicación por el operador'
         else: paso='Pendiente de autorización del titular'
         c['estado_colaboracion']=paso
+        c['alerta']=ultima
+        if org:
+            c.update(estado_alerta)
+        elif estado_alerta['consultas_encargo']:
+            consulta=estado_alerta['consultas_encargo'][0]
+            c['encargo']={k:consulta[k] for k in ('resultado','consultada_en','simulada')}
     if org:
         cur.execute('SELECT descripcion_privada FROM caso WHERE id_caso=%s',(cid,))
         c['relato_para_revision']=cur.fetchone()[0]
     if own or org:
         cur.execute('''SELECT a.id_avistamiento,a.zona,a.observado_en,a.estado_revision,a.resumen_para_afectado FROM avistamiento a WHERE a.id_caso=%s AND a.estado_revision='aceptado' AND a.resumen_para_afectado IS NOT NULL ORDER BY observado_en DESC''',(cid,));c['aportes']=rows(cur)
-        cur.execute('SELECT id_evidencia,estado_revision,mime,tamano_bytes,autorizada_publicacion_en FROM evidencia WHERE id_caso=%s AND id_avistamiento IS NULL ORDER BY creada_en DESC',(cid,));c['evidencias']=rows(cur)
+        cur.execute('''SELECT e.id_evidencia,e.estado_revision,e.mime,e.tamano_bytes,e.autorizada_publicacion_en
+            FROM evidencia e WHERE e.id_caso=%s AND e.id_avistamiento IS NULL
+            AND NOT EXISTS(SELECT 1 FROM consulta_encargo q WHERE q.id_evidencia=e.id_evidencia)
+            ORDER BY creada_en DESC''',(cid,));c['evidencias']=rows(cur)
     return c
 
 @router.post('/mis-casos/{cid}/colaboracion')
 def consentir(cid:int,usuario=Depends(participante),conn=Depends(obtener_conexion)):
     cur=conn.cursor();c=caso_autorizado(cur,cid,usuario,propietario=True)
     if c['estado']=='cerrado':raise HTTPException(409,'Caso cerrado')
+    cur.execute("SELECT 1 FROM gestion_caso WHERE id_caso=%s AND accion='informar_recuperacion'",(cid,))
+    if cur.fetchone():raise HTTPException(409,'La recuperación informada debe ser revisada por la organización.')
     cur.execute('UPDATE caso SET colaboracion_consentida_en=CURRENT_TIMESTAMP WHERE id_caso=%s',(cid,))
     bitacora(cur,cid,usuario['id_usuario'],'solicitar_colaboracion','El afectado autorizó solicitar colaboración. Publicación pendiente de revisión humana.')
     return {'mensaje':'Solicitud de colaboración pendiente de revisión; todavía no está publicada.'}
 
 class Publicacion(BaseModel):
+    revision:int|None=Field(default=None,ge=0)
     id_foto_vehiculo:int|None=Field(default=None,gt=0)
     zona:str=Field(min_length=3,max_length=200)
     texto:str=Field(min_length=15,max_length=1500)
@@ -91,47 +111,78 @@ def publicar(cid:int,datos:Publicacion,usuario=Depends(usuario_actual),conn=Depe
     cur=conn.cursor();c=caso_autorizado(cur,cid,usuario,operador=True)
     if c['estado'] not in ('en_revision','en_gestion') or not c['colaboracion_consentida_en']:
         raise HTTPException(409,'Se requiere revisión del caso y consentimiento del afectado')
+    cur.execute("SELECT id_vehiculo,revision_alerta,sustraccion_declarada_en,entorno FROM caso WHERE id_caso=%s",(cid,))
+    vid,rev,declarado,ambiente=cur.fetchone()
+    if (declarado is not None or datos.revision is not None) and datos.revision!=rev:
+        raise HTTPException(409,'Otro operador actualizó el expediente. Recarga antes de publicar.')
+    vinculo=None
+    if declarado is not None:
+        cur.execute('SELECT id_vehiculo FROM vehiculo WHERE id_vehiculo=%s FOR UPDATE',(vid,))
+        vinculo=vinculo_vigente(cur,c['id_usuario_reportante'],vid,c['id_organizacion'])
+        if not vinculo:raise HTTPException(409,'Revisa y aprueba primero el vínculo con el vehículo.')
+        cur.execute(f"""SELECT 1 FROM solicitud_colaboracion s JOIN caso c USING(id_caso)
+            WHERE c.id_vehiculo=%s AND c.entorno=%s AND c.id_caso<>%s AND {VIGENTE}""",(vid,ambiente,cid))
+        if cur.fetchone():raise HTTPException(409,'Ya existe otra alerta activa para este vehículo.')
+        cur.execute("""SELECT resultado,consultada_en>CURRENT_TIMESTAMP-interval '24 hours'
+            FROM consulta_encargo WHERE id_caso=%s ORDER BY id_consulta_encargo DESC LIMIT 1""",(cid,))
+        consulta=cur.fetchone()
+        if not consulta or consulta!=('encontrado',True):
+            raise HTTPException(409,'Registra una consulta reciente con encargo encontrado antes de publicar.')
     if datos.id_foto_vehiculo is not None:
         cur.execute(f'''SELECT 1 FROM evidencia e JOIN archivo_evidencia f USING(id_evidencia)
             JOIN caso c ON c.id_caso=e.id_caso
             WHERE e.id_evidencia=%s AND c.id_caso=%s AND {FOTO_PUBLICABLE}''',(datos.id_foto_vehiculo,cid))
         if not cur.fetchone():raise HTTPException(422,'Foto no elegible: requiere foto del reportante, aceptada y con consentimiento explícito')
     cur.execute("UPDATE solicitud_colaboracion SET estado='vencida' WHERE id_caso=%s AND estado='publicada' AND vence_en<=CURRENT_TIMESTAMP",(cid,))
-    cur.execute("SELECT 1 FROM solicitud_colaboracion WHERE id_caso=%s AND estado='publicada'",(cid,))
+    cur.execute("SELECT 1 FROM solicitud_colaboracion WHERE id_caso=%s AND estado='publicada' AND suspendida_en IS NULL",(cid,))
     if cur.fetchone():raise HTTPException(409,'Ya existe una publicación vigente')
+    cur.execute("""UPDATE solicitud_colaboracion SET estado='retirada',retirada_en=CURRENT_TIMESTAMP,
+        motivo_retiro='Reemplazada por decisión institucional posterior'
+        WHERE id_caso=%s AND estado='publicada' AND suspendida_en IS NOT NULL""",(cid,))
     # Centro territorial redondeado (~2 km), nunca la coordenada privada del afectado.
-    cur.execute('''INSERT INTO solicitud_colaboracion(id_caso,autorizada_por,zona_publicable,texto_aprobado,motivo_autorizacion,inicio,vence_en,centro_publico,id_foto_vehiculo)
-      SELECT id_caso,%s,%s,%s,%s,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP+(%s*interval '1 hour'),ST_SnapToGrid(ubicacion::geometry,0.02)::geography,%s FROM caso WHERE id_caso=%s RETURNING id_solicitud_colaboracion''',(usuario['id_usuario'],datos.zona,datos.texto,datos.motivo,datos.horas,datos.id_foto_vehiculo,cid));sid=cur.fetchone()[0]
+    cur.execute('''INSERT INTO solicitud_colaboracion(id_caso,autorizada_por,zona_publicable,texto_aprobado,motivo_autorizacion,inicio,vence_en,centro_publico,id_foto_vehiculo,modo_alerta,id_vinculo_verificado)
+      SELECT id_caso,%s,%s,%s,%s,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP+(%s*interval '1 hour'),ST_SnapToGrid(ubicacion::geometry,0.02)::geography,%s,%s,%s FROM caso WHERE id_caso=%s RETURNING id_solicitud_colaboracion''',(usuario['id_usuario'],datos.zona,datos.texto,datos.motivo,datos.horas,datos.id_foto_vehiculo,'encargo_comprobado' if vinculo else 'revisada',vinculo,cid));sid=cur.fetchone()[0]
+    cur.execute("UPDATE caso SET revision_alerta=revision_alerta+1 WHERE id_caso=%s",(cid,))
     bitacora(cur,cid,usuario['id_usuario'],'publicacion','Se publicó una solicitud de colaboración con datos mínimos revisados.')
     aviso(cur,c['id_usuario_reportante'],cid,'Colaboración publicada','Tu solicitud ya está disponible para colaboradores.',f'publicacion:{sid}')
     return {'id_solicitud_colaboracion':sid}
 
-class Motivo(BaseModel):motivo:str=Field(min_length=10,max_length=500)
+class Motivo(BaseModel):
+    motivo:str=Field(min_length=10,max_length=500)
+    revision:int|None=Field(default=None,ge=0)
 @router.post('/gestion/casos/{cid}/retirar',status_code=204)
 def retirar(cid:int,datos:Motivo,usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):
     cur=conn.cursor();caso_autorizado(cur,cid,usuario,operador=True)
+    cur.execute('SELECT revision_alerta FROM caso WHERE id_caso=%s',(cid,))
+    if datos.revision is not None and cur.fetchone()[0]!=datos.revision:
+        raise HTTPException(409,'El expediente cambió. Recarga antes de retirar.')
     cur.execute("UPDATE solicitud_colaboracion SET estado='retirada',retirada_en=CURRENT_TIMESTAMP,motivo_retiro=%s WHERE id_caso=%s AND estado='publicada'",(datos.motivo,cid))
-    bitacora(cur,cid,usuario['id_usuario'],'retirar_publicacion','La publicación de colaboración fue retirada.')
+    bitacora(cur,cid,usuario['id_usuario'],'retirar_publicacion',datos.motivo,'interna')
+    cur.execute("UPDATE caso SET revision_alerta=revision_alerta+1 WHERE id_caso=%s",(cid,))
 
 # Shared by selection, listing and download so revocation/review changes apply immediately.
 FOTO_PUBLICABLE="""e.id_caso=c.id_caso AND e.id_usuario_autor=c.id_usuario_reportante
     AND e.id_avistamiento IS NULL AND e.tipo='foto' AND e.mime='image/jpeg'
     AND e.estado_revision='aceptada' AND e.estado_carga='recibido' AND e.recibida_en IS NOT NULL
     AND e.autorizada_publicacion_en IS NOT NULL AND octet_length(f.contenido)>0"""
-SOLICITUD_VIGENTE="""s.estado='publicada' AND s.inicio<=CURRENT_TIMESTAMP
-    AND s.vence_en>CURRENT_TIMESTAMP AND c.estado<>'cerrado'"""
+SOLICITUD_VIGENTE=VIGENTE
 
 def colaboraciones_publicas(cur,uid,lat=None,lon=None,zona='',sid=None):
     cur.execute(f'''SELECT s.id_solicitud_colaboracion,s.zona_publicable,s.texto_aprobado,s.vence_en,v.patente,v.color,v.tipo_vehiculo,ma.nombre AS marca,m.nombre AS modelo,
         c.id_usuario_reportante=%s AS es_mi_caso,
+        s.modo_alerta,c.creado_en AS reportada_en,
+        (SELECT resultado FROM consulta_encargo q WHERE q.id_caso=c.id_caso
+            ORDER BY q.id_consulta_encargo DESC LIMIT 1) AS encargo_resultado,
+        (SELECT simulada FROM consulta_encargo q WHERE q.id_caso=c.id_caso
+            ORDER BY q.id_consulta_encargo DESC LIMIT 1) IS TRUE AS simulada,
         ST_Y(s.centro_publico::geometry) AS latitud_sector, ST_X(s.centro_publico::geometry) AS longitud_sector,
         CASE WHEN %s::float IS NOT NULL THEN ST_Distance(s.centro_publico,ST_SetSRID(ST_Point(%s,%s),4326)::geography)/1000 END AS distancia_km,
         EXISTS(SELECT 1 FROM evidencia e JOIN archivo_evidencia f USING(id_evidencia)
                WHERE e.id_evidencia=s.id_foto_vehiculo AND {FOTO_PUBLICABLE}) AS foto_disponible
         FROM solicitud_colaboracion s JOIN caso c USING(id_caso) JOIN vehiculo v USING(id_vehiculo) JOIN modelo m USING(id_modelo) JOIN marca ma USING(id_marca)
-        WHERE {SOLICITUD_VIGENTE} AND s.zona_publicable ILIKE %s
+        WHERE {SOLICITUD_VIGENTE} AND c.entorno=%s AND s.zona_publicable ILIKE %s
         AND (%s::bigint IS NULL OR s.id_solicitud_colaboracion=%s)
-        ORDER BY distancia_km ASC NULLS LAST,s.inicio DESC LIMIT 100''',(uid,lat,lon,lat,'%'+zona+'%',sid,sid))
+        ORDER BY distancia_km ASC NULLS LAST,s.inicio DESC LIMIT 100''',(uid,lat,lon,lat,entorno(),'%'+zona+'%',sid,sid))
     found=rows(cur)
     for fila in found:
         fila['foto_url']=f"/colaboracion/{fila['id_solicitud_colaboracion']}/foto-vehiculo" if fila['foto_disponible'] else None
@@ -143,7 +194,7 @@ def foto_vehiculo_publica(sid:int,usuario=Depends(usuario_actual),conn=Depends(o
     cur.execute(f'''SELECT f.contenido FROM solicitud_colaboracion s JOIN caso c USING(id_caso)
         JOIN evidencia e ON e.id_evidencia=s.id_foto_vehiculo
         JOIN archivo_evidencia f USING(id_evidencia)
-        WHERE s.id_solicitud_colaboracion=%s AND {SOLICITUD_VIGENTE} AND {FOTO_PUBLICABLE}''',(sid,))
+        WHERE s.id_solicitud_colaboracion=%s AND c.entorno=%s AND {SOLICITUD_VIGENTE} AND {FOTO_PUBLICABLE}''',(sid,entorno()))
     row=cur.fetchone()
     if not row:raise HTTPException(404,'Foto no disponible',headers={'Cache-Control':'no-store'})
     return Response(bytes(row[0]),media_type='image/jpeg',headers={'Cache-Control':'no-store','Content-Disposition':'inline; filename="vehiculo.jpg"'})
@@ -159,7 +210,8 @@ def listado(lat:float|None=Query(None,ge=-90,le=90),lon:float|None=Query(None,ge
     if (lat is None)!=(lon is None):raise HTTPException(422,'Envía latitud y longitud juntas')
     cur=conn.cursor()
     found=colaboraciones_publicas(cur,usuario['id_usuario'],lat,lon,zona)
-    resultado={'cercanos':[], 'otras_zonas':[], 'nota':'Distancias aproximadas al sector de publicación, no ubicación actual del vehículo.'}
+    resultado={'cercanos':[], 'otras_zonas':[], 'demo_alertas':config.alertas_demo and DEMO,
+               'nota':'Distancias aproximadas al sector de publicación, no ubicación actual del vehículo.'}
     for fila in found:
         km=fila['distancia_km']
         grupo='cercanos' if km is not None and km<=radio_km else 'otras_zonas'
@@ -191,7 +243,8 @@ def aportar(sid:int,datos:AvistamientoEntrada,response:Response,idempotency_key:
     caso=cur.fetchone()
     if caso[1]==uid:raise HTTPException(403,'Actualiza tus antecedentes desde el seguimiento de tu caso.')
     if caso[0]=='cerrado':raise HTTPException(409,'Caso cerrado')
-    cur.execute("SELECT 1 FROM solicitud_colaboracion WHERE id_solicitud_colaboracion=%s AND estado='publicada' AND inicio<=CURRENT_TIMESTAMP AND vence_en>CURRENT_TIMESTAMP",(sid,))
+    cur.execute(f"""SELECT 1 FROM solicitud_colaboracion s JOIN caso c USING(id_caso)
+        WHERE s.id_solicitud_colaboracion=%s AND c.entorno=%s AND {VIGENTE}""",(sid,entorno()))
     if not cur.fetchone():raise HTTPException(409,'La publicación ya no está vigente')
     cur.execute('''INSERT INTO avistamiento(id_solicitud_colaboracion,id_caso,id_usuario_autor,observado_en,zona,descripcion,ubicacion,clave_envio) VALUES(%s,%s,%s,%s,%s,%s,ST_SetSRID(ST_Point(%s,%s),4326)::geography,%s) RETURNING id_avistamiento''',(sid,cid,uid,fecha,datos.zona,datos.descripcion,datos.longitud,datos.latitud,str(idempotency_key)))
     aid=cur.fetchone()[0]
@@ -315,13 +368,8 @@ def antecedente_titular(cid:int,datos:AntecedenteTitular,response:Response,usuar
 
 def guardar_foto(cur,cid,uid,clave,contenido,aid=None,autorizar_foto_publica=False):
     try:
-        raw=base64.b64decode(contenido,validate=True)
-        if len(raw)>2097152:raise ValueError()
-        with Image.open(io.BytesIO(raw)) as im:
-            if im.format not in ('JPEG','PNG','WEBP') or im.width*im.height>16000000:raise ValueError()
-            im=ImageOps.exif_transpose(im).convert('RGB');im.thumbnail((2000,2000));out=io.BytesIO();im.save(out,format='JPEG',quality=88);clean=out.getvalue()
-        if not 0<len(clean)<=2097152:raise ValueError()
-    except (ValueError,binascii.Error,UnidentifiedImageError,OSError,Image.DecompressionBombError):
+        clean=limpiar_imagen(contenido)
+    except ValueError:
         raise HTTPException(422,'Foto inválida. Usa JPEG, PNG o WebP de hasta 2 MB y 16 megapíxeles.') from None
     key=f'privado/{uid}/{uuid.uuid4()}.jpg'
     cur.execute('''INSERT INTO evidencia(id_caso,id_avistamiento,id_usuario_autor,tipo,origen,clave_objeto,mime,tamano_bytes,sha256,estado_carga,clave_envio,recibida_en)
@@ -344,9 +392,11 @@ def consentir_foto(cid:int,eid:int,datos:ConsentimientoFoto,usuario=Depends(usua
 
 @router.get('/evidencias/{eid}/foto')
 def descargar(eid:int,usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):
-    cur=conn.cursor();cur.execute('SELECT id_caso,id_avistamiento FROM evidencia WHERE id_evidencia=%s',(eid,));row=cur.fetchone()
+    cur=conn.cursor();cur.execute('''SELECT id_caso,id_avistamiento,EXISTS(
+        SELECT 1 FROM consulta_encargo q WHERE q.id_evidencia=e.id_evidencia)
+        FROM evidencia e WHERE e.id_evidencia=%s''',(eid,));row=cur.fetchone()
     if not row:raise HTTPException(404,'Foto no disponible')
-    caso_autorizado(cur,row[0],usuario,operador=row[1] is not None)
+    caso_autorizado(cur,row[0],usuario,operador=row[1] is not None or row[2])
     cur.execute('SELECT contenido FROM archivo_evidencia WHERE id_evidencia=%s',(eid,));row=cur.fetchone()
     if not row:raise HTTPException(404,'Foto no disponible')
     return Response(bytes(row[0]),media_type='image/jpeg',headers={'Cache-Control':'no-store','Content-Disposition':'inline; filename="evidencia.jpg"'})
@@ -369,6 +419,9 @@ class Cierre(Motivo):
 @router.post('/gestion/casos/{cid}/cerrar',status_code=204)
 def cerrar_caso(cid:int,datos:Cierre,usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):
     cur=conn.cursor();c=caso_autorizado(cur,cid,usuario,operador=True)
+    cur.execute('SELECT revision_alerta FROM caso WHERE id_caso=%s',(cid,))
+    if datos.revision is not None and cur.fetchone()[0]!=datos.revision:
+        raise HTTPException(409,'El expediente cambió. Recarga antes de cerrar.')
     if c['estado']=='cerrado':raise HTTPException(409,'Caso ya cerrado')
     if datos.motivo_cierre=='recuperado':
         cur.execute("SELECT 1 FROM evidencia WHERE id_evidencia=%s AND id_caso=%s AND estado_revision='aceptada'",(datos.id_evidencia,cid))

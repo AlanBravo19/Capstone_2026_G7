@@ -51,6 +51,7 @@ class _PlacesRoutesScreenState extends State<PlacesRoutesScreen> {
   Map<String, dynamic>? result;
   String error = '';
   bool busy = false;
+  bool avoidZones = true;
   @override
   void initState() {
     super.initState();
@@ -84,6 +85,29 @@ class _PlacesRoutesScreenState extends State<PlacesRoutesScreen> {
       ),
     );
     await load();
+  }
+
+  Future<void> chooseAddress({required bool forOrigin}) async {
+    final selected = await Navigator.push<Map<String, dynamic>>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PlaceEditor(
+          session: widget.session,
+          type: forOrigin ? 'origen' : 'destino',
+          temporal: true,
+        ),
+      ),
+    );
+    if (!mounted || selected == null) return;
+    setState(() {
+      if (forOrigin) {
+        origin = selected;
+      } else {
+        destination = selected;
+      }
+      result = null;
+      error = '';
+    });
   }
 
   Future<void> gps() async {
@@ -148,6 +172,7 @@ class _PlacesRoutesScreenState extends State<PlacesRoutesScreen> {
             'longitud': destination!['longitud'],
           },
           'consentimiento_proveedor': true,
+          'evitar_zonas': avoidZones,
         },
       );
       if (mounted) {
@@ -164,173 +189,249 @@ class _PlacesRoutesScreenState extends State<PlacesRoutesScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Mis lugares y rutas')),
-    body: RefreshIndicator(
-      onRefresh: load,
-      child: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          Panel(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const SectionTitle('¿A dónde vas?'),
-                if (places.isEmpty)
+  Widget build(BuildContext context) {
+    final casa = places.where((p) => p['tipo'] == 'casa').firstOrNull;
+    final trabajo = places.where((p) => p['tipo'] == 'trabajo').firstOrNull;
+    return Scaffold(
+      appBar: AppBar(title: const Text('Mis lugares y rutas')),
+      body: RefreshIndicator(
+        onRefresh: load,
+        child: ListView(
+          padding: const EdgeInsets.all(20),
+          children: [
+            Panel(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SectionTitle('¿A dónde vas?'),
+                  if (casa != null && trabajo != null)
+                    OutlinedButton.icon(
+                      onPressed: busy
+                          ? null
+                          : () => setState(() {
+                              origin = casa;
+                              destination = trabajo;
+                              result = null;
+                            }),
+                      icon: const Icon(Icons.work_outline),
+                      label: const Text('De Casa a Trabajo'),
+                    ),
+                  if (places.isEmpty)
+                    TextButton.icon(
+                      onPressed: () => edit('casa'),
+                      icon: const Icon(Icons.add_location_alt_outlined),
+                      label: const Text('Guardar mi primer destino'),
+                    ),
+                  DropdownButtonFormField<String>(
+                    key: ValueKey('origen/${origin?['tipo']}'),
+                    initialValue:
+                        places.any((item) => item['tipo'] == origin?['tipo'])
+                        ? (origin?['tipo'] as String?)
+                        : null,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Origen guardado',
+                    ),
+                    items: [
+                      for (final p in places)
+                        DropdownMenuItem(
+                          value: p['tipo'] as String,
+                          child: Text('${p['nombre']}'),
+                        ),
+                    ],
+                    onChanged: busy
+                        ? null
+                        : (v) => setState(() {
+                            origin = places.firstWhere((p) => p['tipo'] == v);
+                            result = null;
+                          }),
+                  ),
+                  if (origin != null && origin?['tipo'] == null)
+                    Text('Origen · ${origin!['nombre']}'),
                   TextButton.icon(
-                    onPressed: () => edit('casa'),
-                    icon: const Icon(Icons.add_location_alt_outlined),
-                    label: const Text('Guardar mi primer destino'),
+                    onPressed: busy
+                        ? null
+                        : () => chooseAddress(forOrigin: true),
+                    icon: const Icon(Icons.search),
+                    label: const Text('Buscar dirección de origen'),
                   ),
-                DropdownButtonFormField<String>(
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Origen guardado',
-                  ),
-                  items: [
-                    for (final p in places)
-                      DropdownMenuItem(
-                        value: p['tipo'] as String,
-                        child: Text('${p['nombre']}'),
-                      ),
-                  ],
-                  onChanged: (v) => setState(() {
-                    origin = places.firstWhere((p) => p['tipo'] == v);
-                    result = null;
-                  }),
-                ),
-                gap(),
-                OutlinedButton.icon(
-                  onPressed: busy ? null : gps,
-                  icon: const Icon(Icons.my_location),
-                  label: Text(
-                    origin?['nombre'] == 'Mi ubicación actual'
-                        ? 'Origen: mi GPS actual'
-                        : 'Usar mi ubicación como origen',
-                  ),
-                ),
-                gap(),
-                DropdownButtonFormField<String>(
-                  isExpanded: true,
-                  decoration: const InputDecoration(labelText: 'Destino'),
-                  items: [
-                    for (final p in places)
-                      DropdownMenuItem(
-                        value: p['tipo'] as String,
-                        child: Text('${p['nombre']}'),
-                      ),
-                  ],
-                  onChanged: (v) => setState(() {
-                    destination = places.firstWhere((p) => p['tipo'] == v);
-                    result = null;
-                  }),
-                ),
-                gap(),
-                FilledButton.icon(
-                  onPressed: busy ? null : calculate,
-                  icon: const Icon(Icons.route),
-                  label: Text(
-                    busy ? 'Calculando…' : 'Ver alternativas de ruta',
-                  ),
-                ),
-                if (destination != null) ...[
                   gap(),
                   OutlinedButton.icon(
-                    onPressed: busy
-                        ? null
-                        : () => perform(
-                            context,
-                            () => Mobility.navigate(
-                              'google',
-                              destination!,
-                              origin: origin,
-                            ),
-                          ),
-                    icon: const Icon(Icons.navigation_outlined),
-                    label: const Text('Iniciar en Google Maps'),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: busy
-                        ? null
-                        : () => perform(
-                            context,
-                            () => Mobility.navigate('waze', destination!),
-                          ),
-                    icon: const Icon(Icons.directions_car_outlined),
-                    label: const Text('Iniciar en Waze'),
-                  ),
-                  const Note(
-                    'Google Maps recibe origen y destino. Waze navega desde la posición actual del teléfono. Cada aplicación decide su propio recorrido; RutaAlerta no lee la ruta de Waze.',
-                  ),
-                ],
-                if (error.isNotEmpty) Note(error),
-              ],
-            ),
-          ),
-          if (result != null) ...[
-            Note('${result!['proveedor']}'),
-            for (final route in result!['rutas'])
-              Panel(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      '${((route['distancia_m'] as num) / 1000).toStringAsFixed(1)} km · ${((route['duracion_s'] as num) / 60).round()} min aprox.',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                      ),
+                    onPressed: busy ? null : gps,
+                    icon: const Icon(Icons.my_location),
+                    label: Text(
+                      origin?['nombre'] == 'Mi ubicación actual'
+                          ? 'Origen: mi GPS actual'
+                          : 'Usar mi ubicación como origen',
                     ),
-                    gap(),
-                    OutlinedButton(
-                      onPressed: () => openScreen(
-                        context,
-                        RouteMap(
-                          route: Map<String, dynamic>.from(route as Map),
+                  ),
+                  gap(),
+                  DropdownButtonFormField<String>(
+                    key: ValueKey('destino/${destination?['tipo']}'),
+                    initialValue:
+                        places.any(
+                          (item) => item['tipo'] == destination?['tipo'],
+                        )
+                        ? (destination?['tipo'] as String?)
+                        : null,
+                    isExpanded: true,
+                    decoration: const InputDecoration(labelText: 'Destino'),
+                    items: [
+                      for (final p in places)
+                        DropdownMenuItem(
+                          value: p['tipo'] as String,
+                          child: Text('${p['nombre']}'),
                         ),
-                      ),
-                      child: const Text('Ver recorrido en el mapa'),
+                    ],
+                    onChanged: busy
+                        ? null
+                        : (v) => setState(() {
+                            destination = places.firstWhere(
+                              (p) => p['tipo'] == v,
+                            );
+                            result = null;
+                          }),
+                  ),
+                  if (destination != null && destination?['tipo'] == null)
+                    Text('Destino · ${destination!['nombre']}'),
+                  TextButton.icon(
+                    onPressed: busy
+                        ? null
+                        : () => chooseAddress(forOrigin: false),
+                    icon: const Icon(Icons.search),
+                    label: const Text('Buscar dirección de destino'),
+                  ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text(
+                      'Priorizar menor cruce de zonas históricas',
+                    ),
+                    value: avoidZones,
+                    onChanged: busy
+                        ? null
+                        : (value) => setState(() {
+                            avoidZones = value;
+                            result = null;
+                          }),
+                  ),
+                  gap(),
+                  FilledButton.icon(
+                    onPressed: busy ? null : calculate,
+                    icon: const Icon(Icons.route),
+                    label: Text(
+                      busy ? 'Calculando…' : 'Ver alternativas de ruta',
+                    ),
+                  ),
+                  if (destination != null) ...[
+                    gap(),
+                    OutlinedButton.icon(
+                      onPressed: busy
+                          ? null
+                          : () => perform(
+                              context,
+                              () => Mobility.navigate(
+                                'google',
+                                destination!,
+                                origin: origin,
+                              ),
+                            ),
+                      icon: const Icon(Icons.navigation_outlined),
+                      label: const Text('Iniciar en Google Maps'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: busy
+                          ? null
+                          : () => perform(
+                              context,
+                              () => Mobility.navigate('waze', destination!),
+                            ),
+                      icon: const Icon(Icons.directions_car_outlined),
+                      label: const Text('Iniciar en Waze'),
+                    ),
+                    const Note(
+                      'Google Maps recibe origen y destino. Waze navega desde la posición actual del teléfono. Cada aplicación decide su propio recorrido; RutaAlerta no lee la ruta de Waze.',
                     ),
                   ],
-                ),
+                  if (error.isNotEmpty) Note(error),
+                ],
               ),
-            Note('${result!['nota']}'),
-          ],
-          ActionGroup(
-            title: 'Lugares guardados',
-            children: [
-              for (final entry in {
-                'casa': ('Casa', Icons.home_outlined),
-                'trabajo': ('Trabajo', Icons.work_outline),
-                'favorito': ('Favorito', Icons.star_outline),
-              }.entries)
-                ActionRow(
-                  icon: entry.value.$2,
-                  title: entry.value.$1,
-                  detail:
-                      places
-                          .where((p) => p['tipo'] == entry.key)
-                          .firstOrNull?['nombre'] ??
-                      'Agregar lugar',
-                  onTap: () => edit(entry.key),
+            ),
+            if (result != null) ...[
+              if (result!['simulacion'] == true)
+                const Note('ENSAYO · zonas históricas ficticias.'),
+              Note('${result!['proveedor']}'),
+              for (final route in result!['rutas'])
+                Panel(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        '${((route['distancia_m'] as num) / 1000).toStringAsFixed(1)} km · ${((route['duracion_s'] as num) / 60).round()} min aprox.',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
+                      if (route['cruces_zonas'] != null)
+                        Text(
+                          route['cruces_zonas'] == 0
+                              ? 'Sin cruces con las zonas históricas consultadas'
+                              : '${route['cruces_zonas']} zonas históricas en el recorrido',
+                        ),
+                      gap(),
+                      OutlinedButton(
+                        onPressed: () => openScreen(
+                          context,
+                          RouteMap(
+                            route: Map<String, dynamic>.from(route as Map),
+                            zones: result!['zonas'] as List? ?? [],
+                          ),
+                        ),
+                        child: const Text('Ver recorrido en el mapa'),
+                      ),
+                    ],
+                  ),
                 ),
+              Note('${result!['nota']}'),
             ],
-          ),
-        ],
+            ActionGroup(
+              title: 'Lugares guardados',
+              children: [
+                for (final entry in {
+                  'casa': ('Casa', Icons.home_outlined),
+                  'trabajo': ('Trabajo', Icons.work_outline),
+                  'favorito': ('Favorito', Icons.star_outline),
+                }.entries)
+                  ActionRow(
+                    icon: entry.value.$2,
+                    title: entry.value.$1,
+                    detail:
+                        places
+                            .where((p) => p['tipo'] == entry.key)
+                            .firstOrNull?['nombre'] ??
+                        'Agregar lugar',
+                    onTap: () => edit(entry.key),
+                  ),
+              ],
+            ),
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class PlaceEditor extends StatefulWidget {
   final Session session;
   final String type;
   final Map<String, dynamic>? initial;
+  final bool temporal;
   const PlaceEditor({
     super.key,
     required this.session,
     required this.type,
     this.initial,
+    this.temporal = false,
   });
   @override
   State<PlaceEditor> createState() => _PlaceEditorState();
@@ -338,7 +439,7 @@ class PlaceEditor extends StatefulWidget {
 
 class _PlaceEditorState extends State<PlaceEditor> {
   late final name = TextEditingController(
-    text: widget.initial?['nombre'] ?? widget.type,
+    text: widget.initial?['nombre'] ?? (widget.temporal ? '' : widget.type),
   );
   late final address = TextEditingController(
     text: widget.initial?['direccion'] ?? '',
@@ -392,6 +493,16 @@ class _PlaceEditorState extends State<PlaceEditor> {
       if (a == null || b == null) {
         throw Exception('Confirma el punto de tu destino.');
       }
+      if (widget.temporal) {
+        Navigator.pop(context, <String, dynamic>{
+          'nombre': address.text.trim().isEmpty
+              ? 'Punto en el mapa'
+              : address.text.trim(),
+          'latitud': a,
+          'longitud': b,
+        });
+        return;
+      }
       await widget.session.api.request(
         '/lugares/${widget.type}',
         method: 'PUT',
@@ -412,17 +523,23 @@ class _PlaceEditorState extends State<PlaceEditor> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text('Guardar ${widget.type}')),
+    appBar: AppBar(
+      title: Text(
+        widget.temporal ? 'Elegir ${widget.type}' : 'Guardar ${widget.type}',
+      ),
+    ),
     body: ListView(
       padding: const EdgeInsets.all(24),
       children: [
-        const Note(
-          'Se guarda de forma privada en tu cuenta. La búsqueda de dirección utiliza el proveedor geográfico del teléfono; confirma el resultado antes de guardar.',
-        ),
-        TextField(
-          controller: name,
-          decoration: const InputDecoration(labelText: 'Nombre del lugar'),
-        ),
+        if (!widget.temporal) ...[
+          const Note(
+            'Se guarda de forma privada en tu cuenta. Confirma el resultado antes de guardar.',
+          ),
+          TextField(
+            controller: name,
+            decoration: const InputDecoration(labelText: 'Nombre del lugar'),
+          ),
+        ],
         gap(),
         TextField(
           controller: address,
@@ -509,7 +626,13 @@ class _PlaceEditorState extends State<PlaceEditor> {
         gap(),
         FilledButton(
           onPressed: busy ? null : save,
-          child: Text(busy ? 'Guardando…' : 'Guardar lugar privado'),
+          child: Text(
+            busy
+                ? 'Procesando…'
+                : widget.temporal
+                ? 'Usar este punto'
+                : 'Guardar lugar privado',
+          ),
         ),
         if (widget.initial != null)
           TextButton(
@@ -625,7 +748,8 @@ class _PointPickerState extends State<PointPicker> {
 
 class RouteMap extends StatefulWidget {
   final Map<String, dynamic> route;
-  const RouteMap({super.key, required this.route});
+  final List zones;
+  const RouteMap({super.key, required this.route, this.zones = const []});
   @override
   State<RouteMap> createState() => _RouteMapState();
 }
@@ -636,6 +760,24 @@ class _RouteMapState extends State<RouteMap> {
   Future<void> loaded() async {
     try {
       final geo = Map<String, dynamic>.from(widget.route['geometria'] as Map);
+      if (widget.zones.isNotEmpty) {
+        await controller!.addGeoJsonSource('zonas-historicas', {
+          'type': 'FeatureCollection',
+          'features': [
+            for (final z in widget.zones)
+              {'type': 'Feature', 'properties': {}, 'geometry': z['geometria']},
+          ],
+        });
+        await controller!.addFillLayer(
+          'zonas-historicas',
+          'manchas-historicas',
+          const m.FillLayerProperties(
+            fillColor: '#ea384a',
+            fillOpacity: .42,
+            fillOutlineColor: '#ff6b77',
+          ),
+        );
+      }
       await controller!.addGeoJsonSource('recorrido', {
         'type': 'Feature',
         'properties': {},
@@ -645,7 +787,7 @@ class _RouteMapState extends State<RouteMap> {
         'recorrido',
         'trazo',
         const m.LineLayerProperties(
-          lineColor: '#2867d8',
+          lineColor: '#64caff',
           lineWidth: 6,
           lineOpacity: 0.9,
         ),

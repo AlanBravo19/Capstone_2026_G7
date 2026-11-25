@@ -8,6 +8,9 @@ from pydantic import BaseModel, Field, field_validator
 from ..db import obtener_conexion,fila_dict
 from ..seguridad import usuario_actual,organizaciones_del_operador
 from ..antifraude import limitar
+from ..antifraude import DEMO
+from ..config import config
+from ..zonas_historicas import consultar_zonas, cruzar_rutas, PERIODO_DIAS
 from .colaboracion import rows, listado
 
 router=APIRouter(tags=['movilidad y antecedentes'])
@@ -36,6 +39,11 @@ class Ruta(BaseModel):
  origen:Punto
  destino:Punto
  consentimiento_proveedor:bool=False
+ evitar_zonas:bool=True
+
+
+def ambiente_historico():
+ return 'prueba' if config.alertas_demo and DEMO else 'operacion'
 
 @router.post('/rutas/calcular')
 def ruta(datos:Ruta,usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):
@@ -64,7 +72,21 @@ def ruta(datos:Ruta,usuario=Depends(usuario_actual),conn=Depends(obtener_conexio
   if not found:raise ValueError()
  except (httpx.HTTPError,ValueError,TypeError,KeyError):
   raise HTTPException(503,'No se pudo calcular la ruta. Puedes abrir el destino en Google Maps o Waze. No se mostrará una línea recta como si fuera una ruta.') from None
- return {'rutas':found,'proveedor':'OSRM público de demostración; sin garantía de disponibilidad ni tráfico en vivo.','nota':'Estimación vial, no ruta segura. Google Maps y Waze pueden calcular un recorrido diferente.'}
+ ambiente = ambiente_historico()
+ alcance = {'type':'MultiLineString','coordinates':[r['geometria']['coordinates'] for r in found]}
+ cur = conn.cursor()
+ zonas = consultar_zonas(cur, alcance, ambiente, 2000)
+ for alternativa, cruces in zip(found, cruzar_rutas(cur, found, zonas)):
+  alternativa['cruces_zonas'] = cruces
+ if datos.evitar_zonas:
+  found.sort(key=lambda r: (r['cruces_zonas'], r['duracion_s']))
+ nota = 'OSRM puede devolver una sola opción. La comparación usa antecedentes revisados de los últimos 365 días.'
+ if zonas and all(r['cruces_zonas'] for r in found):
+  nota = 'Todas las alternativas disponibles cruzan zonas históricas. ' + nota
+ elif not zonas:
+  nota = 'Sin zonas históricas concentradas cerca de las alternativas consultadas. ' + nota
+ return {'rutas':found,'zonas':zonas,'simulacion':ambiente=='prueba',
+         'proveedor':'OSRM · tiempos estimados sin tráfico en vivo','nota':nota}
 
 class Ficha(BaseModel):
  id_organizacion:int
@@ -92,7 +114,7 @@ def proponer(datos:Ficha,usuario=Depends(usuario_actual),conn=Depends(obtener_co
  if datos.fecha_publicacion>datetime.now(timezone.utc).date() or datos.fecha_hecho and datos.fecha_hecho>datos.fecha_publicacion:raise HTTPException(422,'Revisa las fechas de la fuente')
  cur.execute('SELECT id_antecedente FROM antecedente_publico WHERE url_fuente=%s',(datos.url_fuente,))
  if cur.fetchone():raise HTTPException(409,'La fuente ya fue propuesta; revisa el antecedente existente')
- cur.execute('''INSERT INTO antecedente_publico(id_organizacion,url_fuente,nombre_fuente,titulo,resumen,tipo,fecha_publicacion,fecha_hecho,zona) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id_antecedente''',(datos.id_organizacion,datos.url_fuente,datos.nombre_fuente,datos.titulo,datos.resumen,datos.tipo,datos.fecha_publicacion,datos.fecha_hecho,datos.zona))
+ cur.execute('''INSERT INTO antecedente_publico(id_organizacion,url_fuente,nombre_fuente,titulo,resumen,tipo,fecha_publicacion,fecha_hecho,zona,entorno) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id_antecedente''',(datos.id_organizacion,datos.url_fuente,datos.nombre_fuente,datos.titulo,datos.resumen,datos.tipo,datos.fecha_publicacion,datos.fecha_hecho,datos.zona,ambiente_historico()))
  return {'id_antecedente':cur.fetchone()[0],'estado':'pendiente','nota':'No genera avisos hasta una revisión humana y territorial explícita.'}
 @router.get('/gestion/antecedentes')
 def cola(usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):
@@ -122,8 +144,8 @@ def avisos(lat:float=Query(...,ge=-90,le=90),lon:float=Query(...,ge=-180,le=180)
  cur=conn.cursor()
  # El servidor recibe una búsqueda puntual por área, no un historial continuo de GPS.
  cur.execute('''SELECT id_antecedente,url_fuente,nombre_fuente,titulo,resumen,tipo,fecha_publicacion,fecha_hecho,zona,precision_m,radio_m,vence_en,ST_Y(centro::geometry) AS latitud,ST_X(centro::geometry) AS longitud FROM antecedente_publico
- WHERE estado='validado' AND entorno='operacion' AND vence_en>CURRENT_TIMESTAMP AND fecha_publicacion>=CURRENT_DATE-365
- AND ST_DWithin(centro,ST_SetSRID(ST_Point(%s,%s),4326)::geography,%s) ORDER BY fecha_publicacion DESC LIMIT 50''',(lon,lat,radio_km*1000))
+ WHERE estado='validado' AND entorno=%s AND vence_en>CURRENT_TIMESTAMP AND fecha_publicacion>=CURRENT_DATE-365
+ AND ST_DWithin(centro,ST_SetSRID(ST_Point(%s,%s),4326)::geography,%s) ORDER BY fecha_publicacion DESC LIMIT 50''',(ambiente_historico(),lon,lat,radio_km*1000))
  return {'avisos':rows(cur),'cache_hasta':datetime.now(timezone.utc)+timedelta(hours=2),'nota':'Antecedentes de prensa revisados; no indican delitos en curso ni frecuencia estadística. Ubicaciones aproximadas.'}
 
 
@@ -132,11 +154,21 @@ def panorama(lat:float=Query(...,ge=-90,le=90), lon:float=Query(...,ge=-180,le=1
              usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):
     solicitudes=listado(lat,lon,30,'',usuario,conn)
     antecedentes=avisos(lat,lon,30,usuario,conn)
-    return {'solicitudes':solicitudes['cercanos'], 'antecedentes':antecedentes['avisos']}
+    ambiente = ambiente_historico()
+    zonas = consultar_zonas(conn.cursor(), {'type':'Point','coordinates':[lon,lat]}, ambiente, 30000)
+    return {'solicitudes':solicitudes['cercanos'], 'antecedentes':antecedentes['avisos'],
+            'zonas':zonas, 'periodo_dias':PERIODO_DIAS, 'simulacion':ambiente=='prueba'}
+
+@router.get('/territorio/zonas')
+def zonas_mapa(lat:float=Query(...,ge=-90,le=90), lon:float=Query(...,ge=-180,le=180),
+               usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):
+    ambiente = ambiente_historico()
+    zonas = consultar_zonas(conn.cursor(), {'type':'Point','coordinates':[lon,lat]}, ambiente, 30000)
+    return {'zonas':zonas, 'periodo_dias':PERIODO_DIAS, 'simulacion':ambiente=='prueba'}
 
 @router.get('/territorio/noticias')
 def noticias(usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):
- cur=conn.cursor();cur.execute("""SELECT id_antecedente,url_fuente,nombre_fuente,titulo,resumen,tipo,fecha_publicacion,fecha_hecho,zona,estado FROM antecedente_publico WHERE entorno='operacion' AND estado<>'descartado' AND fecha_publicacion>=CURRENT_DATE-365 ORDER BY fecha_publicacion DESC LIMIT 100""")
+ cur=conn.cursor();cur.execute("""SELECT id_antecedente,url_fuente,nombre_fuente,titulo,resumen,tipo,fecha_publicacion,fecha_hecho,zona,estado FROM antecedente_publico WHERE entorno=%s AND estado<>'descartado' AND fecha_publicacion>=CURRENT_DATE-365 ORDER BY fecha_publicacion DESC LIMIT 100""", (ambiente_historico(),))
  return {'noticias':rows(cur),'nota':'Enlaces y resúmenes propios. Los pendientes todavía no generan avisos. Una noticia no es una estadística de frecuencia.'}
 
 @router.post('/territorio/avisos/descargar')

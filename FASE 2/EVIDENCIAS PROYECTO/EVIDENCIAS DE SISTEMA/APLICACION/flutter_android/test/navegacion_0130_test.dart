@@ -62,10 +62,10 @@ void main() {
       );
       await t.pumpAndSettle();
       expect(find.text('Guardar mi primer destino'), findsOneWidget);
-      expect(
-        t.getTopLeft(find.text('Origen guardado')).dy,
-        lessThan(t.getTopLeft(find.text('Lugares guardados')).dy),
-      );
+      expect(find.text('Origen guardado').hitTestable(), findsOneWidget);
+      await t.scrollUntilVisible(find.text('Lugares guardados'), 170);
+      await t.pumpAndSettle();
+      expect(find.text('Lugares guardados').hitTestable(), findsOneWidget);
       expect(t.takeException(), isNull);
     },
   );

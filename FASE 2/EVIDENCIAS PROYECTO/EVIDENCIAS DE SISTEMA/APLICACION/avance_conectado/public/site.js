@@ -1,4 +1,5 @@
 'use strict';
+RutaMapa.configurarZonas((lat,lon)=>api(`/territorio/zonas?lat=${lat}&lon=${lon}`));
 const $=id=>document.getElementById(id);
 let token='',perfil=null,registro=false,desafio=null,envioCaso=null,correoCanal='prueba';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -28,6 +29,8 @@ async function prepararCatalogo(){
 }
 function limpiarAlta(){
  limpiarFotosColaboracion();limpiarFotoReporte();
+ $('form-vehiculo').reset();mostrarRevisionAlta();
+ $('form-solicitar-vinculo').reset();$('form-solicitar-vinculo').hidden=true;
  if($('aporte-web')){cerrarAporte();}
  $('clave-totp').textContent='';$('codigos-recuperacion').textContent='';$('activar-totp').hidden=true;
  $('preparar-totp').reset();$('activar-totp').reset();
@@ -77,26 +80,95 @@ async function cargar(){
  $('saludo').textContent='Hola, '+perfil.nombre_visible;$('estado-cuenta').textContent=estado.estado;$('total-vehiculos').textContent=vehiculos.length;$('total-casos').textContent=casos.length;
  if(estado.transporte_correo==='smtp'){$('pedir-sms').hidden=true;$('form-telefono').hidden=true;}
  $('estado-contactos').textContent=`Correo: ${estado.correo_verificado?'confirmado':'pendiente'} · Autenticador: ${estado.mfa_activo?'activo':'pendiente'} · ${estado.puede_participar?'Puedes registrar vehículos y reportes.':'Completa los dos pasos para participar.'}`;
- $('lista-vehiculos').innerHTML=vehiculos.length?vehiculos.map(v=>`<article class="item"><b>${esc(v.patente)} · ${esc(v.marca)} ${esc(v.modelo)}</b><p>${esc(v.color)} · ${esc(v.anio)}</p><span class="pill">Vínculo ${esc(v.estado_vinculo)}</span></article>`).join(''):'<p class="empty">Todavía no has registrado vehículos.</p>';
+ $('lista-vehiculos').innerHTML=vehiculos.length?vehiculos.map(v=>`<article class="item"><b>${esc(v.patente)} · ${esc(v.marca)} ${esc(v.modelo)}</b><p>${esc(v.color)} · ${esc(v.anio)}</p><span class="pill">${v.estado_vinculo==='autorizado'?'Vínculo aprobado':'Vínculo pendiente'}</span>${v.estado_vinculo==='pendiente'?(v.padron_recibido_en?'<p>Padrón enviado al supervisor.</p>':'<p><button type="button" data-revision-vinculo="'+Number(v.id_vehiculo)+'">Adjuntar padrón</button></p>'):v.vence_revision_en?`<p>Revisión válida hasta ${esc(v.vence_revision_en.split('T')[0])}.</p>`:''}</article>`).join(''):'<p class="empty">Todavía no has registrado vehículos.</p>';
  $('vehiculo-caso').innerHTML='<option value="">Selecciona tu vehículo</option>'+vehiculos.map(v=>`<option value="${Number(v.id_vehiculo)}">${esc(v.patente)} · ${esc(v.modelo)}</option>`).join('');
- $('lista-casos').innerHTML=casos.length?casos.map(c=>`<article class="item"><b>${esc(c.folio)} · ${esc(c.patente)}</b><p>${esc(c.zona)} · ${esc(new Date(c.fecha_hecho).toLocaleString('es-CL'))}</p><span class="pill">${esc(c.estado.replaceAll('_',' '))}</span><p>Antecedentes de denuncia: ${esc(c.denuncia_estado.replaceAll('_',' '))}. Sin publicación automática.</p></article>`).join(''):'<p class="empty">Tus reportes aparecerán aquí después de registrarlos.</p>';
+ $('vehiculo-caso').onchange=()=>{
+   const v=vehiculos.find(item=>Number(item.id_vehiculo)===Number($('vehiculo-caso').value));
+   const org=$('org-caso');
+   if(v?.estado_vinculo==='autorizado'&&Date.parse(v.vence_revision_en)>Date.now()&&Array.from(org.options).some(o=>Number(o.value)===Number(v.id_organizacion_revision)))org.value=String(v.id_organizacion_revision);
+ };
+ $('lista-casos').innerHTML=casos.length?casos.map(tarjetaCasoPersonal).join(''):'<p class="empty">Tus reportes aparecerán aquí después de registrarlos.</p>';
  const admin=perfil.roles.includes('administrador');$('administracion').hidden=!admin;
+ for(const boton of $('lista-vehiculos').querySelectorAll('button[data-revision-vinculo]')){
+   boton.onclick=async()=>{
+     const form=$('form-solicitar-vinculo');
+     form.reset();
+     form.elements.vehiculo.value=boton.dataset.revisionVinculo;
+     const select=form.elements.organizacion;
+     select.replaceChildren(...Array.from($('org-caso').options,op=>new Option(op.text,op.value)));
+     const revision=vehiculos.find(v=>Number(v.id_vehiculo)===Number(boton.dataset.revisionVinculo));
+     select.disabled=revision.id_organizacion_revision!=null;
+     if(select.disabled)select.value=String(revision.id_organizacion_revision);
+     form.hidden=false;select.focus();
+   };
+ }
  await solicitudesCiudadanas(estado.puede_participar);
 
 }
+function tarjetaCasoPersonal(c){
+ const id=Number(c.id_caso);
+ const retirar=c.colaboracion_consentida_en?`<button type="button" data-accion-caso="retirar_consentimiento" data-caso="${id}">Retirar consentimiento</button>`:'';
+ const recuperar=`<button type="button" data-accion-caso="informar_recuperacion" data-caso="${id}">Informar recuperación</button>`;
+ return `<article class="item"><b>${esc(c.folio)} · ${esc(c.patente)}</b><p>${esc(c.zona)} · ${esc(new Date(c.fecha_hecho).toLocaleString('es-CL'))}</p><span class="pill">${esc(c.estado.replaceAll('_',' '))}</span><p>Antecedentes de denuncia: ${esc(c.denuncia_estado.replaceAll('_',' '))}.</p>${c.estado!=='cerrado'?`<div class="row">${retirar}${recuperar}</div>`:''}</article>`;
+}
+$('lista-casos').onclick=async event=>{
+ const button=event.target.closest('button[data-accion-caso]');
+ if(!button)return;
+ const accion=button.dataset.accionCaso;
+ const cid=Number(button.dataset.caso);
+ const pregunta=accion==='informar_recuperacion'?'¿Informar que recuperaste el vehículo? La organización revisará el aviso y se suspenderá la difusión.':'¿Retirar la autorización para difundir esta alerta?';
+ if(!confirm(pregunta))return;
+ button.disabled=true;
+ try{
+   await api('/mis-casos/'+cid+'/alerta',{method:'POST',body:{accion}});
+   await cargar();
+   aviso('Información guardada en el expediente.');
+ }catch(error){aviso(error.message,true);}
+ finally{button.disabled=false;}
+};
 accion('pedir-correo',async()=>{const r=await api('/identidad/correo/solicitar',{method:'POST'});correoCanal=r.canal||'prueba';if(r.token_demo){$('token-correo').value=r.token_demo;$('correo-demo').textContent='Código beta preparado. No se envió un correo.';$('correo-demo').hidden=false}else {$('correo-demo').textContent=r.mensaje;$('correo-demo').hidden=false;aviso(r.mensaje)}});
 formulario('form-correo',async()=>{await api('/identidad/correo/confirmar',{method:'POST',body:{token:$('token-correo').value}});$('token-correo').value='';$('correo-demo').hidden=true;await cargar();aviso(correoCanal==='correo'?'Correo confirmado con el código recibido.':'Paso de correo completado en la beta.')});
 accion('pedir-sms',async()=>{const r=await api('/identidad/telefono/solicitar',{method:'POST',body:{telefono:$('telefono').value}});desafio=r.id_desafio;$('codigo-sms').value=r.codigo_demo||'';$('sms-demo').textContent='Código beta: '+r.codigo_demo+'. No se envió un SMS.';$('sms-demo').hidden=false});
 formulario('form-telefono',async()=>{if(!desafio)throw new Error('Primero solicita un código.');await api('/identidad/telefono/confirmar',{method:'POST',body:{id_desafio:desafio,codigo:$('codigo-sms').value}});desafio=null;$('codigo-sms').value='';$('sms-demo').hidden=true;await cargar();aviso('Pasos beta completados. Ya puedes registrar vehículos y reportes.')});
-formulario('form-vehiculo',async e=>{const d=Object.fromEntries(new FormData(e.target));d.anio=Number(d.anio);d.patente=d.patente.toUpperCase().replace(/[ .-]/g,'');const formato=catalogoVehicular.formatos[d.tipo_vehiculo==='motocicleta'?'motocicleta':'cuatro_ruedas'];if(!new RegExp('^'+formato+'$').test(d.patente)){vehiculo.patente.setCustomValidity('Revisa la patente para este tipo de vehículo.');vehiculo.patente.reportValidity();return;}await api('/vehiculos',{method:'POST',body:d});e.target.reset();opcionesVehiculo();await cargar();aviso('Vehículo guardado. Vínculo pendiente de revisión.')});
+function mostrarRevisionAlta(){
+ const activar=$('verificar-vehiculo').checked;
+ $('revision-alta').hidden=!activar;
+ for(const campo of [vehiculo.organizacion_revision,vehiculo.padron]){campo.disabled=!activar;campo.required=activar;}
+ if(!activar)vehiculo.padron.value='';
+ $('form-vehiculo').querySelector('.primary').textContent=activar?'Guardar y enviar a revisión':'Guardar vehículo';
+}
+$('verificar-vehiculo').onchange=mostrarRevisionAlta;
+formulario('form-vehiculo',async e=>{
+ const {organizacion_revision, padron, ...datos}=Object.fromEntries(new FormData(e.target));
+ datos.anio=Number(datos.anio);datos.patente=datos.patente.toUpperCase().replace(/[ .-]/g,'');
+ const formato=catalogoVehicular.formatos[datos.tipo_vehiculo==='motocicleta'?'motocicleta':'cuatro_ruedas'];
+ if(!new RegExp('^'+formato+'$').test(datos.patente)){
+   vehiculo.patente.setCustomValidity('Revisa la patente para este tipo de vehículo.');vehiculo.patente.reportValidity();return;
+ }
+ if($('verificar-vehiculo').checked)datos.revision={id_organizacion:Number(organizacion_revision),padron_base64:await imagenPrivada(vehiculo.padron)};
+ const resultado=await api('/vehiculos',{method:'POST',body:datos});
+ e.target.reset();mostrarRevisionAlta();opcionesVehiculo();await cargar();aviso(resultado.mensaje);
+});
+formulario('form-solicitar-vinculo',async e=>{
+ const form=e.target;
+ await api('/vehiculos/'+Number(form.elements.vehiculo.value)+'/revision-vinculo',
+   {method:'POST',body:{id_organizacion:Number(form.elements.organizacion.value),padron_base64:await imagenPrivada(form.elements.padron)}});
+ form.reset();form.hidden=true;
+ await cargar();
+ aviso('Padrón enviado al supervisor.');
+});
 formulario('form-caso',async e=>{const d={id_vehiculo:Number($('vehiculo-caso').value),id_organizacion:Number($('org-caso').value),fecha_hecho:new Date($('fecha-caso').value).toISOString(),zona:$('zona-caso').value,descripcion:$('descripcion').value,latitud:Number($('latitud').value),longitud:Number($('longitud').value)};
  // Un fallo de red conserva la clave para no duplicar el mismo envío.
  d.solicitar_colaboracion=$('autoriza-caso').checked;
+ d.confirmar_sustraccion=$('confirma-sustraccion').checked;
  d.autorizar_foto_publica=$('autoriza-foto-caso').checked;
  if(d.autorizar_foto_publica&&(!d.solicitar_colaboracion||!$('foto-caso').files.length))throw Error('Para autorizar la foto, adjunta una imagen del vehículo y solicita colaboración ciudadana.');
  const foto=await imagenPrivada($('foto-caso'));if(foto)d.foto_base64=foto;
  const firma=JSON.stringify(d);if(!envioCaso||envioCaso.firma!==firma)envioCaso={firma,clave:crypto.randomUUID()};
- const r=await api('/casos',{method:'POST',body:d,headers:{'Idempotency-Key':envioCaso.clave}});envioCaso=null;e.target.reset();limpiarFotoReporte();RutaMapa.quitarSeleccion();await cargar();aviso('Reporte guardado: '+r.folio+'. Está pendiente de revisión.')});
+ const r=await api('/casos',{method:'POST',body:d,headers:{'Idempotency-Key':envioCaso.clave}});
+ envioCaso=null;e.target.reset();limpiarFotoReporte();RutaMapa.quitarSeleccion();
+ try{await cargar();}finally{aviso('Reporte '+r.folio+' recibido. '+(r.siguiente_paso||'Abre el seguimiento para revisar el estado.'));}
+});
 formulario('form-sancion',async e=>{await api('/moderacion/usuarios/'+Number($('usuario-sancion').value)+'/sanciones',{method:'POST',body:{accion:'suspension',motivo:$('motivo-sancion').value}});e.target.reset();aviso('Cuenta suspendida y sesiones revocadas. Acción registrada.')});
 $('bandeja').addEventListener('click',async e=>{const b=e.target.closest('.revisar');if(!b)return;const id=Number(b.dataset.id);b.disabled=true;try{await api('/gestion/casos/'+id+'/revision',{method:'POST',body:{estado:'en_revision',motivo:$('revision-'+id).value}});await cargar();aviso('Estado actualizado. El reporte continúa privado.')}catch(err){aviso(err.message,true)}finally{b.disabled=false}});
 
@@ -114,7 +186,7 @@ formulario('form-nueva-clave',async()=>{
 let intentoTestigo;
 async function cargarTestigos(){
  const [orgs,mios]=await Promise.all([api('/organizaciones'),api('/mis-avisos-testigo')]);
- for(const select of [$('org-caso'),$('form-testigo').elements.id_organizacion]){
+ for(const select of [$('org-caso'),$('form-testigo').elements.id_organizacion,vehiculo.organizacion_revision]){
    const previo=select.value;
    select.replaceChildren(new Option('Selecciona…',''),...orgs.map(o=>new Option(o.nombre,String(o.id_organizacion))));
    select.value=previo;
@@ -185,6 +257,16 @@ function cerrarAporte(){
  solicitudElegida=null;intentoAporte=null;
  $('aporte-web').reset();$('aporte-web').hidden=true;$('foto-vehiculo-aporte').replaceChildren();
 }
+function estadoAlerta(s){
+ const nombre={provisional:'Alerta ciudadana provisional',encargo_comprobado:'Encargo comprobado',revisada:'Publicación revisada'}[s.modo_alerta]||'Solicitud activa';
+ const edad=Math.max(0,Math.floor((Date.now()-Date.parse(s.reportada_en))/60000));
+ const subtitulo={
+   encontrado:'Resultado registrado por el operador.',
+   sin_resultado:'La consulta no encontró un encargo en ese momento.',
+   no_disponible:'La fuente no estaba disponible durante la consulta.'
+ }[s.encargo_resultado]||'Encargo policial pendiente de comprobación.';
+ return `<p class="alert-card-state ${s.modo_alerta==='provisional'?'provisional':''}"><strong>${s.simulada?'SIMULACIÓN · ':''}${esc(nombre)}</strong><br>${esc(subtitulo)}${Number.isFinite(edad)?' · Reportado hace '+edad+' min':''}</p>`;
+}
 async function imagenPrivada(input){
  const file=input.files[0];if(!file)return null;
  if(file.size>2097152)throw Error('La imagen supera 2 MB.');
@@ -196,9 +278,10 @@ async function solicitudesCiudadanas(permitido){
  const controller=new AbortController();cargaFotos=controller;
  const d=await api('/colaboracion');
  if(actual!==token||turno!==consultaSolicitudes)return;
+ $('alertas-actualizacion').textContent=(d.demo_alertas?'DEMOSTRACIÓN AISLADA · ':'')+'Actualizado '+new Date().toLocaleTimeString('es-CL');
  const items=[...d.cercanos,...d.otras_zonas];
  for(const s of items)solicitudesVisibles.set(Number(s.id_solicitud_colaboracion),s);
- $('solicitudes-ciudadanas').innerHTML=items.length?items.map(s=>`<article class="item collaboration-card"><div id="foto-solicitud-${Number(s.id_solicitud_colaboracion)}">${imagenColaboracion(s)}</div><div><b>${esc(s.patente)} · ${esc(s.marca)} ${esc(s.modelo)}</b><p>${esc(nombresTipo[s.tipo_vehiculo]||'Vehículo')} · ${esc(s.color)} · ${esc(s.zona_publicable)}</p><p>${esc(s.texto_aprobado)}</p><button type="button" data-solicitud="${Number(s.id_solicitud_colaboracion)}" data-patente="${esc(s.patente)}" ${permitido&&!s.es_mi_caso?'':'disabled'}>${s.es_mi_caso?'Tu caso · usa el seguimiento':'Aportar información y foto'}</button></div></article>`).join(''):'<p class="empty">Sin solicitudes vigentes. Aquí aparecen los vehículos que el titular autorizó y el operador publicó.</p>';
+ $('solicitudes-ciudadanas').innerHTML=items.length?items.map(s=>`<article class="item collaboration-card"><div id="foto-solicitud-${Number(s.id_solicitud_colaboracion)}">${imagenColaboracion(s)}</div><div>${estadoAlerta(s)}<b>${esc(s.patente)} · ${esc(s.marca)} ${esc(s.modelo)}</b><p>${esc(nombresTipo[s.tipo_vehiculo]||'Vehículo')} · ${esc(s.color)} · ${esc(s.zona_publicable)}</p><p>${esc(s.texto_aprobado)}</p><button type="button" data-solicitud="${Number(s.id_solicitud_colaboracion)}" data-patente="${esc(s.patente)}" ${permitido&&!s.es_mi_caso?'':'disabled'}>${s.es_mi_caso?'Tu caso · usa el seguimiento':'Aportar información y foto'}</button></div></article>`).join(''):'<p class="empty">Sin solicitudes vigentes. Aquí aparecen las alertas activas con autorización del titular.</p>';
  if(!permitido&&items.length)$('solicitudes-ciudadanas').insertAdjacentHTML('beforeend','<p>Verifica tu cuenta para enviar avistamientos.</p>');
  const elegida=solicitudesVisibles.get(solicitudElegida);
  if(solicitudElegida&&(!elegida||!permitido||elegida.es_mi_caso))cerrarAporte();
@@ -217,6 +300,14 @@ async function solicitudesCiudadanas(permitido){
  }));
 }
 accion('actualizar-solicitudes',()=>solicitudesCiudadanas(participacion));
+let actualizandoAlertas=false;
+setInterval(async()=>{
+ if(!token||document.hidden||solicitudElegida||actualizandoAlertas)return;
+ actualizandoAlertas=true;
+ try{await solicitudesCiudadanas(participacion);}
+ catch(error){if(token)$('alertas-actualizacion').textContent='Conexión interrumpida · reintentando';}
+ finally{actualizandoAlertas=false;}
+},20000);
 $('solicitudes-ciudadanas').onclick=e=>{
  const b=e.target.closest('button[data-solicitud]');if(!b)return;
  const s=solicitudesVisibles.get(Number(b.dataset.solicitud));if(!s||!participacion||s.es_mi_caso)return;

@@ -14,11 +14,11 @@ try:
     cur=conn.cursor()
     cur.execute("SELECT EXISTS(SELECT 1 FROM information_schema.schemata WHERE schema_name='rutaalerta')")
     if cur.fetchone()[0]:raise SystemExit('Esquema existente: se detiene para no sobrescribir. Requiere revisar migraciones.')
-    for nombre in ['01_Esquema_Completo_Supabase.sql','02_Catalogo_indicadores.sql','03_Datos_demo.sql','04_Identidad_MVP.sql','05_Beta_Colaborativa.sql','06_Movilidad_y_Fuentes.sql', '07_Avisos_Testigo.sql', '08_Foto_Vehiculo_Publica.sql']:
+    for nombre in ['01_Esquema_Completo_Supabase.sql','02_Catalogo_indicadores.sql','03_Datos_demo.sql','04_Identidad_MVP.sql','05_Beta_Colaborativa.sql','06_Movilidad_y_Fuentes.sql', '07_Avisos_Testigo.sql', '08_Foto_Vehiculo_Publica.sql', '09_Alertas_Provisionales.sql', '10_Padron_Privado.sql']:
         cur.execute((BASE/'sql'/nombre).read_text(encoding='utf-8-sig'))
         print('Cargado:',nombre)
     cur.execute("SELECT count(*) FROM information_schema.tables WHERE table_schema='rutaalerta' AND table_type='BASE TABLE'")
     tablas=cur.fetchone()[0]
-    if tablas!=66:raise RuntimeError('El conteo no coincide con la migración')
+    if tablas!=68:raise RuntimeError('El conteo no coincide con la migración')
     print('Esquema cargado:',tablas,'tablas físicas. Datos ficticios únicamente.')
 finally:conn.close()

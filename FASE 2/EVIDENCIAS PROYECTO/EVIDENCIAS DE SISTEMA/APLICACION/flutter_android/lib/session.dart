@@ -236,7 +236,10 @@ class Session extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<String> report(Map<String, dynamic> body) async {
+  Future<String> report(Map<String, dynamic> body) async =>
+      (await reportReceipt(body))['folio'] as String;
+
+  Future<Map<String, dynamic>> reportReceipt(Map<String, dynamic> body) async {
     // Conservar la misma clave ante un fallo de red evita duplicar el reporte.
     final signature = body.toString();
     if (_caseSignature != signature || _caseKey == null) {
@@ -253,7 +256,7 @@ class Session extends ChangeNotifier {
     _caseKey = null;
     selectedPoint = null;
     notifyListeners();
-    return response['folio'] as String;
+    return response as Map<String, dynamic>;
   }
 
   Future<void> logout() async {

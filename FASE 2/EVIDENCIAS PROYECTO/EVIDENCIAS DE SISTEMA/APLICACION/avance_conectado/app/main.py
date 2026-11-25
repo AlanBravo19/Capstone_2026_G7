@@ -5,10 +5,13 @@ from pathlib import Path
 import os
 import secrets
 
-from .db import obtener_conexion
+from .db import ErrorBD, conectar, obtener_conexion
+from .prelectura_padron import operativa
 from .routers import casos, cuentas, identidad, avance, seguridad_cuenta, colaboracion, movilidad, testigos, gestion_equipo
 from .routers import recursos_territorio
 from .routers import estadisticas
+from .routers import alertas
+from .config import config
 from .antifraude import DEMO, SECRET
 from .correo import correo_real, configuracion_smtp
 
@@ -24,10 +27,12 @@ if os.getenv('VERCEL'):
         raise RuntimeError('El registro público requiere correo operativo y una clave OTP estable.')
     if os.getenv('DB_SSL')!='1':
         raise RuntimeError('La conexión remota exige DB_SSL=1')
+if config.alertas_demo and (not DEMO or os.getenv('VERCEL')):
+    raise RuntimeError('La simulación de encargos requiere una instancia aislada de prueba.')
 
 app = FastAPI(
     title="RutaAlerta API",
-    version="0.20.0-beta",
+    version="0.23.0-beta",
     description="Beta colaborativa: TOTP, seguimiento, publicación revisada y fotos privadas. Correo y SMS dependen de la configuración de proveedores.",
 )
 app.include_router(cuentas.router)
@@ -41,6 +46,7 @@ app.include_router(testigos.router)
 app.include_router(gestion_equipo.router)
 app.include_router(recursos_territorio.router)
 app.include_router(estadisticas.router)
+app.include_router(alertas.router)
 
 BASE=Path(__file__).resolve().parents[1]
 
@@ -95,7 +101,19 @@ def health(request:Request,conn=Depends(obtener_conexion)):
     return {"estado": "ok", "postgis": postgis, "tablas": tablas}
 
 @app.get("/version",include_in_schema=False)
-def version_beta():return {"version":"0.20.0-beta","modelo_tablas":66,"cliente":"Flutter Android","panel":"/operaciones"}
+def version_beta():
+    try:
+        with conectar() as conn:
+            cur = conn.cursor()
+            cur.execute("""SELECT COALESCE(bool_and(has_table_privilege(
+                to_regclass('rutaalerta.documento_vinculo_vehiculo'), permiso)), false)
+                FROM unnest(ARRAY['SELECT','INSERT','UPDATE']) permiso""")
+            padron_privado = cur.fetchone()[0]
+    except ErrorBD:
+        padron_privado = False
+    return {"version": app.version, "modelo_tablas": 68, "cliente": "Flutter Android",
+            "panel": "/operaciones", "padron_privado": padron_privado,
+            "padron_prelectura": bool(padron_privado and operativa())}
 
 @app.get('/leaflet/leaflet.css', include_in_schema=False)
 def estilos_cartografia(): return FileResponse(BASE/'public/leaflet/leaflet.css', media_type='text/css')

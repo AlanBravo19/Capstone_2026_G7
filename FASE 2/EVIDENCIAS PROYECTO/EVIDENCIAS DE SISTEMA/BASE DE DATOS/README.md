@@ -4,6 +4,12 @@ Grupo 7 · Jorge Ceballos, Juan Marinan y Alan Bravo. DUOC UC, sede San Andrés,
 Docentes: Juan Pablo Mellado Alarcón y Mabel Alejandra Herrera Pino.
 Consolidación: **29 de septiembre de 2026**. Corresponde al material solicitado para el 25 de septiembre; no se declara una entrega retroactiva.
 
+## Esquema operativo de la beta 0.23
+
+Los diez scripts de [`sql/beta_0.23`](sql/beta_0.23) corresponden a las 68 tablas de la aplicación conectada. Este conjunto coincide con el [SQL usado por la API](../APLICACION/avance_conectado/sql). Los diagramas y las pruebas incluidos más abajo describen el modelo original de 56 tablas.
+
+En una base existente que ya tenga la beta 0.20, aplica [09 Alertas provisionales](sql/beta_0.23/09_Alertas_Provisionales.sql) y [10 Padrón privado](sql/beta_0.23/10_Padron_Privado.sql) en ese orden. En una base nueva sigue la [guía de la API](../APLICACION/avance_conectado/README.md). Usa el script 03 de datos ficticios solo en una instancia de ensayo.
+
 ## Qué revisar primero
 
 1. `RutaAlerta_Entrega_Capstone.pdf`: alcance, objetivos medibles, actores, relaciones UML, trazabilidad, decisiones, validación y guía de defensa. También se entrega Word editable.

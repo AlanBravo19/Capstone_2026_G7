@@ -16,14 +16,104 @@ let token='', challenge='', view='cases', selected=null, generation=0, records=[
 let photos=[], noticeTimer;
 let mapOrg=null,originView='cases',resourceOffset=0;
 let accountAccess=null;
+names.links='Verificar vínculos';
+routes.links='/operaciones/vinculos';
+descriptions.links='Revisión documental interna por la organización receptora.';
+let alertFilter='',polling=false;
+const labelsEncargo={encontrado:'Encargo encontrado',sin_resultado:'Sin encargo encontrado',no_disponible:'Fuente no disponible'};
+const labelsDifusion={provisional:'Provisional activa',encargo_comprobado:'Encargo comprobado',revisada:'Publicación revisada',suspendida:'Suspendida',vencida:'Vencida',retirada:'Retirada',pendiente:'Pendiente de publicación',privada:'Expediente privado',cerrada:'Cerrada'};
+function estadoDifusion(c){
+  if(c.estado==='cerrado')return 'cerrada';
+  if(c.estado_difusion==='retirada')return 'retirada';
+  if(c.suspendida_en)return 'suspendida';
+  if(c.vence_en&&Date.parse(c.vence_en)<=Date.now())return 'vencida';
+  if(c.estado_difusion==='publicada'&&c.difusion_visible===false)return 'suspendida';
+  if(c.estado_difusion==='publicada')return c.modo_alerta;
+  return c.solicita_colaboracion?'pendiente':'privada';
+}
+function minutesOld(value){return Math.max(0,Math.floor((Date.now()-Date.parse(value))/60000));}
+function matchesAlertFilter(c){
+  const state=estadoDifusion(c);
+  if(alertFilter==='vencimiento')return c.vence_en&&['provisional','encargo_comprobado','revisada'].includes(state)&&Date.parse(c.vence_en)-Date.now()<=15*60000;
+  if(alertFilter==='encargo')return c.estado!=='cerrado'&&c.solicita_colaboracion&&c.consulta_encargo!=='encontrado';
+  if(alertFilter==='aportes')return c.aportes_pendientes>0;
+  return state===alertFilter;
+}
+function versionField(c){
+  return Number.isInteger(c.revision_alerta)?`<input type="number" name="revision" hidden value="${c.revision_alerta}">`:'';
+}
+function alertReview(c,base){
+  if(!Number.isInteger(c.revision_alerta))return '';
+  const options=selector('resultado','Resultado de la consulta',labelsEncargo);
+  const ref='<label>Referencia interna<input name="referencia" maxlength="80" placeholder="Ej. AS-REV-001"></label>';
+  const simulation=c.simulacion_disponible&&accountAccess?.administrador_global?
+    action('Registrar resultado simulado',base+'/encargo','<input type="hidden" name="simulada" value="true">'+versionField(c)+options+ref+motives):'';
+  const captura='<label>Captura privada de la consulta (opcional, 2 MB)<input type="file" name="captura_encargo" accept="image/jpeg,image/png,image/webp"></label>';
+  const manual=c.simulacion_disponible?'':action('Registrar consulta manual',base+'/encargo',versionField(c)+options+ref+motives+captura+photoPublicationOptions(c));
+  const controls=c.estado==='cerrado'?'':manual+simulation+
+    (c.alerta?.visible?action('Suspender alerta',base+'/suspender-alerta',versionField(c)+motives):'');
+  return `<section class="card"><h2>Difusión y consulta del encargo</h2><p>${h(c.estado_colaboracion)}</p>
+    <a href="https://www.autoseguro.gob.cl/" target="_blank" rel="noopener noreferrer">Abrir Auto Seguro ↗</a>
+    <p class="muted">Consulta la patente del expediente en el sitio oficial y registra el resultado. Usa una referencia interna y omite datos personales en la observación.</p>${controls}
+    ${(c.consultas_encargo||[]).map(q=>`<div class="record"><strong>${q.simulada?'SIMULACIÓN · ':''}${h(labelsEncargo[q.resultado])}</strong><p>${h(q.fuente)} · ${h(date(q.consultada_en))} · ${h(q.operador)}</p><p>${h(q.referencia||'')} ${h(q.observacion)}</p>${q.id_evidencia?`<button data-photo="${Number(q.id_evidencia)}">Ver captura privada</button>`:''}</div>`).join('')||empty('Encargo pendiente de comprobación.')}</section>`;
+}
+function reviewLinks(items){
+  return `<section class="card"><h2>Solicitudes de revisión</h2><p>Contrasta el padrón con el vehículo y la persona solicitante. Para un conductor autorizado, comprueba también la autorización del titular. Registra solo un código de referencia del expediente protegido.</p></section>`+
+    (items.map(v=>{
+      const path='/gestion/vinculos/'+Number(v.id_vinculo_vehiculo)+'/decision';
+      const statusField=`<input type="hidden" name="estado_esperado" value="${h(v.estado)}">`;
+      const decisions=v.puede_revisar&&v.estado==='pendiente'?action('Revisar vínculo',path,statusField+
+        selector('decision','Decisión',{autorizado:'Aprobar',rechazado:'Rechazar'})+
+        selector('motivo','Motivo',{padron_y_coincidencia:'Padrón e identidad revisados',padron_y_autorizacion:'Padrón y autorización revisados',documentacion_insuficiente:'Antecedentes insuficientes',datos_inconsistentes:'Datos inconsistentes',uso_indebido:'Uso indebido'})+
+        (v.padron_disponible
+          ? '<label class="check-padron"><input type="checkbox" name="confirmar_padron" value="true"> Revisé el padrón, cotejé la identidad del solicitante por el canal institucional y confirmé la coincidencia con el titular y la patente.</label>'
+          : '<label>Referencia de revisión por canal institucional<input name="referencia" maxlength="80" placeholder="Ej. VIN-REV-001"></label>')):
+        v.puede_revisar&&v.estado==='autorizado'?action('Revocar vínculo',path,statusField+'<input type="hidden" name="decision" value="revocado">'+
+          selector('motivo','Motivo',{cambio_o_retiro:'Cambio o retiro',uso_indebido:'Uso indebido',datos_inconsistentes:'Datos inconsistentes'})):'';
+      return `<article class="card"><div class="row"><h2>${h(v.patente)}</h2>${badge(v.estado)}</div>
+        <p>${h(v.solicitante)} · ${h(v.tipo.replaceAll('_',' '))} · ${h(v.organizacion)}</p>
+        ${v.padron_disponible?(v.puede_revisar?`<p>Padrón recibido ${h(date(v.padron_recibido_en))}</p><button type="button" data-padron="${Number(v.id_vinculo_vehiculo)}">Ver padrón privado</button>`:'<p>Padrón recibido. Acceso reservado a supervisión.</p>'):(v.padron_recibido_en?'<p>Revisión con padrón adjunto. El archivo sale del registro activo al resolver la solicitud.</p>':'<p>Sin padrón adjunto. Revisión por el canal de la organización.</p>')}
+        ${v.prelectura_disponible?`<button type="button" data-prelectura="${Number(v.id_vinculo_vehiculo)}">Leer patente con GroqCloud</button><p role="status" data-resultado-prelectura></p>`:''}
+        ${v.padron_disponible&&v.puede_revisar&&v.padron_prelectura==='coincide'?'<p>GroqCloud leyó una patente coincidente. Pendiente de revisión.</p>':''}
+        ${v.padron_disponible&&v.puede_revisar&&v.padron_prelectura==='inconclusa'?'<p>Lectura automática inconclusa. Revisa el padrón original.</p>':''}
+        <p class="muted">Revisor: ${h(v.revisor||'Pendiente')} · Revisión: ${h(date(v.revisado_en))} · Vigencia: ${h(date(v.vence_revision_en))}</p>
+        ${v.motivo_revision?`<p>${h(v.motivo_revision.replaceAll('_',' '))}</p>`:''}${decisions}</article>`;
+    }).join('')||empty('Aún no hay vínculos solicitados en tus organizaciones.'));
+}
 const defaultStatisticsFilters=()=>({periodo:'anio',anio:new Intl.DateTimeFormat('en',{timeZone:'America/Santiago',year:'numeric'}).format(new Date()),desde:'',hasta:'',id_organizacion:'',zona:'',entorno:'operacion',radio_m:'300'});
 let statisticsFilters=defaultStatisticsFilters();
 const roleName=role=>({operador:'Operador',supervisor:'Supervisor'}[role]||String(role||'Rol no informado').replaceAll('_',' '));
 function showAccount(access){
   accountAccess=access;
   el('membership').innerHTML=access.organizaciones.map(o=>`<span class="membership-badge">${h(o.nombre)} · ${h(roleName(o.rol))}</span>`).join('');
+  if(access.demo_alertas)el('membership').innerHTML+='<span class="membership-badge">DEMOSTRACIÓN AISLADA</span>';
   el('account-content').innerHTML=`<h2>Tu acceso institucional</h2><ul class="membership-list">${access.organizaciones.map(o=>`<li><strong>${h(o.nombre)}</strong><span>${h(roleName(o.rol))} · ${o.puede_asignar?'Puede asignar responsables':'Sin permiso para asignar responsables'}</span></li>`).join('')}</ul>${access.administrador_global?'<p>Tu cuenta también tiene el rol de administrador global. El acceso a casos depende de tu membresía en cada organización.</p>':''}<h3>Permisos de esta cuenta</h3><ul>${(access.permisos||[]).map(p=>`<li>${h(p)}</li>`).join('')}</ul><p class="consent-note">${h(access.asignacion||'Ser responsable de un caso no cambia el rol ni amplía el ámbito institucional.')}</p><p>Solo un supervisor puede asignar responsables en su organización. Para cambiar tu rol, contacta a quien administra el acceso institucional.</p>`;
 }
+async function pollDesk(){
+  if(polling||!token||document.hidden)return;
+  const epoch=generation;
+  const session=token;
+  polling=true;
+  try{
+    await api('/gestion/alertas/vencimiento',{});
+    if(epoch!==generation||session!==token)return;
+    if(selected){
+      el('updated').textContent='Conexión activa · actualiza la ficha para ver cambios';
+      return;
+    }
+    if(view==='cases'){
+      const items=await api('/casos');
+      if(epoch!==generation||session!==token)return;
+      records=items;const target=el('results');if(target)target.innerHTML=caseRows();
+    }else if(view==='dashboard'||view==='pending'){
+      if(!content.contains(document.activeElement))await load();
+    }else return;
+    el('updated').textContent='Actualizado a las '+new Date().toLocaleTimeString('es-CL');
+  }catch(error){
+    if(epoch===generation&&session===token)el('updated').textContent='Conexión interrumpida · reintentando';
+  }finally{polling=false;}
+}
+if(typeof setInterval==='function')setInterval(pollDesk,20000);
 function readRoute(path=window.location.pathname){
   path=path.replace(/\/+$/,'')||'/';
   if(path==='/')return {view:'dashboard',selected:null};
@@ -117,15 +207,19 @@ function dashboard(data,witnesses){
 }
 
 function caseRows(){
-  const visible=records.filter(c=>(!filter||(filter==='open'?c.estado!=='cerrado':c.estado===filter))&&(!priority||c.prioridad===priority)&&c.folio.toLowerCase().includes(query.toLowerCase().trim()));
-  const rows=visible.map(c=>`<tr><td><strong>${h(c.folio)}</strong></td><td>${badge(c.estado)}</td><td>${badge(c.prioridad)}</td><td>${h(c.aportes_pendientes)}</td><td>${h(date(c.creado_en))}</td><td><button data-case="${Number(c.id_caso)}" aria-label="Abrir ficha ${h(c.folio)}">Abrir ficha →</button></td></tr>`).join('');
-  return rows?`<div class="table-wrap"><table><thead><tr><th>Folio</th><th>Estado</th><th>Prioridad</th><th>Aportes pendientes</th><th>Ingreso</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`:empty(records.length?'Ningún caso coincide con la búsqueda.':'Tu organización aún no ha recibido reportes.');
+  const visible=records.filter(c=>(!filter||(filter==='open'?c.estado!=='cerrado':c.estado===filter))&&(!priority||c.prioridad===priority)&&c.folio.toLowerCase().includes(query.toLowerCase().trim())&&(!alertFilter||matchesAlertFilter(c)));
+  const rows=visible.map(c=>`<tr><td><strong>${h(c.folio)}</strong></td><td>${badge(c.estado)} <small>${h(c.prioridad)}</small></td>
+    <td>${badge(labelsDifusion[estadoDifusion(c)])}${c.vence_en?`<small>Vence: ${h(date(c.vence_en))}</small>`:''}</td>
+    <td>${h(labelsEncargo[c.consulta_encargo]||'Pendiente')}</td><td>${h(c.aportes_pendientes)}</td>
+    <td>${h(c.responsable||'Sin asignar')}<small>${h(minutesOld(c.creado_en))} min desde ingreso</small></td>
+    <td><button data-case="${Number(c.id_caso)}" aria-label="Abrir ficha ${h(c.folio)}">Abrir ficha →</button></td></tr>`).join('');
+  return rows?`<div class="table-wrap"><table class="alert-queue"><thead><tr><th>Folio</th><th>Caso</th><th>Difusión</th><th>Encargo</th><th>Aportes pendientes</th><th>Responsable</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`:empty(records.length?'Ningún caso coincide con la búsqueda.':'Tu organización aún no ha recibido reportes.');
 }
 function queue(data){
   records=data;
   const stats=[['Casos abiertos',data.filter(c=>c.estado!=='cerrado').length],['Por revisar',data.filter(c=>c.estado==='reportado').length],['Aportes pendientes',data.reduce((n,c)=>n+c.aportes_pendientes,0)]];
   return `<div class="stats">${stats.map(([label,n])=>`<div class="stat"><span>${label}</span><strong>${n}</strong></div>`).join('')}</div>
-    <section class="card"><h2>Reportes recibidos</h2><div class="filters"><label>Buscar folio<input id="search" type="search" value="${h(query)}"></label>${selector('estado','Filtrar por estado',{'':'Todos los estados',open:'Solo abiertos',...states})}${selector('prioridad','Prioridad',{'':'Todas',alta:'Alta',normal:'Normal',baja:'Baja'})}</div><div id="results">${caseRows()}</div></section>`;
+    <section class="card"><h2>Reportes recibidos</h2><div class="filters"><label>Buscar folio<input id="search" type="search" value="${h(query)}"></label>${selector('estado','Filtrar por estado',{'':'Todos los estados',open:'Solo abiertos',...states})}${selector('prioridad','Prioridad',{'':'Todas',alta:'Alta',normal:'Normal',baja:'Baja'})}${selector('filtro_alerta','Alertas y revisión',{'':'Todos los reportes',provisional:'Provisionales activas',pendiente:'Pendientes de publicar',vencimiento:'Vencen en 15 minutos',vencida:'Vencidas',suspendida:'Suspendidas',aportes:'Con nuevos avistamientos',encargo:'Requieren consulta de encargo'})}</div><div id="results">${caseRows()}</div></section>`;
 }
 function publicPhotoField(c,current=null){
   // Seguimiento only exposes initial-report evidence from this case.
@@ -144,13 +238,14 @@ function detail(c,contributions,equipo){
     action('Cerrar caso',base+'/cerrar',selector('motivo_cierre','Resultado',{recuperado:'Recuperado',duplicado:'Duplicado',informacion_insuficiente:'Información insuficiente',otro:'Otro'})+'<label>ID de evidencia aceptada (si fue recuperado)<input type="number" min="1" name="id_evidencia"></label><label>ID del caso principal (si fue duplicado)<input type="number" min="1" name="id_caso_principal"></label>'+motives):'';
   const sightings=contributions.map(a=>`<div class="record"><strong>${h(a.zona)}</strong> ${badge(a.estado_revision)}<p>${h(a.descripcion)}</p><p class="muted">${h(date(a.observado_en))}</p>${(a.fotos||[]).map(id=>`<button data-photo="${Number(id)}">Ver foto del avistamiento #${Number(id)}</button>`).join('')}${open?action('Evaluar aporte',`/gestion/aportes/${Number(a.id_avistamiento)}/revision`,selector('decision','Decisión',{aceptado:'Aceptar',requiere_aclaracion:'Pedir aclaración',rechazado:'Rechazar'})+motives+'<label>Resumen que podrá ver el afectado si se acepta<textarea name="resumen" maxlength="500"></textarea></label>'):''}</div>`).join('');
   const evidence=(c.evidencias||[]).map(e=>`<div class="record"><button data-photo="${Number(e.id_evidencia)}">Ver foto #${Number(e.id_evidencia)}</button> ${badge(e.estado_revision)}<p class="consent-note">${e.autorizada_publicacion_en!=null?'Foto pública autorizada por el titular · '+h(date(e.autorizada_publicacion_en)):'Sin autorización del titular para publicar esta foto'}</p>${open?action('Revisar evidencia',`/gestion/evidencias/${Number(e.id_evidencia)}/revision`,selector('decision','Decisión',{aceptada:'Aceptar',rechazada:'Rechazar'})+motives):''}</div>`).join('');
-  return header+statement+management+"</section>"+equipoCaso(c,equipo)+`<section class="card"><h2>Avistamientos</h2>${sightings||empty('Todavía no hay aportes para este caso.')}</section><section class="card"><h2>Evidencias privadas</h2>${evidence||empty('Sin fotos adjuntas.')}</section><section class="card"><h2>Historial compartido con el afectado</h2>${c.historial.map(x=>`<div class="record"><strong>${h(date(x.creada_en))}</strong><p>${h(x.descripcion)}</p></div>`).join('')||empty('Todavía no hay novedades en el seguimiento.')}</section>`;
+  const guarded=management.replace(/(<form data-path="[^"]+\/(?:publicacion|renovacion|retirar|cerrar)">)/g,'$1'+versionField(c));
+  return header+statement+guarded+"</section>"+alertReview(c,base)+equipoCaso(c,equipo)+`<section class="card"><h2>Avistamientos</h2>${sightings||empty('Todavía no hay aportes para este caso.')}</section><section class="card"><h2>Evidencias privadas</h2>${evidence||empty('Sin fotos adjuntas.')}</section><section class="card"><h2>Historial compartido con el afectado</h2>${c.historial.map(x=>`<div class="record"><strong>${h(date(x.creada_en))}</strong><p>${h(x.descripcion)}</p></div>`).join('')||empty('Todavía no hay novedades en el seguimiento.')}</section>`;
 }
 function numberField(key,label,min,max,step='1'){return `<label>${label}<input type="number" required name="${key}" min="${min}" max="${max}" step="${step}"></label>`;}
 function sources(items){
   const entry=action('Registrar una fuente','/gestion/antecedentes',selector('id_organizacion','Organización',Object.fromEntries(orgs.map(o=>[o.id_organizacion,o.nombre])))+
     '<label>Medio o institución<input name="nombre_fuente" minlength="2" required></label><label>Enlace original HTTPS<input type="url" pattern="https://.+" name="url_fuente" required></label><label>Título<input name="titulo" minlength="8" required></label><label>Resumen propio<textarea name="resumen" minlength="20" maxlength="700" required></textarea></label><label>Sector o comuna<input name="zona" minlength="3" required></label><label>Fecha de publicación<input name="fecha_publicacion" type="date" required></label>'+selector('tipo','Tipo',{portonazo:'Portonazo',encerrona:'Encerrona',robo_vehiculo:'Robo vehicular',otro:'Otro'}));
-  return `<section class="card">${entry}</section>`+items.map(s=>{
+  return `<section class="card"><h2>Fuentes para el mapa histórico</h2><p>Confirma fecha, sector y fuente original. Si dos publicaciones describen el mismo hecho, conserva una sola ficha validada.</p><p>El mapa agrupa fichas vigentes de los últimos 365 días con incertidumbre de hasta 800 m. Dos o más en el mismo sector forman una zona roja.</p>${entry}</section>`+items.map(s=>{
     const path=`/gestion/antecedentes/${encodeURIComponent(s.id_antecedente)}/revision`;
     const reason='<label>Fundamento de la revisión<textarea name="motivo" minlength="15" maxlength="1000" required></textarea></label>';
     return `<article class="card">${badge(s.estado)}<h2>${h(s.titulo)}</h2><p>${h(s.resumen)}</p><p>${h(s.zona)} · ${h(s.fecha_publicacion)} · ${h(s.nombre_fuente)}</p>${/^https:\/\//i.test(s.url_fuente)?`<a href="${h(s.url_fuente)}" target="_blank" rel="noopener noreferrer">Leer fuente original ↗</a>`:''}
@@ -255,6 +350,7 @@ async function load(focus=false){
     }
     else if(view==='cases'&&selected){const result=await Promise.all([api('/seguimiento/'+selected),api(`/gestion/casos/${selected}/aportes`),api('/gestion/casos/'+selected+'/equipo')]);render=()=>detail(...result);}
     else if(view==='cases'){const items=await api('/casos');render=()=>queue(items);}
+    else if(view==='links'){const items=await api('/gestion/vinculos');render=()=>reviewLinks(items);}
     else if(view==='pending'){
       const items=await api('/gestion/aportes/pendientes');
       render=()=>items.length?items.map(a=>`<article class="card"><div class="row"><h2>${h(a.folio)}</h2>${badge(a.con_foto?'Con foto':'Sin foto')}</div><p>${h(a.zona)} · ${h(date(a.recibido_en))}</p><button data-case="${Number(a.id_caso)}">Revisar en la ficha</button></article>`).join(''):empty('No hay avistamientos pendientes de revisión.');
@@ -273,6 +369,8 @@ async function load(focus=false){
     if(selected && originView!=='cases'){const back=content.querySelector('[data-list]');if(back)back.textContent='← '+names[originView];}
     if(el('clip'))bindClip();
     if(el('results')){const priorities=content.querySelector('[name=prioridad]');priorities.value=priority;priorities.onchange=()=>{priority=priorities.value;el('results').innerHTML=caseRows();};const select=content.querySelector('[name="estado"]');select.value=filter;select.onchange=()=>{filter=select.value;el('results').innerHTML=caseRows();};el('search').oninput=e=>{query=e.target.value;el('results').innerHTML=caseRows();};}
+    const alertSelect=content.querySelector('[name=filtro_alerta]');
+    if(alertSelect){alertSelect.value=alertFilter;alertSelect.onchange=()=>{alertFilter=alertSelect.value;el('results').innerHTML=caseRows();};}
   }catch(err){if(epoch===generation){content.innerHTML=(view==='statistics'?statisticsForm():'')+`<section class="card load-error" role="alert"><h2>No se pudo cargar esta vista</h2><p>${h(err.message)}</p><button data-retry>Reintentar</button>${selected?'<button data-list>Volver a la bandeja</button>':''}</section>`;if(view==='statistics')bindStatisticsFilters();}else if(!token)notify(err.message);}
   finally{if(epoch===generation)content.setAttribute('aria-busy','false');}
 }
@@ -288,6 +386,20 @@ content.onclick=e=>{
   }
   if(b.dataset.case)abrirCaso(b.dataset.case);
   if(b.dataset.photo)handle(b,async()=>{const epoch=generation;const file=await api(`/evidencias/${Number(b.dataset.photo)}/foto`,undefined,true);if(generation!==epoch)return;const url=URL.createObjectURL(file);photos.push(url);const img=new Image();img.className='photo';img.alt='Evidencia privada del caso';img.src=url;b.replaceWith(img);});
+  if(b.dataset.padron)handle(b,async()=>{
+    const epoch=generation;
+    const file=await api(`/gestion/vinculos/${Number(b.dataset.padron)}/padron`,undefined,true);
+    if(generation!==epoch)return;
+    const url=URL.createObjectURL(file);photos.push(url);
+    const preview=document.createElement('a');preview.href=url;preview.target='_blank';preview.rel='noopener noreferrer';
+    preview.textContent='Abrir padrón a tamaño completo';
+    b.replaceWith(preview);
+  });
+  if(b.dataset.prelectura && confirm('¿Quieres enviar el padrón ficticio a GroqCloud para leer la patente?'))handle(b,async()=>{
+    const r=await api(`/gestion/vinculos/${Number(b.dataset.prelectura)}/prelectura`,{archivo_ficticio:true});
+    if (!b.isConnected) return;
+    b.parentElement.querySelector('[data-resultado-prelectura]').textContent={coincide:'Patente leída coincide. Verificación pendiente.',difiere:'La patente leída difiere. Revisa el archivo.',inconclusa:'Lectura inconclusa. Revisa el archivo.'}[r.resultado];
+  });
   if(b.hasAttribute('data-resource-page')){resourceOffset=Number(b.dataset.resourcePage);load(true);}
 };
 content.onsubmit=e=>{
@@ -298,12 +410,29 @@ content.onsubmit=e=>{
     statisticsFilters={...statisticsFilters,...fields,zona:(fields.zona||'').trim()};load(true);return;
   }
   handle(e.submitter,async()=>{const data=Object.fromEntries(new FormData(form));
+    if(data.confirmar_padron)data.confirmar_padron=true;
     for(const input of form.querySelectorAll('input[type="number"]')){if(input.value==='')delete data[input.name];else data[input.name]=input.valueAsNumber;}
     for(const field of ['id_organizacion','id_membresia','id_caso'])if(data[field])data[field]=Number(data[field]);
     if(Object.hasOwn(data,'id_foto_vehiculo')){
       if(data.id_foto_vehiculo==='')delete data.id_foto_vehiculo;
       else {data.id_foto_vehiculo=Number(data.id_foto_vehiculo);if(!Number.isSafeInteger(data.id_foto_vehiculo)||data.id_foto_vehiculo<1)throw Error('Selecciona una foto válida.');}
     }
+    if(form.dataset.path.endsWith('/encargo')){
+      if(data.id_foto_vehiculo){data.foto=data.id_foto_vehiculo;delete data.id_foto_vehiculo;}
+      if(data.simulada)data.simulada=true;
+      const foto=data.captura_encargo;
+      if(foto?.size>2097152)throw Error('La captura supera 2 MB.');
+      if(foto?.size){
+        data.evidencia_base64=await new Promise((resolve,reject)=>{
+          const reader=new FileReader();
+          reader.onload=()=>resolve(String(reader.result).split(',')[1]);
+          reader.onerror=()=>reject(Error('No se pudo leer la captura.'));
+          reader.readAsDataURL(foto);
+        });
+      }
+      delete data.captura_encargo;
+    }
+    if(Object.hasOwn(data,'referencia')&&!data.referencia.trim())delete data.referencia;
     if(form.dataset.resource==='edit'){
       for(const key of ['verificado_en','vence_en'])data[key]=new Date(data[key]).toISOString();
       if(new Date(data.vence_en)<=new Date(data.verificado_en))throw Error('El vencimiento debe ser posterior a la verificación.');

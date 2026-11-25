@@ -10,3 +10,7 @@
 .maplibregl-map{font-family:inherit}.maplibregl-ctrl-group{border-radius:14px!important;overflow:hidden;box-shadow:0 5px 20px #10213c30!important}.maplibregl-popup-content{border-radius:18px;padding:18px 22px;box-shadow:0 10px 30px #10213c26}.maplibregl-popup-content strong{font-size:16px;color:#10213c}.maplibregl-ctrl-attrib{font-size:10px}#mapa-vista{border-radius:24px;background:#10213c;color:white}
 
 :root{--navy:#10213c;--teal:#2867d8;--muted:#667994;--paper:#f2f5fb;--border:#dce4f0}.territory>.section-head,.map-intro{background:linear-gradient(120deg,#10213c,#244e8c)}.map-intro h3,.map-intro p{color:#edf4ff}.pill{background:#e7efff;color:#285bb0;border-color:#d3e1fb}.map-status{color:#244e8c}.dot.report{background:#526f9a}.dot.selected{background:#2867d8}
+.alert-card-state{padding:9px 12px;border-radius:8px;background:#e8f2ff;color:#133f76}
+.alert-card-state.provisional{background:#fff2ce;color:#633f03}
+#mapa{height:clamp(390px,66vh,720px);background:#102239}
+#mapa-zonas-estado:empty{display:none}

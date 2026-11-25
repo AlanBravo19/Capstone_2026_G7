@@ -9,6 +9,7 @@ from fastapi import APIRouter,Depends,HTTPException
 from ..db import obtener_conexion,fila_dict,ErrorBD,es_unico
 from ..seguridad import usuario_actual
 from ..antifraude import participante,limitar,administrador
+from ..revision_vehicular import RevisionConPadron, guardar_solicitud, preparar_padron
 
 router=APIRouter(tags=['avance conectado'])
 
@@ -27,6 +28,7 @@ class VehiculoEntrada(BaseModel):
     patente:str=Field(min_length=4,max_length=16)
     color:str=Field(min_length=2,max_length=50)
     anio:int=Field(ge=1900,le=2100)
+    revision: RevisionConPadron | None = None
     @field_validator('marca','modelo','color',mode='before')
     @classmethod
     def limpiar_texto(cls,v):
@@ -49,6 +51,7 @@ class VehiculoEntrada(BaseModel):
 @router.post('/vehiculos',status_code=201)
 def nuevo_vehiculo(datos:VehiculoEntrada,usuario=Depends(participante),conn=Depends(obtener_conexion)):
     limitar(conn,f'vehiculo:{usuario["id_usuario"]}',10)
+    imagen, prelectura = preparar_padron(datos.revision, datos.patente)
     cur=conn.cursor()
     # Revalidar y bloquear tras confirmar los contadores de uso.
     cur.execute('SELECT estado FROM usuario WHERE id_usuario=%s FOR UPDATE',(usuario['id_usuario'],))
@@ -72,8 +75,13 @@ def nuevo_vehiculo(datos:VehiculoEntrada,usuario=Depends(participante),conn=Depe
         raise HTTPException(409,'El vehículo tiene un caso abierto. Solicita revisión al operador.')
     cur.execute('UPDATE vehiculo SET id_modelo=%s,color=%s,anio=%s,tipo_vehiculo=%s WHERE id_vehiculo=%s',
                 (modelo,datos.color,datos.anio,datos.tipo_vehiculo,vid))
-    cur.execute("INSERT INTO vinculo_vehiculo(id_usuario,id_vehiculo,tipo) VALUES(%s,%s,'propietario')",(usuario['id_usuario'],vid))
-    return {'id_vehiculo':vid,'estado_vinculo':'pendiente','mensaje':'Vínculo declarado; no acredita propiedad.'}
+    cur.execute("""INSERT INTO vinculo_vehiculo(id_usuario,id_vehiculo,tipo) VALUES(%s,%s,'propietario')
+        RETURNING id_vinculo_vehiculo""",(usuario['id_usuario'],vid))
+    vinculo = cur.fetchone()[0]
+    if datos.revision:
+        guardar_solicitud(cur, usuario['id_usuario'], vinculo, None, datos.revision, imagen, prelectura)
+    return {'id_vehiculo':vid,'estado_vinculo':'pendiente','revision_solicitada':datos.revision is not None,
+            'mensaje':'Padrón enviado a revisión.' if datos.revision else 'Vínculo declarado, pendiente de revisión.'}
 
 @router.delete('/vehiculos/{vid}/vinculo',status_code=204)
 def retirar_vehiculo(vid:int,usuario=Depends(participante),conn=Depends(obtener_conexion)):
@@ -89,21 +97,31 @@ def retirar_vehiculo(vid:int,usuario=Depends(participante),conn=Depends(obtener_
     if cur.fetchone():raise HTTPException(409,'Cierra el caso con el operador antes de retirar el vehículo.')
     cur.execute("""UPDATE vinculo_vehiculo SET estado='revocado',fin=CURRENT_TIMESTAMP,
         revisado_por=%s,revisado_en=CURRENT_TIMESTAMP,motivo_revision='Retiro voluntario por el titular'
-        WHERE id_vehiculo=%s AND estado IN ('pendiente','autorizado') AND fin IS NULL""",
+        WHERE id_vehiculo=%s AND estado IN ('pendiente','autorizado') AND fin IS NULL
+        RETURNING id_vinculo_vehiculo""",
         (usuario['id_usuario'],vid))
+    retirados = [r[0] for r in cur.fetchall()]
+    cur.execute('UPDATE documento_vinculo_vehiculo SET contenido=NULL WHERE id_vinculo_vehiculo=ANY(%s)', (retirados,))
 
 @router.get('/vehiculos')
 def mis_vehiculos(usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):
     cur=conn.cursor()
-    cur.execute('''SELECT v.id_vehiculo,v.tipo_vehiculo,v.patente,v.color,v.anio,ma.nombre AS marca,mo.nombre AS modelo,vv.estado AS estado_vinculo
+    cur.execute('''SELECT v.id_vehiculo,v.tipo_vehiculo,v.patente,v.color,v.anio,ma.nombre AS marca,mo.nombre AS modelo,vv.estado AS estado_vinculo,
+       vv.tipo AS tipo_vinculo,vv.id_organizacion_revision,vv.vence_revision_en,vv.motivo_revision,
+       d.recibido_en AS padron_recibido_en,
+       (SELECT e.resumen FROM evento_auditoria e WHERE e.objeto_tipo='vinculo_vehiculo'
+        AND e.objeto_id=vv.id_vinculo_vehiculo::text AND e.accion='prelectura_padron'
+        AND e.creado_en>=d.recibido_en ORDER BY e.creado_en DESC LIMIT 1) AS padron_prelectura
        FROM vinculo_vehiculo vv JOIN vehiculo v USING(id_vehiculo) JOIN modelo mo USING(id_modelo)
+       LEFT JOIN documento_vinculo_vehiculo d USING(id_vinculo_vehiculo)
        JOIN marca ma USING(id_marca) WHERE vv.id_usuario=%s AND vv.estado IN ('pendiente','autorizado') ORDER BY v.id_vehiculo DESC''',(usuario['id_usuario'],))
     return [fila_dict(cur,r) for r in cur.fetchall()]
 
 @router.get('/mis-casos')
 def mis_casos(usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):
     cur=conn.cursor()
-    cur.execute('''SELECT c.id_caso,c.folio,c.estado,c.zona,c.fecha_hecho,c.creado_en,c.denuncia_estado,v.patente,
+    cur.execute('''SELECT c.id_caso,c.folio,c.estado,c.zona,c.fecha_hecho,c.creado_en,c.denuncia_estado,
+       c.colaboracion_consentida_en,v.patente,
        ST_Y(c.ubicacion::geometry) AS latitud, ST_X(c.ubicacion::geometry) AS longitud
        FROM caso c JOIN vehiculo v USING(id_vehiculo) WHERE c.id_usuario_reportante=%s ORDER BY c.creado_en DESC LIMIT 100''',(usuario['id_usuario'],))
     return [fila_dict(cur,r) for r in cur.fetchall()]

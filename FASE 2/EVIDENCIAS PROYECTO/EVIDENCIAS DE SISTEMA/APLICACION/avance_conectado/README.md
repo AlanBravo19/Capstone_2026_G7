@@ -1,4 +1,20 @@
-# RutaAlerta · Beta 0.20.0
+# RutaAlerta · Beta 0.23
+
+La API 0.23 recibe padrones privados en **Verificar vínculos**. El titular puede autorizar la lectura con GroqCloud para comparar la patente de la foto con la registrada. Una discrepancia legible devuelve el envío para corrección. Las coincidencias y lecturas inconclusas quedan pendientes de decisión del supervisor. Sin autorización, el padrón va directamente a revisión privada.
+
+El cotejo externo se habilita en el servidor con `GROQ_PADRON_OPERACION=1` y `GROQ_API_KEY` en las variables privadas de Vercel. La carga privada funciona sin esas variables y requiere las migraciones [09 y 10](sql). [Descarga de Android 0.23.1](https://github.com/AlanBravo19/Capstone_2026_G7/releases/tag/v0.23.1)
+
+El mapa usa zonas históricas calculadas por PostGIS. El planificador prioriza alternativas con menos cruces. Android ofrece búsqueda de comuna, sugerencia geográfica y destinos por dirección o punto en el mapa.
+
+[Flujo, datos ficticios y pruebas de la beta 0.22](evidencias/Zonas_Historicas_y_Verificacion_0220.md)
+
+Android y el portal ciudadano permiten adjuntar una foto del padrón al registrar un vehículo o enviarla después desde Mis vehículos. El supervisor de la organización receptora abre y resuelve la solicitud en **Verificar vínculos**. La imagen queda disponible únicamente durante la revisión. El historial conserva el momento de recepción y la decisión.
+
+[Verificación vehicular y publicación provisional](evidencias/Verificacion_Vehicular_0211.md)
+
+La publicación provisional requiere un vínculo previamente revisado, consentimiento y habilitación global y por organización. La configuración inicial mantiene la publicación automática apagada. La versión requiere la migración 09.
+
+[Flujo, estados, configuración y guion de demostración](evidencias/Alertas_Provisionales_0210.md)
 
 La comunidad puede ver la foto del vehículo autorizada por el titular y seleccionada por el operador, tanto en la tarjeta como al abrir el avistamiento. Cuando falta una imagen habilitada se muestra una referencia genérica del tipo de vehículo.
 

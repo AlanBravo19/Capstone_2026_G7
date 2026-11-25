@@ -1,10 +1,16 @@
-# RutaAlerta · Beta 0.20.0
+# RutaAlerta · Beta 0.23.1
+
+El mapa de Inicio se puede tocar para ampliarlo. El color rojo muestra concentraciones de antecedentes históricos revisados. En **Mis lugares y rutas** se puede buscar una dirección puntual, seleccionar un punto en el mapa o usar Casa y Trabajo guardados. La API 0.22 prioriza las alternativas que cruzan menos zonas consultadas. En **Reportar**, se selecciona primero el punto del hecho y después se confirma la comuna sugerida o se busca en el catálogo. La referencia de calle del reporte es opcional.
+
+En **Mis vehículos**, activa **Adjuntar padrón y verificar vínculo** para seleccionar la organización revisora y tomar o elegir una foto del documento. También puedes enviar el padrón más adelante para un vínculo pendiente. La opción **Revisar si la patente coincide** autoriza que la foto se envíe a un servicio externo (GroqCloud) para comparar la patente del padrón con la registrada. Una discrepancia legible devuelve el envío para corrección y puedes elegir la revisión directa. El supervisor toma la decisión en la web institucional.
+
+La versión incluye la solicitud de revisión del vínculo, la declaración de sustracción, el estado de la alerta en el seguimiento y la actualización de la lista de alertas en primer plano. La prueba de las zonas y el padrón en Android requiere una instancia de la API 0.22 accesible por HTTPS. La demostración de tres roles se ejecuta en el navegador con el script local de la API.
 
 Las solicitudes de colaboración muestran la fotografía del vehículo autorizada por el titular y elegida por el operador. El formulario de avistamiento mantiene esa foto y la descripción pública. Desde el seguimiento se puede autorizar una fotografía anterior o revocar su publicación. Mientras falte una foto habilitada, la app presenta una referencia genérica por tipo de vehículo.
 
-La ubicación del reporte y del avistamiento se selecciona en el mapa compartido o mediante GPS. Selecciona la comuna del catálogo y añade la referencia del sector. Desde **Mis vehículos** puedes quitar el vínculo cuando el vehículo carece de casos abiertos. El titular puede añadir antecedentes privados desde su seguimiento.
+La ubicación del reporte y del avistamiento se selecciona en el mapa compartido o mediante GPS. En un avistamiento, selecciona la comuna del catálogo y añade la referencia del sector. Desde **Mis vehículos** puedes quitar el vínculo cuando el vehículo carece de casos abiertos. El titular puede añadir antecedentes privados desde su seguimiento.
 
-En **Reportar** puedes adjuntar una foto y autorizar que el operador publique una solicitud. En **Colaborar** selecciona el vehículo para informar dónde y cuándo lo viste y adjuntar una imagen. Desde el mapa de **Inicio** puedes consultar los vehículos publicados y antecedentes históricos del sector. **Simular alerta de proximidad** permite ensayar el aviso dentro de la app.
+En **Reportar** puedes adjuntar una foto y autorizar que el operador publique una solicitud. En **Colaborar** selecciona el vehículo para informar dónde y cuándo lo viste y adjuntar una imagen. Desde el mapa de **Inicio** puedes consultar los vehículos publicados y antecedentes históricos del sector.
 
 ## Beta 0.16.0
 

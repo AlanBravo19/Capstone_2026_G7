@@ -40,6 +40,7 @@ class RutaMap extends StatelessWidget {
       FlutterMap(
         mapController: controller,
         options: MapOptions(
+          backgroundColor: const Color(0xff0b1d32),
           initialCenter: center,
           initialZoom: zoom,
           onTap: onSelected == null ? null : (_, point) => onSelected!(point),
@@ -50,20 +51,45 @@ class RutaMap extends StatelessWidget {
           ),
         ),
         children: [
-          TileLayer(
-            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-            userAgentPackageName: 'cl.rutaalerta.rutaalerta_movil',
-            maxNativeZoom: 19,
+          ColorFiltered(
+            colorFilter: const ColorFilter.matrix([
+              -.19,
+              -.06,
+              -.025,
+              0,
+              86,
+              -.21,
+              -.08,
+              -.045,
+              0,
+              115,
+              -.22,
+              -.10,
+              -.06,
+              0,
+              150,
+              0,
+              0,
+              0,
+              1,
+              0,
+            ]),
+            child: TileLayer(
+              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+              userAgentPackageName: 'cl.rutaalerta.rutaalerta_movil',
+              maxNativeZoom: 19,
+            ),
           ),
           CircleLayer(circles: circles),
           MarkerLayer(markers: markers),
         ],
       ),
       Positioned(
-        right: 3,
-        bottom: 2,
+        left: 8,
+        bottom: 7,
         child: Material(
-          color: Colors.white,
+          color: const Color(0xff102a46),
+          borderRadius: BorderRadius.circular(5),
           child: InkWell(
             onTap: () async {
               try {
@@ -75,7 +101,10 @@ class RutaMap extends StatelessWidget {
             },
             child: const Padding(
               padding: EdgeInsets.all(4),
-              child: Text('© OpenStreetMap', style: TextStyle(fontSize: 11)),
+              child: Text(
+                '© OpenStreetMap',
+                style: TextStyle(fontSize: 10, color: Color(0xffddebff)),
+              ),
             ),
           ),
         ),
@@ -158,7 +187,7 @@ class _LocationPickerState extends State<LocationPicker> {
       ),
       Note(
         widget.requiredLocation
-            ? 'Marca el lugar donde ocurrió el hecho. Usa el GPS solo si estás allí; después indica la calle, cruce o referencia del sector.'
+            ? 'Marca el lugar del hecho. Usa el GPS si todavía estás allí.'
             : 'Opcional. Marca un lugar solo si aporta información a este antecedente.',
       ),
       OutlinedButton.icon(

@@ -144,14 +144,26 @@ void main() {
       await t.tap(find.text(pair.$2).last);
       await t.pumpAndSettle();
     }
-    final communeField = find.byType(DropdownButtonFormField<String>);
+    final communeField = find.text('Buscar comuna');
     await t.ensureVisible(communeField);
     await t.tap(communeField);
     await t.pumpAndSettle();
+    await t.enterText(
+      find.widgetWithText(TextField, 'Escribe una comuna'),
+      'chill',
+    );
+    await t.pumpAndSettle();
     await t.tap(find.text('Chillan').last);
     await t.pumpAndSettle();
-    state.zone.text = 'Ecuador con 18 de Septiembre';
     state.description.text = 'Descripción del incidente para revisión.';
+    final confirmation = find.widgetWithText(
+      CheckboxListTile,
+      'Declaro que reporto una sustracción real',
+    );
+    await t.ensureVisible(confirmation);
+    await t.pumpAndSettle();
+    await t.tap(confirmation);
+    await t.pumpAndSettle();
     await state.save();
     await t.pump();
     expect(

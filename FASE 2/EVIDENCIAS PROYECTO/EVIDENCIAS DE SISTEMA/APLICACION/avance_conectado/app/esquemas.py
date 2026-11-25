@@ -60,6 +60,7 @@ class RecuperacionConfirmar(BaseModel):
 
 
 class CasoEntrada(BaseModel):
+    confirmar_sustraccion: bool = False
     foto_base64: str | None = Field(default=None, min_length=16, max_length=2800000)
     solicitar_colaboracion: bool = False
     autorizar_foto_publica: bool = False
@@ -86,6 +87,8 @@ class CasoSalida(BaseModel):
     estado: str
     recibido_en: datetime
     reintento: bool = False
+    publicacion: str | None = None
+    siguiente_paso: str | None = None
 
 
 class BandejaItem(BaseModel):
@@ -97,3 +100,11 @@ class BandejaItem(BaseModel):
     creado_en: datetime
     aportes_pendientes: int
     primera_revision_en: datetime | None = None
+    modo_alerta: str | None = None
+    vence_en: datetime | None = None
+    suspendida_en: datetime | None = None
+    estado_difusion: str | None = None
+    difusion_visible: bool | None = None
+    consulta_encargo: str | None = None
+    responsable: str | None = None
+    solicita_colaboracion: bool = False
