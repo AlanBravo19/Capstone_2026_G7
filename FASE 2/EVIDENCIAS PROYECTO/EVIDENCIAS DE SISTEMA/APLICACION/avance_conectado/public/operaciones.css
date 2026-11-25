@@ -117,7 +117,7 @@ header .user .account-help>summary>span,header .user #exit>span{display:inline}.
 /* Centro de operaciones */
 @font-face {
   font-family: Manrope;
-  src: url('/operaciones-manrope.ttf') format('truetype');
+  src: url('/Manrope.ttf') format('truetype');
   font-weight: 400 800;
   font-display: swap;
 }
