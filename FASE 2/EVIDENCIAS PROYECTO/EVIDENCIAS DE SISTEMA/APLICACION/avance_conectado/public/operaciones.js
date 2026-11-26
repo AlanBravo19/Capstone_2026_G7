@@ -176,7 +176,7 @@ window.addEventListener('popstate',()=>{
 function notify(message){el('status').textContent=message;clearTimeout(noticeTimer);noticeTimer=setTimeout(()=>el('status').textContent='',9500);}
 function clearPhotos(){photos.forEach(URL.revokeObjectURL);photos=[];}
 function reset(){
-  MapaOperador.cerrar();mapOrg=null;originView='cases';resourceOffset=0;
+  closeSourceMaps();MapaOperador.cerrar();mapOrg=null;originView='cases';resourceOffset=0;
   generation++;token=challenge='';orgs=[];records=[];selected=null;query=filter=priority='';dashboard.bind=null;clearPhotos();
   accountAccess=null;alertFilter='';statisticsFilters=defaultStatisticsFilters();el('membership').replaceChildren();el('account-content').replaceChildren();el('account-help').open=false;
   el('operator-avatar').textContent='';
@@ -354,6 +354,81 @@ function detail(c,contributions,equipo){
     </div>`;
 }
 function numberField(key,label,min,max,step='1'){return `<label>${label}<input type="number" required name="${key}" min="${min}" max="${max}" step="${step}"></label>`;}
+const sourceMaps = new Set();
+function closeSourceMaps(){
+  for(const map of sourceMaps) map.remove();
+  sourceMaps.clear();
+}
+
+function sourceMapFields(source){
+  const prior = Number.isFinite(source.latitud) && Number.isFinite(source.longitud);
+  return `<fieldset data-sector><legend>Ubicación del sector</legend>
+    <p>Marca en el mapa el sector mencionado en la fuente. Puedes mover el punto antes de confirmar.</p>
+    <button type="button" data-open-map>Marcar sector en el mapa</button>
+    <div data-map-panel hidden>
+      <div data-map aria-label="Mapa del sector" tabindex="0"></div>
+      <button type="button" data-center>Marcar el centro del mapa</button>
+      <button type="button" data-confirm disabled>Confirmar sector</button>
+    </div>
+    <p data-map-status role="status">Selecciona y confirma el sector para activar el aviso.</p>
+    <input type="hidden" name="latitud" data-existing="${prior ? source.latitud : ''}">
+    <input type="hidden" name="longitud" data-existing="${prior ? source.longitud : ''}">
+    </fieldset>`;
+}
+
+function bindSourceMap(field){
+  const get = name => field.querySelector('[data-'+name+']');
+  const form = field.closest('form');
+  const {latitud, longitud, radio_m: radius} = form.elements;
+  const status = get('map-status'), confirm = get('confirm'), panel = get('map-panel');
+  let map, marker, circle, point;
+  function preview(){
+    if(circle){ circle.remove(); circle=null; }
+    if(point && radius.validity.valid && radius.valueAsNumber > 0){
+      circle=L.circle(point,{radius:radius.valueAsNumber,interactive:false}).addTo(map);
+    }
+  }
+  function select(location){
+    point=location.wrap();
+    latitud.value=''; longitud.value='';
+    if(!marker){
+      marker=L.marker(point,{draggable:true,title:'Sector de la fuente',icon:L.divIcon({
+        className:'',html:'<span aria-hidden="true">📍</span>',iconSize:[24,28],iconAnchor:[12,26]
+      })}).addTo(map);
+      marker.on('dragend',()=>select(marker.getLatLng()));
+    }else marker.setLatLng(point);
+    confirm.disabled=false;
+    status.textContent='Punto marcado. Confirma el sector o ajusta su ubicación.';
+    preview();
+  }
+  get('open-map').onclick=()=>{
+    if(!window.L){status.textContent='No se pudo abrir el mapa. Vuelve a intentarlo.';return;}
+    panel.hidden=false;
+    if(!map){
+      const canvas=get('map');
+      canvas.style.height='320px';
+      const prior=latitud.dataset.existing!=='';
+      const center=prior ? [Number(latitud.dataset.existing),Number(longitud.dataset.existing)] : [-36.827,-73.05];
+      map=L.map(canvas).setView(center,prior ? 14 : 11);
+      sourceMaps.add(map);
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
+        maxZoom:19,attribution:'&copy; OpenStreetMap contributors'
+      }).addTo(map);
+      map.on('click',event=>select(event.latlng));
+      if(prior) select(L.latLng(center));
+    }
+    map.invalidateSize();
+  };
+  get('center').onclick=()=>select(map.getCenter());
+  confirm.onclick=()=>{
+    if(!point)return;
+    latitud.value=point.lat.toFixed(6); longitud.value=point.lng.toFixed(6);
+    confirm.disabled=true;
+    status.textContent='Sector confirmado. Puedes cambiar el punto antes de activar el aviso.';
+  };
+  radius.oninput=preview;
+}
+
 function sources(items){
   const entry=action('Registrar una fuente','/gestion/antecedentes',selector('id_organizacion','Organización',Object.fromEntries(orgs.map(o=>[o.id_organizacion,o.nombre])))+
     '<label>Medio o institución<input name="nombre_fuente" minlength="2" required></label><label>Enlace original HTTPS<input type="url" pattern="https://.+" name="url_fuente" required></label><label>Título<input name="titulo" minlength="8" required></label><label>Resumen propio<textarea name="resumen" minlength="20" maxlength="700" required></textarea></label><label>Sector o comuna<input name="zona" minlength="3" required></label><label>Fecha de publicación<input name="fecha_publicacion" type="date" required></label>'+selector('tipo','Tipo',{portonazo:'Portonazo',encerrona:'Encerrona',robo_vehiculo:'Robo vehicular',otro:'Otro'}));
@@ -361,7 +436,7 @@ function sources(items){
     const path=`/gestion/antecedentes/${encodeURIComponent(s.id_antecedente)}/revision`;
     const reason='<label>Fundamento de la revisión<textarea name="motivo" minlength="15" maxlength="1000" required></textarea></label>';
     return `<article class="card">${badge(s.estado)}<h2>${h(s.titulo)}</h2><p>${h(s.resumen)}</p><p>${h(s.zona)} · ${h(s.fecha_publicacion)} · ${h(s.nombre_fuente)}</p>${/^https:\/\//i.test(s.url_fuente)?`<a href="${h(s.url_fuente)}" target="_blank" rel="noopener noreferrer">Leer fuente original ↗</a>`:''}
-    ${action('Validar sector y activar aviso',path,'<input type="hidden" name="decision" value="validado"><div class="form-grid">'+numberField('latitud','Latitud del sector',-90,90,'any')+numberField('longitud','Longitud del sector',-180,180,'any')+numberField('precision_m','Incertidumbre en metros',100,10000)+numberField('radio_m','Radio del aviso en metros',100,15000)+numberField('dias_vigencia','Vigencia en días',1,90)+'</div>'+reason)}
+    ${action('Validar sector y activar aviso',path,'<input type="hidden" name="decision" value="validado">'+sourceMapFields(s)+'<div class="form-grid">'+numberField('precision_m','Incertidumbre en metros',100,10000)+numberField('radio_m','Radio del aviso en metros',100,15000)+numberField('dias_vigencia','Vigencia en días',1,90)+'</div>'+reason)}
     ${action('Descartar fuente',path,'<input type="hidden" name="decision" value="descartado">'+reason)}</article>`;
   }).join('')+(items.length?'':empty('Aún no hay fuentes registradas.'));
 }
@@ -438,7 +513,7 @@ function statisticsRoom(data){
     <section id="statistics-methodology" class="card statistics-methodology" tabindex="-1"><h2>Fuentes, método y límites</h2><p>Los gráficos muestran recuentos del servicio de estadísticas para los filtros indicados. No son tasas de delincuencia ni estimaciones de riesgo. La ausencia de registros no demuestra ausencia de hechos.</p><p>Las tablas de clasificación muestran primero las ocho categorías de mayor recuento y permiten consultar todas las categorías devueltas. La serie mensual incluye los meses sin registros dentro del período.</p><ul>${(data.limites||[]).map(limit=>`<li>${h(limit)}</li>`).join('')}</ul><p>Origen: registros institucionales de RutaAlerta, historial territorial revisado e inventario autorizado de cámaras. Los datos de operación y prueba se consultan en entornos separados.</p></section>`;
 }
 async function load(focus=false){
-  MapaOperador.cerrar();
+  closeSourceMaps();MapaOperador.cerrar();
   lastDeskSnapshot='';
   const epoch=++generation;clearPhotos();el('title').textContent=selected?'Ficha del caso':names[view]||'Página no encontrada';el('status').textContent='';
   el('context-path').textContent=selected?'Operación / Bandeja de casos':sectionGroups[view]||'Operaciones';
@@ -469,7 +544,7 @@ async function load(focus=false){
       const items=await api('/gestion/aportes/pendientes');
       render=()=>pendingCards(items);
     }
-    else if(view==='sources'){const items=await api('/gestion/antecedentes');render=()=>sources(items);}
+    else if(view==='sources'){const items=await api('/gestion/antecedentes');render=()=>sources(items);montar=()=>content.querySelectorAll('[data-sector]').forEach(bindSourceMap);}
     else if(view==='witness'){const [items,cases]=await Promise.all([api('/gestion/testigos'),api('/casos')]);render=()=>witnessQueue(items,cases);}
     else if(view==='cameras'){const inventory=await api('/gestion/camaras');render=()=>cameraRoom(inventory);}
     else if(view==='resources'){const result=await Promise.all([api('/gestion/recursos-apoyo?limite=50&offset='+resourceOffset),api('/gestion/recursos-apoyo/responsables')]);render=()=>resourceRoom(...result);}
@@ -532,6 +607,13 @@ content.onsubmit=e=>{
   }
   handle(e.submitter,async()=>{const data=Object.fromEntries(new FormData(form));
     if(data.confirmar_padron)data.confirmar_padron=true;
+    if(data.decision==='validado' && form.querySelector('[data-sector]')){
+      if(!data.latitud || !data.longitud){
+        form.querySelector('[data-open-map]').focus();
+        throw Error('Marca y confirma el sector en el mapa antes de activar el aviso.');
+      }
+      data.latitud=Number(data.latitud); data.longitud=Number(data.longitud);
+    }
     for(const input of form.querySelectorAll('input[type="number"]')){if(input.value==='')delete data[input.name];else data[input.name]=input.valueAsNumber;}
     for(const field of ['id_organizacion','id_membresia','id_caso'])if(data[field])data[field]=Number(data[field]);
     if(Object.hasOwn(data,'id_foto_vehiculo')){
