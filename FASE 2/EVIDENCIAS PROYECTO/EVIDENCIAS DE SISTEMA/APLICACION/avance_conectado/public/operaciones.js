@@ -64,24 +64,24 @@ function alertReview(c,base){
     ${(c.consultas_encargo||[]).map(q=>`<div class="record"><strong>${q.simulada?'SIMULACIÓN · ':''}${h(labelsEncargo[q.resultado])}</strong><p>${h(q.fuente)} · ${h(date(q.consultada_en))} · ${h(q.operador)}</p><p>${h(q.referencia||'')} ${h(q.observacion)}</p>${q.id_evidencia?`<button data-photo="${Number(q.id_evidencia)}">Ver captura privada</button>`:''}</div>`).join('')||empty('Encargo pendiente de comprobación.')}</div>`;
 }
 function reviewLinks(items){
-  return `<section class="card"><h2>Solicitudes de revisión</h2><p>Contrasta el padrón con el vehículo y la persona solicitante. Para un conductor autorizado, comprueba también la autorización del titular. Registra solo un código de referencia del expediente protegido.</p></section>`+
+  return `<section class="card"><h2>Solicitudes de revisión</h2><p>Contrasta el padrón o el permiso de circulación con la patente y la identidad del solicitante. Si el permiso es insuficiente para acreditar el vínculo, solicita respaldo adicional por el canal institucional. Para un conductor autorizado, comprueba también la autorización del titular. Registra solo un código de referencia del expediente protegido.</p></section>`+
     (items.map(v=>{
       const path='/gestion/vinculos/'+Number(v.id_vinculo_vehiculo)+'/decision';
       const statusField=`<input type="hidden" name="estado_esperado" value="${h(v.estado)}">`;
       const decisions=v.puede_revisar&&v.estado==='pendiente'?action('Revisar vínculo',path,statusField+
         selector('decision','Decisión',{autorizado:'Aprobar',rechazado:'Rechazar'})+
-        selector('motivo','Motivo',{padron_y_coincidencia:'Padrón e identidad revisados',padron_y_autorizacion:'Padrón y autorización revisados',documentacion_insuficiente:'Antecedentes insuficientes',datos_inconsistentes:'Datos inconsistentes',uso_indebido:'Uso indebido'})+
+        selector('motivo','Motivo',{padron_y_coincidencia:'Documento e identidad revisados',padron_y_autorizacion:'Documento y autorización revisados',documentacion_insuficiente:'Antecedentes insuficientes',datos_inconsistentes:'Datos inconsistentes',uso_indebido:'Uso indebido'})+
         (v.padron_disponible
-          ? '<label class="check-padron"><input type="checkbox" name="confirmar_padron" value="true"> Revisé el padrón, cotejé la identidad del solicitante por el canal institucional y confirmé la coincidencia con el titular y la patente.</label>'
+          ? '<label class="check-padron"><input type="checkbox" name="confirmar_padron" value="true"> Revisé el documento, cotejé la identidad del solicitante por el canal institucional y confirmé la coincidencia con el titular y la patente.</label>'
           : '<label>Referencia de revisión por canal institucional<input name="referencia" maxlength="80" placeholder="Ej. VIN-REV-001"></label>')):
         v.puede_revisar&&v.estado==='autorizado'?action('Revocar vínculo',path,statusField+'<input type="hidden" name="decision" value="revocado">'+
           selector('motivo','Motivo',{cambio_o_retiro:'Cambio o retiro',uso_indebido:'Uso indebido',datos_inconsistentes:'Datos inconsistentes'})):'';
       return `<article class="card"><div class="row"><h2>${h(v.patente)}</h2>${badge(v.estado)}</div>
         <p>${h(v.solicitante)} · ${h(v.tipo.replaceAll('_',' '))} · ${h(v.organizacion)}</p>
-        ${v.padron_disponible?(v.puede_revisar?`<p>Padrón recibido ${h(date(v.padron_recibido_en))}</p><button type="button" data-padron="${Number(v.id_vinculo_vehiculo)}">Ver padrón privado</button>`:'<p>Padrón recibido. Acceso reservado a supervisión.</p>'):(v.padron_recibido_en?'<p>Revisión con padrón adjunto. El archivo sale del registro activo al resolver la solicitud.</p>':'<p>Sin padrón adjunto. Revisión por el canal de la organización.</p>')}
+        ${v.padron_disponible?(v.puede_revisar?`<p>${v.tipo_documento==='permiso_circulacion'?'Permiso de circulación':'Padrón'} recibido ${h(date(v.padron_recibido_en))}</p><button type="button" data-padron="${Number(v.id_vinculo_vehiculo)}">Ver documento privado</button>`:'<p>Documento recibido. Acceso reservado a supervisión.</p>'):(v.padron_recibido_en?'<p>Revisión con documento adjunto. El archivo sale del registro activo al resolver la solicitud.</p>':'<p>Sin documento adjunto. Revisión por el canal de la organización.</p>')}
         ${v.prelectura_disponible?`<button type="button" data-prelectura="${Number(v.id_vinculo_vehiculo)}">Leer patente con GroqCloud</button><p role="status" data-resultado-prelectura></p>`:''}
         ${v.padron_disponible&&v.puede_revisar&&v.padron_prelectura==='coincide'?'<p>GroqCloud leyó una patente coincidente. Pendiente de revisión.</p>':''}
-        ${v.padron_disponible&&v.puede_revisar&&v.padron_prelectura==='inconclusa'?'<p>Lectura automática inconclusa. Revisa el padrón original.</p>':''}
+        ${v.padron_disponible&&v.puede_revisar&&v.padron_prelectura==='inconclusa'?'<p>Lectura automática inconclusa. Revisa el documento original.</p>':''}
         <p class="muted">Revisor: ${h(v.revisor||'Pendiente')} · Revisión: ${h(date(v.revisado_en))} · Vigencia: ${h(date(v.vence_revision_en))}</p>
         ${v.motivo_revision?`<p>${h(v.motivo_revision.replaceAll('_',' '))}</p>`:''}${decisions}</article>`;
     }).join('')||empty('Aún no hay vínculos solicitados en tus organizaciones.'));
@@ -482,7 +482,7 @@ content.onclick=e=>{
     if(generation!==epoch)return;
     const url=URL.createObjectURL(file);photos.push(url);
     const preview=document.createElement('a');preview.href=url;preview.target='_blank';preview.rel='noopener noreferrer';
-    preview.textContent='Abrir padrón a tamaño completo';
+    preview.textContent='Abrir documento a tamaño completo';
     b.replaceWith(preview);
   });
   if(b.dataset.prelectura && confirm('¿Quieres enviar el padrón ficticio a GroqCloud para leer la patente?'))handle(b,async()=>{

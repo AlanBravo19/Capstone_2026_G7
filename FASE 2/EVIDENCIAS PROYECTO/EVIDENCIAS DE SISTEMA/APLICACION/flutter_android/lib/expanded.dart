@@ -555,6 +555,10 @@ class CaseScreen extends StatelessWidget {
           eyebrow: '${d['patente']} · ${d['zona']}',
         ),
         StateChip('${d['estado']}'),
+        if (d['alerta']?['vence_en'] case final String vence)
+          Note(
+            'Fin de difusión: ${DateTime.tryParse(vence)?.toLocal().toString().split('.').first ?? vence} · hora local.',
+          ),
         OutlinedButton.icon(
           onPressed: () {
             final comuna = '${d['zona']}'.split(' · ').first;
@@ -1005,6 +1009,20 @@ class _CommunityScreenState extends State<CommunityScreen> {
   @override
   void initState() {
     super.initState();
+    widget.session
+        .ubicacionInicial()
+        .then((p) {
+          if (mounted && proximity.isEmpty) {
+            search({
+              'lat': p.latitude.toStringAsFixed(2),
+              'lon': p.longitude.toStringAsFixed(2),
+              'radio_km': '30',
+            });
+          }
+        })
+        .catchError((Object _) {
+          /* Sin GPS se muestran todas las publicaciones. */
+        });
     actualizacion = Timer.periodic(const Duration(seconds: 20), (_) {
       if (widget.active &&
           (ModalRoute.of(context)?.isCurrent ?? false) &&
@@ -1028,6 +1046,11 @@ class _CommunityScreenState extends State<CommunityScreen> {
     }
   }
 
+  String distancia(num km) => km < .1
+      ? 'menos de 100 m'
+      : km < 1
+      ? '${(km * 1000).round()} m'
+      : '${km.toStringAsFixed(1)} km';
   final zone = TextEditingController();
   final searchFocus = FocusNode();
   String query = '';
@@ -1211,9 +1234,13 @@ class _CommunityScreenState extends State<CommunityScreen> {
                           api: widget.session.api,
                           data: Map<String, dynamic>.from(s as Map),
                         ),
-                        if (s['distancia_km'] != null)
+                        if (s['distancia_avistamiento_km'] case final num km)
                           Note(
-                            'Sector a ~${s['distancia_km']} km. No es posición actual del vehículo.',
+                            'Último avistamiento revisado · a ${distancia(km)} del sector aproximado.',
+                          ),
+                        if (s['distancia_km'] case final num km)
+                          Note(
+                            'Sector del reporte · a ${distancia(km)} aproximadamente.',
                           ),
                         Note('Vigencia: ${s['vence_en']}'),
                         collaborationAction(ctx, widget.session, s),

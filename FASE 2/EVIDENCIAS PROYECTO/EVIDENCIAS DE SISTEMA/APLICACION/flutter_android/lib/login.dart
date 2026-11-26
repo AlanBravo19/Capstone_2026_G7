@@ -366,7 +366,7 @@ class _RecoveryDialogState extends State<RecoveryDialog> {
           message = r['mensaje'];
           if (r['token_prueba'] != null) {
             code.text = r['token_prueba'];
-            message = 'Código beta mostrado aquí. No se envió un correo.';
+            message = 'Código de prueba mostrado aquí. No se envió un correo.';
           }
         });
       } else {

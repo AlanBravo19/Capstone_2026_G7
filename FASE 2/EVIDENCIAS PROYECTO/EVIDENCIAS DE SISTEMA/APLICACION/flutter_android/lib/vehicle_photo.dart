@@ -3,12 +3,13 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 import 'api.dart';
+import 'model_reference.dart';
 
 /// No image URLs or credentials are passed to Flutter's network image cache.
 class VehiclePhoto extends StatefulWidget {
   final RutaApi api;
   final int sid;
-  final String? tipoVehiculo;
+  final String? tipoVehiculo, modeloCompleto;
   final bool fotoDisponible;
   final String? fotoUrl;
   final double height;
@@ -18,6 +19,7 @@ class VehiclePhoto extends StatefulWidget {
     required this.api,
     required this.sid,
     this.tipoVehiculo,
+    this.modeloCompleto,
     this.fotoDisponible = false,
     this.fotoUrl,
     this.height = 180,
@@ -45,9 +47,11 @@ class _VehiclePhotoState extends State<VehiclePhoto> {
   @override
   void didUpdateWidget(covariant VehiclePhoto oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.api != widget.api || oldWidget.sid != widget.sid ||
+    if (oldWidget.api != widget.api ||
+        oldWidget.sid != widget.sid ||
         oldWidget.fotoDisponible != widget.fotoDisponible ||
-        oldWidget.fotoUrl != widget.fotoUrl || _session != widget.api.token) {
+        oldWidget.fotoUrl != widget.fotoUrl ||
+        _session != widget.api.token) {
       _load();
     }
   }
@@ -59,10 +63,18 @@ class _VehiclePhotoState extends State<VehiclePhoto> {
       height: widget.height,
       width: double.infinity,
       child: FutureBuilder<Uint8List>(
-        key: ValueKey((widget.api, widget.sid, widget.fotoDisponible, widget.fotoUrl, _session)),
+        key: ValueKey((
+          widget.api,
+          widget.sid,
+          widget.fotoDisponible,
+          widget.fotoUrl,
+          _session,
+        )),
         future: _photo,
         builder: (context, snapshot) {
-          if (_photo != null && snapshot.hasData && _session == widget.api.token) {
+          if (_photo != null &&
+              snapshot.hasData &&
+              _session == widget.api.token) {
             return Image.memory(
               snapshot.data!,
               fit: BoxFit.cover,
@@ -76,7 +88,8 @@ class _VehiclePhotoState extends State<VehiclePhoto> {
             fit: StackFit.expand,
             children: [
               _reference(),
-              if (_photo != null && snapshot.connectionState != ConnectionState.done)
+              if (_photo != null &&
+                  snapshot.connectionState != ConnectionState.done)
                 const Align(
                   alignment: Alignment.bottomCenter,
                   child: LinearProgressIndicator(minHeight: 3),
@@ -89,12 +102,20 @@ class _VehiclePhotoState extends State<VehiclePhoto> {
   );
 
   Widget _reference() {
+    final model = widget.modeloCompleto?.trim();
+    if (model == null || model.isEmpty) return _fallback();
+    return ModelReference(model: model, fallback: _fallback());
+  }
+
+  Widget _fallback() {
     final (icon, label) = switch (widget.tipoVehiculo?.toLowerCase()) {
       'motocicleta' || 'moto' => (Icons.two_wheeler_rounded, 'Motocicleta'),
       'camion' || 'camión' => (Icons.local_shipping_rounded, 'Camión'),
       'camioneta' => (Icons.local_shipping_outlined, 'Camioneta'),
       'furgon' || 'furgón' => (Icons.airport_shuttle_rounded, 'Furgón'),
-      'automovil' || 'automóvil' || 'auto' => (Icons.directions_car_rounded, 'Automóvil'),
+      'automovil' ||
+      'automóvil' ||
+      'auto' => (Icons.directions_car_rounded, 'Automóvil'),
       _ => (Icons.directions_car_rounded, 'Vehículo'),
     };
     return DecoratedBox(
@@ -110,9 +131,18 @@ class _VehiclePhotoState extends State<VehiclePhoto> {
         children: [
           Icon(icon, size: 72, color: Colors.white),
           const SizedBox(height: 4),
-          Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
           const SizedBox(height: 8),
-          const Text('Imagen de referencia', style: TextStyle(color: Colors.white)),
+          const Text(
+            'Imagen de referencia',
+            style: TextStyle(color: Colors.white),
+          ),
         ],
       ),
     );

@@ -414,7 +414,7 @@ class _ContactsDialogState extends State<ContactsDialog> {
     await widget.session.refresh();
     phoneCode.clear();
     challenge = null;
-    message = 'Pasos completados. Ya puedes participar en la beta.';
+    message = 'Pasos completados. Ya puedes participar en RutaAlerta.';
   }
 
   @override
@@ -433,7 +433,7 @@ class _ContactsDialogState extends State<ContactsDialog> {
               Note(
                 smtp
                     ? 'Escribe el código del correo de RutaAlerta. Si aún no lo tienes, puedes solicitar otro.'
-                    : 'En esta beta los códigos se muestran aquí. No se envían correos ni SMS y no acreditan la titularidad de tus contactos. Utiliza datos de prueba.',
+                    : 'En el entorno de pruebas los códigos se muestran aquí. No se envían correos ni SMS y no acreditan la titularidad de tus contactos. Utiliza datos de prueba.',
               ),
               Text(
                 '1. Correo · ${emailDone ? 'completado' : 'pendiente'}',
@@ -444,7 +444,7 @@ class _ContactsDialogState extends State<ContactsDialog> {
                 OutlinedButton(
                   onPressed: busy ? null : () => run(emailRequest),
                   child: Text(
-                    smtp ? 'Enviar código por correo' : 'Generar código beta',
+                    smtp ? 'Enviar código por correo' : 'Generar código de prueba',
                   ),
                 ),
                 TextField(
@@ -479,7 +479,7 @@ class _ContactsDialogState extends State<ContactsDialog> {
                   onPressed: busy || !emailDone
                       ? null
                       : () => run(phoneRequest),
-                  child: const Text('Generar código beta'),
+                  child: const Text('Generar código de prueba'),
                 ),
                 TextField(
                   controller: phoneCode,

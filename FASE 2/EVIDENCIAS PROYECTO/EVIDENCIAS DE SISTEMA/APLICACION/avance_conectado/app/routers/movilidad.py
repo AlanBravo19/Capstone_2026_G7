@@ -10,6 +10,7 @@ from ..seguridad import usuario_actual,organizaciones_del_operador
 from ..antifraude import limitar
 from ..antifraude import DEMO
 from ..config import config
+from ..alertas import VIGENTE, entorno
 from ..zonas_historicas import consultar_zonas, cruzar_rutas, PERIODO_DIAS
 from .colaboracion import rows, listado
 
@@ -75,16 +76,25 @@ def ruta(datos:Ruta,usuario=Depends(usuario_actual),conn=Depends(obtener_conexio
  ambiente = ambiente_historico()
  alcance = {'type':'MultiLineString','coordinates':[r['geometria']['coordinates'] for r in found]}
  cur = conn.cursor()
- zonas = consultar_zonas(cur, alcance, ambiente, 2000)
+ zonas = consultar_zonas(cur, alcance, ambiente, 16000)
+ # Sólo centros ya publicados, con la misma vigencia y consentimiento que Colaborar.
+ cur.execute(f"""WITH recorrido AS (SELECT ST_SetSRID(ST_GeomFromGeoJSON(%s),4326)::geography AS geo)
+   SELECT DISTINCT ON (ST_Y(s.centro_publico::geometry),ST_X(s.centro_publico::geometry)) ST_Y(s.centro_publico::geometry) AS latitud,ST_X(s.centro_publico::geometry) AS longitud,
+     800 AS radio_m,'activa' AS nivel, 'alerta' AS origen,
+     ST_AsGeoJSON(ST_Buffer(s.centro_publico,800)::geometry,6)::jsonb AS geometria
+   FROM solicitud_colaboracion s JOIN caso c USING(id_caso) CROSS JOIN recorrido
+   WHERE {VIGENTE} AND c.entorno=%s AND ST_DWithin(s.centro_publico,recorrido.geo,800)""",
+   (json.dumps(alcance),entorno()))
+ zonas.extend(rows(cur))
  for alternativa, cruces in zip(found, cruzar_rutas(cur, found, zonas)):
   alternativa['cruces_zonas'] = cruces
  if datos.evitar_zonas:
   found.sort(key=lambda r: (r['cruces_zonas'], r['duracion_s']))
- nota = 'OSRM puede devolver una sola opción. La comparación usa antecedentes revisados de los últimos 365 días.'
+ nota = 'OSRM puede devolver una sola opción. La comparación considera antecedentes revisados del último año y sectores de alertas públicas vigentes.'
  if zonas and all(r['cruces_zonas'] for r in found):
-  nota = 'Todas las alternativas disponibles cruzan zonas históricas. ' + nota
+  nota = 'Todas las alternativas disponibles cruzan sectores con antecedentes o alertas vigentes. ' + nota
  elif not zonas:
-  nota = 'Sin zonas históricas concentradas cerca de las alternativas consultadas. ' + nota
+  nota = 'Sin sectores con antecedentes o alertas vigentes cerca de las alternativas consultadas. ' + nota
  return {'rutas':found,'zonas':zonas,'simulacion':ambiente=='prueba',
          'proveedor':'OSRM · tiempos estimados sin tráfico en vivo','nota':nota}
 

@@ -95,7 +95,7 @@ def publicar_provisional(cur, caso, datos, usuario, ambiente):
     bitacora(cur,cid,usuario,'publicacion_provisional',motivo,'interna')
     aviso(cur,usuario,cid,'Alerta provisional publicada','La organización revisará el caso y el encargo policial.',f'provisional:{sid}')
     avisar_equipo(cur,org,cid,'Alerta provisional nueva','Revisa el expediente y registra la consulta del encargo.',f'provisional:{sid}')
-    return 'provisional', 'Alerta provisional publicada en Colaborar. La organización revisará el encargo.'
+    return 'provisional', f'Alerta visible en Colaborar durante {config.alerta_minutos} minutos, sujeta a revisión. Tu expediente seguirá en Mis casos.'
 
 def avisar_equipo(cur, org, cid, titulo, mensaje, clave):
     cur.execute("""INSERT INTO notificacion(id_usuario,id_caso,tipo,titulo,mensaje,clave_deduplicacion)

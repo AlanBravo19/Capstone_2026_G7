@@ -166,3 +166,19 @@ def test_cotejo_registra_coincidencia_y_respaldo_si_proveedor_falla(client, supe
     assert client.post('/vehiculos', headers=titular, json={**otro, 'revision': documento}).status_code == 201
     fila = next(v for v in client.get('/gestion/vinculos', headers=supervisor_org1).json() if v['patente'] == otro['patente'])
     assert fila['estado'] == 'pendiente' and fila['padron_disponible'] and fila['padron_prelectura'] == 'inconclusa'
+
+
+def test_permiso_circulacion_posterior_solo_supervision(client,supervisor_org1,monkeypatch):
+    _, _, titular, _ = activar(client)
+    datos = vehiculo()
+    vid = client.post('/vehiculos',headers=titular,json=datos).json()['id_vehiculo']
+    monkeypatch.setattr(prelectura_padron,'operativa',lambda:True)
+    monkeypatch.setattr(prelectura_padron,'leer',lambda *args: (_ for _ in ()).throw(AssertionError('El permiso requiere revisión humana')))
+    body = {'id_organizacion':1,'tipo_documento':'permiso_circulacion','padron_base64':foto_payload()['contenido_base64'],'autorizar_prelectura':True}
+    for _ in range(2):
+        assert client.post(f'/vehiculos/{vid}/revision-vinculo',headers=titular,json=body).status_code == 204
+    fila = next(r for r in client.get('/gestion/vinculos',headers=supervisor_org1).json() if r['patente']==datos['patente'])
+    assert fila['tipo_documento']=='permiso_circulacion' and fila['padron_disponible']
+    url = f"/gestion/vinculos/{fila['id_vinculo_vehiculo']}/padron"
+    assert client.get(url,headers=titular).status_code == 404
+    assert client.get(url,headers=supervisor_org1).status_code == 200

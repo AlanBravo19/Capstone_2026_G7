@@ -68,7 +68,9 @@ def seguimiento(cid:int,usuario=Depends(usuario_actual),conn=Depends(obtener_con
         elif ultima and ultima['suspendida_en']: paso='Alerta suspendida'
         elif ultima and ultima['estado']=='publicada' and ultima['vence_en']>datetime.now(timezone.utc):
             paso='Alerta suspendida por pérdida de condiciones'
-        elif ultima: paso='Publicación retirada o vencida'
+        elif ultima and ultima['estado'] in ('vencida','publicada') and ultima['vence_en']<=datetime.now(timezone.utc):
+            paso='Difusión vencida. El expediente sigue en Mis casos y el operador puede revisar una nueva publicación.'
+        elif ultima: paso='Publicación retirada'
         elif c['colaboracion_consentida_en']: paso='Pendiente de publicación por el operador'
         else: paso='Pendiente de autorización del titular'
         c['estado_colaboracion']=paso
@@ -181,6 +183,10 @@ def colaboraciones_publicas(cur,uid,lat=None,lon=None,zona='',sid=None):
         (SELECT simulada FROM consulta_encargo q WHERE q.id_caso=c.id_caso
             ORDER BY q.id_consulta_encargo DESC LIMIT 1) IS TRUE AS simulada,
         ST_Y(s.centro_publico::geometry) AS latitud_sector, ST_X(s.centro_publico::geometry) AS longitud_sector,
+        CASE WHEN %s::float IS NOT NULL THEN (SELECT ST_Distance(ST_SnapToGrid(av.ubicacion::geometry,0.02)::geography,
+            ST_SetSRID(ST_Point(%s,%s),4326)::geography)/1000 FROM avistamiento av
+            WHERE av.id_solicitud_colaboracion=s.id_solicitud_colaboracion AND av.estado_revision='aceptado'
+              AND av.ubicacion IS NOT NULL ORDER BY av.observado_en DESC,av.id_avistamiento DESC LIMIT 1) END AS distancia_avistamiento_km,
         CASE WHEN %s::float IS NOT NULL THEN ST_Distance(s.centro_publico,ST_SetSRID(ST_Point(%s,%s),4326)::geography)/1000 END AS distancia_km,
         EXISTS(SELECT 1 FROM evidencia e JOIN archivo_evidencia f USING(id_evidencia)
                WHERE e.id_evidencia=s.id_foto_vehiculo AND {FOTO_PUBLICABLE}) AS foto_disponible
@@ -189,7 +195,7 @@ def colaboraciones_publicas(cur,uid,lat=None,lon=None,zona='',sid=None):
         AND regexp_replace(lower(normalize(s.zona_publicable,NFD)),%s,'','g') ~ ALL(%s::text[])
         AND (%s::bigint IS NULL OR s.id_solicitud_colaboracion=%s)
         ORDER BY distancia_km ASC NULLS LAST,s.inicio DESC LIMIT 100''',
-        (uid,lat,lon,lat,entorno(),'[\u0300-\u036f]',patrones_zona,sid,sid))
+        (uid,lat,lon,lat,lat,lon,lat,entorno(),'[\u0300-\u036f]',patrones_zona,sid,sid))
     found=rows(cur)
     for fila in found:
         fila['foto_url']=f"/colaboracion/{fila['id_solicitud_colaboracion']}/foto-vehiculo" if fila['foto_disponible'] else None
@@ -222,7 +228,9 @@ def listado(lat:float|None=Query(None,ge=-90,le=90),lon:float|None=Query(None,ge
     for fila in found:
         km=fila['distancia_km']
         grupo='cercanos' if km is not None and km<=radio_km else 'otras_zonas'
-        fila['distancia_km']=round(km) if km is not None else None
+        fila['distancia_km']=round(km,1) if km is not None else None
+        visto=fila['distancia_avistamiento_km']
+        fila['distancia_avistamiento_km']=round(visto,1) if visto is not None else None
         resultado[grupo].append(fila)
     return resultado
 

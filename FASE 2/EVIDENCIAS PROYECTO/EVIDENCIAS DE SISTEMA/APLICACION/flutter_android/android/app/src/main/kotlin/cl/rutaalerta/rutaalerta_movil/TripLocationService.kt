@@ -151,7 +151,7 @@ class TripLocationService : Service(), LocationListener {
         if (grouped) {
             val total = n.getInt("antecedentes")
             val encerronas = n.getInt("encerronas")
-            if (total < 2 || encerronas !in 0..total) return null
+            if (total < 1 || encerronas !in 0..total) return null
             return TerritorialNotice(n.getString("id_zona"), lat, lon, radius, expiry,
                 n.getString("sector").take(120), total = total, encerronas = encerronas)
         }

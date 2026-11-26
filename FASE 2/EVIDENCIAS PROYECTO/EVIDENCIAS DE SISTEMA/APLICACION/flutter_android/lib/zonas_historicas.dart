@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+const zonaActiva = Color(0xffdc2451);
 const zonaModerada = Color(0xffff9b42);
 const zonaAlta = Color(0xffff465d);
 
@@ -15,8 +16,9 @@ class LeyendaZonas extends StatelessWidget {
     spacing: 16,
     runSpacing: 6,
     children: [
-      _Nivel(zonaModerada, '2–3 antecedentes'),
+      _Nivel(zonaModerada, '1–3 antecedentes'),
       _Nivel(zonaAlta, '4 o más antecedentes'),
+      _Nivel(zonaActiva, 'Alerta vigente · vehículo'),
     ],
   );
 }

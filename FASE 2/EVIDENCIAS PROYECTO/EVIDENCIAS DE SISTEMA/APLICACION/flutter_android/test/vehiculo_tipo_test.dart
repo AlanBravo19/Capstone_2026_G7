@@ -51,6 +51,7 @@ void main() {
       (0, 'Motocicleta'),
       (1, 'HONDA'),
       (2, '125CC'),
+      (3, 'Negro'),
     ]) {
       await tester.tap(find.byType(DropdownButtonFormField<String>).at(index));
       await tester.pumpAndSettle();
@@ -58,8 +59,7 @@ void main() {
       await tester.pumpAndSettle();
     }
     await tester.enterText(find.byType(TextFormField).at(0), 'BCDF12');
-    await tester.enterText(find.byType(TextFormField).at(1), 'Negro');
-    await tester.enterText(find.byType(TextFormField).at(2), '2020');
+    await tester.enterText(find.byType(TextFormField).at(1), '2020');
     await tester.tap(find.text('Guardar vehículo'));
     await tester.pumpAndSettle();
     expect(

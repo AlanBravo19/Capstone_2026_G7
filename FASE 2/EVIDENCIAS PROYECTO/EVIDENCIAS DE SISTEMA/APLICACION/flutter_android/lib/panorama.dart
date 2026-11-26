@@ -4,7 +4,6 @@ import 'package:latlong2/latlong.dart';
 
 import 'session.dart';
 import 'expanded.dart';
-import 'movilidad.dart' show Mobility;
 import 'ui.dart';
 import 'location_picker.dart';
 import 'zonas_historicas.dart';
@@ -42,9 +41,15 @@ class _PanoramaZonalState extends State<PanoramaZonal> {
   @override
   void initState() {
     super.initState();
-    centro = widget.session.centroZonal ?? ciudades['Chillán']!;
+    centro = widget.session.centroZonal ?? const LatLng(-33, -71);
     sector = widget.session.nombreZona;
-    cargar();
+    if (widget.session.centroZonal != null) {
+      cargar();
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) ubicar(inicial: true);
+      });
+    }
   }
 
   @override
@@ -126,21 +131,20 @@ class _PanoramaZonalState extends State<PanoramaZonal> {
     cargar();
   }
 
-  Future<void> ubicar() async {
+  Future<void> ubicar({bool inicial = false}) async {
+    final turno = peticion;
     setState(() => gpsOcupado = true);
     try {
-      final gps = await Mobility.location();
-      if (mounted) {
-        cambiar(
-          'Mi ubicación',
-          LatLng(
-            (gps['lat'] as num).toDouble(),
-            (gps['lon'] as num).toDouble(),
-          ),
-        );
+      final gps = await widget.session.ubicacionInicial(renovar: !inicial);
+      if (mounted && turno == peticion) {
+        cambiar('Mi ubicación', gps);
       }
     } catch (e) {
-      if (mounted) feedback(context, e);
+      if (mounted && turno == peticion)
+        setState(
+          () => error =
+              'Activa la ubicación o elige una zona para ver sus alertas.',
+        );
     } finally {
       if (mounted) setState(() => gpsOcupado = false);
     }
@@ -264,6 +268,16 @@ class _PanoramaZonalState extends State<PanoramaZonal> {
     for (final s in solicitudes) {
       final p = punto(s, 'latitud_sector', 'longitud_sector');
       if (p != null) {
+        for (var capa = 0; capa < 7; capa++) {
+          circulos.add(
+            CircleMarker(
+              point: p,
+              radius: 800 * (1 - capa * .11),
+              useRadiusInMeter: true,
+              color: zonaActiva.withValues(alpha: .13 + capa * .022),
+            ),
+          );
+        }
         marcas.add(
           marca(
             p,
@@ -291,6 +305,7 @@ class _PanoramaZonalState extends State<PanoramaZonal> {
                 RutaMap(
                   controller: mapa,
                   center: centro,
+                  zoom: widget.session.centroZonal == null ? 4 : 12,
                   interactive: !widget.compacto,
                   circles: circulos,
                   markers: marcas,
@@ -350,7 +365,7 @@ class _PanoramaZonalState extends State<PanoramaZonal> {
                   right: 8,
                   top: 8,
                   child: IconButton.filledTonal(
-                    onPressed: gpsOcupado ? null : ubicar,
+                    onPressed: gpsOcupado ? null : () => ubicar(),
                     icon: const Icon(Icons.my_location),
                     tooltip: 'Centrar en mi GPS',
                   ),
@@ -382,7 +397,11 @@ class _PanoramaZonalState extends State<PanoramaZonal> {
                         icon: const Icon(Icons.open_in_full),
                       ),
                     IconButton(
-                      onPressed: cargando ? null : cargar,
+                      onPressed: cargando || gpsOcupado
+                          ? null
+                          : widget.session.centroZonal == null
+                          ? () => ubicar()
+                          : cargar,
                       tooltip: 'Actualizar zona',
                       icon: const Icon(Icons.refresh),
                     ),
@@ -394,16 +413,39 @@ class _PanoramaZonalState extends State<PanoramaZonal> {
                       : error ??
                             '${solicitudes.length} solicitudes · ${zonas.length} zonas históricas en 30 km',
                 ),
+                if (!cargando &&
+                    error == null &&
+                    widget.session.centroZonal != null &&
+                    solicitudes.isEmpty &&
+                    zonas.isEmpty)
+                  const Text(
+                    'Sin alertas vigentes ni antecedentes revisados en este radio.',
+                  ),
                 if (escenarioDemo)
                   const Text(
                     'ENSAYO · zonas y antecedentes ficticios',
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
-                if (zonas.isNotEmpty) const LeyendaZonas(),
+                if (zonas.isNotEmpty || solicitudes.isNotEmpty)
+                  const LeyendaZonas(),
                 if (!widget.compacto)
                   const Text(
-                    'Azul · solicitud activa. Las manchas agrupan antecedentes revisados del último año.',
+                    'El auto marca el sector aproximado de una alerta vigente. Las manchas históricas reúnen antecedentes revisados del último año.',
                     style: TextStyle(color: muted),
+                  ),
+                if (!widget.compacto && (zonas.isNotEmpty || solicitudes.isNotEmpty))
+                  TextButton.icon(
+                    icon: const Icon(Icons.zoom_out_map),
+                    label: const Text('Ver todos los sectores del radio'),
+                    onPressed: () {
+                      final puntos = <LatLng>[centro,
+                        for (final z in zonas)
+                          if (punto(z,'latitud','longitud') case final LatLng p) p,
+                        for (final s in solicitudes)
+                          if (punto(s,'latitud_sector','longitud_sector') case final LatLng p) p,
+                      ];
+                      mapa.fitCamera(CameraFit.bounds(bounds: LatLngBounds.fromPoints(puntos), padding: const EdgeInsets.all(48), maxZoom: 13));
+                    },
                   ),
                 if (!widget.compacto) ...[
                   OutlinedButton.icon(

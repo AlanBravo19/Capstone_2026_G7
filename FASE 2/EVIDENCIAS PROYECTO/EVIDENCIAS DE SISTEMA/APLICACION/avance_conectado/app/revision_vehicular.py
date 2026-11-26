@@ -1,3 +1,4 @@
+from typing import Literal
 from uuid import uuid4
 
 from fastapi import HTTPException
@@ -11,6 +12,7 @@ class SolicitarRevision(BaseModel):
     model_config = ConfigDict(extra='forbid')
     id_organizacion: int = Field(gt=0)
     padron_base64: str | None = Field(default=None, min_length=16, max_length=2796204)
+    tipo_documento: Literal['padron','permiso_circulacion'] = 'padron'
     autorizar_prelectura: bool = False
 
 
@@ -30,8 +32,8 @@ def preparar_padron(datos, patente, *, cotejar=True):
     try:
         imagen = limpiar_imagen(datos.padron_base64, lado_maximo=2400)
     except ValueError:
-        raise HTTPException(422, 'Adjunta una imagen legible del padrón en JPEG, PNG o WebP, de hasta 2 MB.') from None
-    if not (cotejar and datos.autorizar_prelectura and prelectura_padron.operativa()):
+        raise HTTPException(422, 'Adjunta una imagen legible del documento en JPEG, PNG o WebP, de hasta 2 MB.') from None
+    if not (datos.tipo_documento == 'padron' and cotejar and datos.autorizar_prelectura and prelectura_padron.operativa()):
         return imagen, None
     try:
         lectura = prelectura_padron.leer(imagen)
@@ -51,28 +53,28 @@ def guardar_solicitud(cur, uid, vinculo, organizacion_actual, datos, imagen, pre
     if not cur.fetchone():
         raise HTTPException(422, 'Organización receptora no disponible.')
     if imagen is not None:
-        cur.execute('SELECT contenido FROM documento_vinculo_vehiculo WHERE id_vinculo_vehiculo=%s', (vinculo,))
+        cur.execute('SELECT contenido,tipo_documento FROM documento_vinculo_vehiculo WHERE id_vinculo_vehiculo=%s', (vinculo,))
         existente = cur.fetchone()
         if existente:
-            if existente[0] == imagen:
+            if existente == (imagen, datos.tipo_documento):
                 return
-            raise HTTPException(409, 'El padrón ya está en revisión. Si debes corregirlo, contacta al supervisor.')
-        cur.execute('''INSERT INTO documento_vinculo_vehiculo(id_vinculo_vehiculo,contenido)
-            VALUES(%s,%s)''', (vinculo, imagen))
+            raise HTTPException(409, 'El documento ya está en revisión. Si debes corregirlo, contacta al supervisor.')
+        cur.execute('''INSERT INTO documento_vinculo_vehiculo(id_vinculo_vehiculo,contenido,tipo_documento)
+            VALUES(%s,%s,%s)''', (vinculo, imagen, datos.tipo_documento))
     if organizacion_actual is None:
         cur.execute('UPDATE vinculo_vehiculo SET id_organizacion_revision=%s WHERE id_vinculo_vehiculo=%s',
                     (datos.id_organizacion, vinculo))
     if organizacion_actual is None or imagen is not None:
         auditar_vinculo(cur, uid, vinculo, 'solicitar_revision',
-                       'Padrón privado recibido.' if imagen is not None else 'Revisión documental solicitada.')
+                       f'Documento privado recibido: {datos.tipo_documento}.' if imagen is not None else 'Revisión documental solicitada.')
     if prelectura is not None:
         auditar_vinculo(cur, uid, vinculo, 'prelectura_padron', prelectura)
     if imagen is not None:
         cur.execute('''INSERT INTO notificacion(id_usuario,tipo,titulo,mensaje,clave_deduplicacion)
-            SELECT DISTINCT m.id_usuario,'general','Padrón pendiente de revisión',
+            SELECT DISTINCT m.id_usuario,'general',%s,
                 'Abre Verificar vínculos en Operaciones para revisar la solicitud.',%s
             FROM membresia m JOIN usuario u USING(id_usuario)
             WHERE m.id_organizacion=%s AND m.rol='supervisor' AND m.estado='activa'
                 AND m.fin IS NULL AND m.inicio<=CURRENT_TIMESTAMP AND u.estado='activo' AND m.id_usuario<>%s
             ON CONFLICT(id_usuario,clave_deduplicacion) DO NOTHING''',
-                    (f'padron:{vinculo}', datos.id_organizacion, uid))
+                    ('Permiso de circulación pendiente de revisión' if datos.tipo_documento == 'permiso_circulacion' else 'Padrón pendiente de revisión', f'padron:{vinculo}', datos.id_organizacion, uid))

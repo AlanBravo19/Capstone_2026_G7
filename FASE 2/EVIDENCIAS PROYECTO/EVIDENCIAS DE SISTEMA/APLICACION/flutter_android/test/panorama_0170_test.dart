@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:latlong2/latlong.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -62,6 +64,7 @@ void main() {
           }),
         ),
       );
+      session.centroZonal = const LatLng(-36.60, -72.10);
       await t.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -78,7 +81,7 @@ void main() {
         zonaModerada,
         zonaAlta,
       });
-      expect(find.text('2–3 antecedentes'), findsOneWidget);
+      expect(find.text('1–3 antecedentes'), findsOneWidget);
       expect(find.text('4 o más antecedentes'), findsOneWidget);
       final source = find.text('Antecedente para prueba');
       await t.ensureVisible(source);

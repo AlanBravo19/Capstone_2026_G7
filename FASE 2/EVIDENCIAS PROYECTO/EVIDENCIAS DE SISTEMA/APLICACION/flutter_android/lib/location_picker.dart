@@ -258,8 +258,8 @@ class _LocationMapPageState extends State<_LocationMapPage> {
               center:
                   widget.initial ??
                   widget.center ??
-                  const LatLng(-36.606, -72.104),
-              zoom: widget.initial == null ? 13 : 16,
+                  const LatLng(-33, -71),
+              zoom: widget.initial != null ? 16 : widget.center != null ? 13 : 4,
               onSelected: (value) => setState(() => point = value),
               markers: [
                 if (point != null)

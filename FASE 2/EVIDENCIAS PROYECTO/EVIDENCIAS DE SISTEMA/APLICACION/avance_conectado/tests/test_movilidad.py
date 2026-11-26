@@ -66,7 +66,7 @@ def test_ruta_error_no_inventa_trazado(client,ciudadano,monkeypatch):
 
 def test_zonas_agregadas_y_rutas_con_menos_cruces(client, ciudadano, supervisor_org1, db, monkeypatch):
  ids = []
- rev = {'decision':'validado','latitud':-36.82,'longitud':-73.05,'precision_m':300,
+ rev = {'decision':'validado','latitud':-39.82,'longitud':-73.05,'precision_m':300,
         'radio_m':800,'motivo':'Ubicación y fuente ficticias revisadas para la prueba.'}
  for tipo in ('encerrona','portonazo','encerrona'):
   r = client.post('/gestion/antecedentes', headers=supervisor_org1, json={**ficha(),'tipo':tipo})
@@ -76,13 +76,13 @@ def test_zonas_agregadas_y_rutas_con_menos_cruces(client, ciudadano, supervisor_
   assert client.post(f'/gestion/antecedentes/{aid}/revision', headers=supervisor_org1, json=rev).status_code == 204
  h = ciudadano['headers']
  try:
-  data = client.get('/territorio/zonas?lat=-36.82&lon=-73.05', headers=h).json()
+  data = client.get('/territorio/zonas?lat=-39.82&lon=-73.05', headers=h).json()
   assert len(data['zonas']) == 1 and not data['simulacion']
   assert data['zonas'][0]['antecedentes'] == 2 and data['zonas'][0]['radio_m'] == 800
   assert data['zonas'][0]['geometria']['type'] == 'Polygon'
   zona = data['zonas'][0]
   assert zona['nivel'] == 'moderada' and zona['encerronas'] == 1
-  ubicacion = {'latitud':-36.82,'longitud':-73.05}
+  ubicacion = {'latitud':-39.82,'longitud':-73.05}
   descarga = client.post('/territorio/avisos/descargar',headers=h,json=ubicacion)
   assert descarga.status_code == 200, descarga.text
   assert descarga.json()['zonas'] == [{k:v for k,v in zona.items() if k != 'geometria'}]
@@ -92,19 +92,19 @@ def test_zonas_agregadas_y_rutas_con_menos_cruces(client, ciudadano, supervisor_
    def ruta(pts, segundos):
     return {'distance':4200,'duration':segundos,'geometry':{'type':'LineString','coordinates':pts}}
    return httpx.Response(200, json={'code':'Ok','routes':[
-       ruta([[-73.07,-36.82],[-73.03,-36.82]],360),
-       ruta([[-73.07,-36.82],[-73.06,-36.84],[-73.04,-36.84],[-73.03,-36.82]],480),
+       ruta([[-73.07,-39.82],[-73.03,-39.82]],360),
+       ruta([[-73.07,-39.82],[-73.06,-39.84],[-73.04,-39.84],[-73.03,-39.82]],480),
    ]})
   monkeypatch.setattr(movilidad.httpx,'Client',lambda **kw:real_client(transport=httpx.MockTransport(responder),**kw))
-  body = {'origen':{'latitud':-36.82,'longitud':-73.07},'destino':{'latitud':-36.82,'longitud':-73.03},'consentimiento_proveedor':True}
+  body = {'origen':{'latitud':-39.82,'longitud':-73.07},'destino':{'latitud':-39.82,'longitud':-73.03},'consentimiento_proveedor':True}
   r = client.post('/rutas/calcular', headers=h, json=body)
   assert r.status_code == 200, r.text
   assert [r['cruces_zonas'] for r in r.json()['rutas']] == [0, 1]
   r = client.post('/rutas/calcular', headers=h, json={**body,'evitar_zonas':False})
   assert [r['cruces_zonas'] for r in r.json()['rutas']] == [1, 0]
   db("UPDATE antecedente_publico SET entorno='prueba' WHERE id_antecedente=%s", (ids[0],))
-  assert client.get('/territorio/zonas?lat=-36.82&lon=-73.05', headers=h).json()['zonas'] == []
-  assert client.post('/territorio/avisos/descargar',headers=h,json=ubicacion).json()['zonas'] == []
+  assert client.get('/territorio/zonas?lat=-39.82&lon=-73.05', headers=h).json()['zonas'][0]['antecedentes'] == 1
+  assert client.post('/territorio/avisos/descargar',headers=h,json=ubicacion).json()['zonas'][0]['encerronas'] == 0
   # Un tercer y cuarto registro aprobado eleva el nivel de la misma zona.
   r = client.post('/gestion/antecedentes', headers=supervisor_org1, json=ficha())
   assert r.status_code == 201, r.text

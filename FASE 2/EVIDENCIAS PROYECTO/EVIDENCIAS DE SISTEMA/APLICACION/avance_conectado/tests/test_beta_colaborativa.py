@@ -70,10 +70,16 @@ def test_aporte_reintento_revision_y_notificacion(client,ciudadano,supervisor_or
  head={**h,'Idempotency-Key':str(uuid.uuid4())}
  r=client.post(f'/colaboracion/{sid}/avistamientos',headers=head,json=body);assert r.status_code==201,r.text;aid=r.json()['id_avistamiento']
  assert client.post(f'/colaboracion/{sid}/avistamientos',headers=head,json=body).status_code==200
+ def distancia_publica():
+  lista = client.get('/colaboracion?lat=-36.82&lon=-73.05',headers=h).json()
+  fila = next(f for f in lista['cercanos']+lista['otras_zonas'] if f['id_solicitud_colaboracion']==sid)
+  return fila['distancia_avistamiento_km']
+ assert distancia_publica() is None
  assert not client.get(f'/seguimiento/{cid}',headers=ciudadano['headers']).json()['aportes']
  rev={'decision':'aceptado','motivo':'Antecedente contrastado en prueba ficticia','resumen':'Aporte ficticio revisado por el operador.'}
  assert client.post(f'/gestion/aportes/{aid}/revision',headers=operador_org2,json=rev).status_code==403
  assert client.post(f'/gestion/aportes/{aid}/revision',headers=supervisor_org1,json=rev).status_code==200
+ assert isinstance(distancia_publica(),(int,float))
  assert client.get(f'/seguimiento/{cid}',headers=ciudadano['headers']).json()['aportes'][0]['id_avistamiento']==aid
  notes=client.get('/notificaciones',headers=ciudadano['headers']).json();assert any(n['titulo']=='Nuevo antecedente revisado' for n in notes)
 

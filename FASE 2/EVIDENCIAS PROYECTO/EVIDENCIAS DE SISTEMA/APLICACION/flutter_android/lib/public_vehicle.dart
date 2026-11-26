@@ -40,6 +40,9 @@ class PublicVehicleDetails extends StatelessWidget {
         api: api,
         sid: data['id_solicitud_colaboracion'] as int,
         tipoVehiculo: data['tipo_vehiculo'] as String?,
+        modeloCompleto: data['marca'] != null && data['modelo'] != null
+            ? "${data['marca']} ${data['modelo']}"
+            : null,
         fotoDisponible:
             data['foto_disponible'] == true ||
             (data['foto_disponible'] == null &&

@@ -65,7 +65,7 @@ def vinculos(usuario=Depends(usuario_actual),conn=Depends(obtener_conexion)):
     if not orgs:raise HTTPException(403,'Se requiere membresía vigente.')
     cur.execute("""SELECT vv.id_vinculo_vehiculo,v.patente,vv.id_organizacion_revision,
         vv.tipo,vv.estado,vv.inicio,vv.revisado_en,vv.vence_revision_en,vv.motivo_revision,
-        o.nombre AS organizacion,d.recibido_en AS padron_recibido_en,
+        o.nombre AS organizacion,d.tipo_documento,d.recibido_en AS padron_recibido_en,
         (SELECT e.resumen FROM evento_auditoria e WHERE e.objeto_tipo='vinculo_vehiculo'
          AND e.objeto_id=vv.id_vinculo_vehiculo::text AND e.accion='prelectura_padron'
          AND e.creado_en>=d.recibido_en ORDER BY e.creado_en DESC LIMIT 1) AS padron_prelectura,
@@ -145,15 +145,16 @@ def decidir_vinculo(id_vinculo:int,datos:DecisionVinculo,usuario=Depends(usuario
         raise HTTPException(409,'El vínculo cambió. Actualiza la lista antes de decidir.')
     referencia = datos.referencia
     if datos.decision=='autorizado':
-        cur.execute('SELECT 1 FROM documento_vinculo_vehiculo WHERE id_vinculo_vehiculo=%s AND contenido IS NOT NULL', (id_vinculo,))
-        if cur.fetchone():
+        cur.execute('SELECT tipo_documento FROM documento_vinculo_vehiculo WHERE id_vinculo_vehiculo=%s AND contenido IS NOT NULL', (id_vinculo,))
+        documento = cur.fetchone()
+        if documento:
             if not datos.confirmar_padron:
-                raise HTTPException(422, 'Confirma la revisión del padrón, la identidad del titular y la patente.')
+                raise HTTPException(422, 'Confirma la revisión del documento, la identidad del titular y la patente.')
             cur.execute("""SELECT 1 FROM evento_auditoria WHERE id_usuario=%s AND objeto_tipo='vinculo_vehiculo'
                 AND objeto_id=%s AND accion='consultar_padron' ORDER BY creado_en DESC LIMIT 1""", (uid, str(id_vinculo)))
             if not cur.fetchone():
-                raise HTTPException(422, 'Abre el padrón privado antes de aprobar este vínculo.')
-            referencia = f'PADRON-{id_vinculo}'
+                raise HTTPException(422, 'Abre el documento privado antes de aprobar este vínculo.')
+            referencia = f'{documento[0].upper()}-{id_vinculo}'
         motivo_correcto='padron_y_autorizacion' if v['tipo']=='conductor_autorizado' else 'padron_y_coincidencia'
         if v['estado']!='pendiente' or datos.motivo!=motivo_correcto or not referencia:
             raise HTTPException(422,'Registra la revisión documental adecuada y una referencia interna protegida.')

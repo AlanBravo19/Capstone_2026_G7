@@ -4,6 +4,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:uuid/uuid.dart';
 
 import 'api.dart';
+import 'movilidad.dart' show Mobility;
 import 'biometric.dart';
 
 import 'dart:async';
@@ -16,7 +17,15 @@ class Session extends ChangeNotifier {
   List<Map<String, dynamic>> vehicles = [], cases = [];
   LatLng? selectedPoint;
   LatLng? centroZonal;
-  String nombreZona = 'Chillán';
+  String nombreZona = 'Elegir zona';
+  Future<LatLng>? _gpsInicial;
+  Future<LatLng> ubicacionInicial({bool renovar = false}) {
+    if (renovar) _gpsInicial = null;
+    return _gpsInicial ??= Mobility.location().then(
+      (p) => LatLng((p['lat'] as num).toDouble(), (p['lon'] as num).toDouble()),
+    );
+  }
+
   String? _caseSignature, _caseKey;
   String? mfaChallenge;
   String? avisoAlta;
@@ -85,7 +94,8 @@ class Session extends ChangeNotifier {
     cases = [];
     selectedPoint = null;
     centroZonal = null;
-    nombreZona = 'Chillán';
+    nombreZona = 'Elegir zona';
+    _gpsInicial = null;
     _caseKey = null;
     _caseSignature = null;
     notifyListeners();

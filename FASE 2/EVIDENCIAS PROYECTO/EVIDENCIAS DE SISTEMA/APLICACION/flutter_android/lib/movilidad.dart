@@ -306,7 +306,7 @@ class _PlacesRoutesScreenState extends State<PlacesRoutesScreen> {
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     title: const Text(
-                      'Priorizar menor cruce de zonas históricas',
+                      'Priorizar menos cruces con históricos y alertas',
                     ),
                     value: avoidZones,
                     onChanged: busy
@@ -377,8 +377,8 @@ class _PlacesRoutesScreenState extends State<PlacesRoutesScreen> {
                       if (route['cruces_zonas'] != null)
                         Text(
                           route['cruces_zonas'] == 0
-                              ? 'Sin cruces con las zonas históricas consultadas'
-                              : '${route['cruces_zonas']} zonas históricas en el recorrido',
+                              ? 'Sin cruces con los sectores con antecedentes o alertas'
+                              : '${route['cruces_zonas']} sectores con antecedentes o alertas en el recorrido',
                         ),
                       gap(),
                       OutlinedButton(
@@ -771,7 +771,11 @@ class _RouteMapState extends State<RouteMap> {
                 'type': 'Feature',
                 'properties': {
                   'color':
-                      '#${(concentracionAlta(z) ? zonaAlta : zonaModerada).toARGB32().toRadixString(16).substring(2)}',
+                      '#${(z['origen'] == 'alerta'
+                          ? zonaActiva
+                          : concentracionAlta(z)
+                          ? zonaAlta
+                          : zonaModerada).toARGB32().toRadixString(16).substring(2)}',
                 },
                 'geometry': z['geometria'],
               },

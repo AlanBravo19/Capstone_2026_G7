@@ -1,10 +1,10 @@
-# RutaAlerta · Beta 0.23
+# RutaAlerta
 
-La API 0.23 recibe padrones privados en **Verificar vínculos**. El titular puede autorizar la lectura con GroqCloud para comparar la patente de la foto con la registrada. Una discrepancia legible devuelve el envío para corrección. Las coincidencias y lecturas inconclusas quedan pendientes de decisión del supervisor. Sin autorización, el padrón va directamente a revisión privada.
+La versión 0.27.0 conecta la aplicación Android y el portal institucional con el esquema `rutaalerta` de Supabase. El esquema tiene 68 tablas. La migración 07 dejó 66, la 09 agregó `consulta_encargo` y la 10 agregó `documento_vinculo_vehiculo`. La migración 11 incorpora el tipo documental en esa última tabla. [Descargar RutaAlerta para Android](https://github.com/AlanBravo19/Capstone_2026_G7/releases/tag/v0.27.0)
 
-El cotejo externo se habilita en el servidor con `GROQ_PADRON_OPERACION=1` y `GROQ_API_KEY` en las variables privadas de Vercel. La carga privada funciona sin esas variables y requiere las migraciones [09 y 10](sql). [Descarga de Android 0.23.1](https://github.com/AlanBravo19/Capstone_2026_G7/releases/tag/v0.23.1)
+En **Mis vehículos** se puede adjuntar una imagen del padrón o del permiso de circulación. El supervisor revisa el documento en **Verificar vínculos**, coteja la patente y la relación con el solicitante, y pide respaldo adicional si corresponde. La lectura externa de patente se ofrece sólo para padrones con autorización expresa. Para habilitarla se configuran `GROQ_PADRON_OPERACION=1` y `GROQ_API_KEY` en las variables privadas del servidor.
 
-El mapa usa zonas históricas calculadas por PostGIS. El planificador prioriza alternativas con menos cruces. Android ofrece búsqueda de comuna, sugerencia geográfica y destinos por dirección o punto en el mapa.
+Con permiso de ubicación, Inicio consulta el GPS. Un antecedente revisado y vigente ya aparece en el mapa. El naranjo agrupa de uno a tres por celda y el rojo histórico agrupa cuatro o más. Un halo con un icono de vehículo marca el sector público aproximado de cada alerta vigente. Para Casa y Trabajo, PostGIS compara los sectores que cruzan los recorridos ofrecidos por el proveedor. Las fichas públicas muestran la vigencia de la búsqueda y las distancias aproximadas cuando se dispone de las ubicaciones.
 
 ## Portal de pruebas y mapa de calor
 

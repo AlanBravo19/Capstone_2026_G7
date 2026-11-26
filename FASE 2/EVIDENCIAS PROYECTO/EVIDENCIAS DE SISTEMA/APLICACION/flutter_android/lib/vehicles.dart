@@ -19,7 +19,25 @@ class VehiclesScreen extends StatefulWidget {
 
 class _VehiclesScreenState extends State<VehiclesScreen> {
   final form = GlobalKey<FormState>();
-  String? type, brand, model;
+  String? type, brand, model, color;
+  String tipoDocumento = 'padron';
+  static const colores = [
+    'Blanco',
+    'Negro',
+    'Gris',
+    'Plateado',
+    'Azul',
+    'Rojo',
+    'Verde',
+    'Beige',
+    'Café',
+    'Amarillo',
+    'Naranjo',
+    'Morado',
+    'Dorado',
+    'Multicolor',
+    'Otro',
+  ];
   late Future<dynamic> catalog;
   int? revisionOrg;
   Uint8List? padron;
@@ -60,13 +78,11 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
     onChanged: busy || choices.isEmpty ? null : change,
     validator: (v) => v == null ? 'Selecciona $label' : null,
   );
-  final plate = TextEditingController(),
-      color = TextEditingController(),
-      year = TextEditingController();
+  final plate = TextEditingController(), year = TextEditingController();
   bool busy = false;
   @override
   void dispose() {
-    for (final c in [plate, color, year]) {
+    for (final c in [plate, year]) {
       c.dispose();
     }
     super.dispose();
@@ -77,7 +93,7 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
     final proof = padron;
     final org = revisionOrg;
     if (verifyNow && (org == null || proof == null)) {
-      feedback(context, 'Selecciona la organización y adjunta el padrón.');
+      feedback(context, 'Selecciona la organización y adjunta el documento.');
       return;
     }
     setState(() => busy = true);
@@ -90,12 +106,13 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
           'marca': brand,
           'modelo': model,
           'patente': plate.text.trim(),
-          'color': color.text.trim(),
+          'color': color,
           'anio': int.parse(year.text),
           if (verifyNow && proof != null)
             'revision': {
               'id_organizacion': org,
               'padron_base64': base64Encode(proof),
+              'tipo_documento': tipoDocumento,
               if (authorizePrecheck) 'autorizar_prelectura': true,
             },
         },
@@ -105,15 +122,14 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
           result is Map && result['revision_solicitada'] == true;
       feedback(
         context,
-        revisionSent
-            ? 'Vehículo guardado y padrón enviado al supervisor.'
-            : 'Vehículo guardado. Puedes enviar el padrón desde Mis vehículos.',
+        revisionSent ? 'Vehículo guardado y documento enviado al supervisor.' : 'Vehículo guardado. Puedes enviar un documento desde Mis vehículos.',
       );
-      for (final c in [plate, color, year]) {
+      for (final c in [plate, year]) {
         c.clear();
       }
       setState(() {
-        type = brand = model = null;
+        type = brand = model = color = null;
+        tipoDocumento = 'padron';
         verifyNow = false;
         authorizePrecheck = false;
         revisionOrg = null;
@@ -131,7 +147,7 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
     final release = await widget.session.api.request('/version');
     if (release is! Map || release['padron_privado'] != true) {
       throw const ApiError(
-        'La carga de padrones no está disponible en este momento. Puedes guardar el vehículo y adjuntar el padrón más tarde.',
+        'La carga de documentos no está disponible en este momento. Puedes guardar el vehículo y adjuntar el documento más tarde.',
       );
     }
     final items = await widget.session.api.request('/organizaciones') as List;
@@ -182,11 +198,12 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
       int? org = vehicle['id_organizacion_revision'] as int?;
       Uint8List? document;
       bool authorize = false;
+      String tipo = 'padron';
       final accepted = await showDialog<bool>(
         context: context,
         builder: (dialog) => StatefulBuilder(
           builder: (dialog, update) => AlertDialog(
-            title: const Text('Enviar padrón a revisión'),
+            title: const Text('Enviar documento a revisión'),
             scrollable: true,
             content: reviewFields(
               options.items,
@@ -194,6 +211,12 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
               document,
               (v) => update(() => org = v),
               (v) => update(() => document = v),
+              tipo: tipo,
+              elegirTipo: (v) => update(() {
+                tipo = v;
+                document = null;
+                authorize = false;
+              }),
               fixedOrg: vehicle['id_organizacion_revision'] != null,
               precheck: options.prelectura,
               authorized: authorize,
@@ -222,6 +245,7 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
         body: {
           'id_organizacion': org,
           'padron_base64': base64Encode(document!),
+          'tipo_documento': tipo,
           if (authorize) 'autorizar_prelectura': true,
         },
       );
@@ -240,6 +264,8 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
     Uint8List? document,
     ValueChanged<int?> select,
     ValueChanged<Uint8List?> attach, {
+    required String tipo,
+    required ValueChanged<String> elegirTipo,
     bool fixedOrg = false,
     required bool precheck,
     required bool authorized,
@@ -266,8 +292,26 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
         ],
         onChanged: busy || fixedOrg || options.isEmpty ? null : select,
       ),
-      const Note(
-        'Adjunta una foto legible del padrón con nombre del titular y patente. La organización seleccionada lo recibe para revisión privada.',
+      DropdownButtonFormField<String>(
+        initialValue: tipo,
+        decoration: const InputDecoration(labelText: 'Documento para revisar'),
+        items: const [
+          DropdownMenuItem(value: 'padron', child: Text('Padrón')),
+          DropdownMenuItem(
+            value: 'permiso_circulacion',
+            child: Text('Permiso de circulación'),
+          ),
+        ],
+        onChanged: busy
+            ? null
+            : (v) {
+                if (v != null) elegirTipo(v);
+              },
+      ),
+      Note(
+        tipo == 'padron'
+            ? 'Adjunta una foto legible del padrón con titular y patente.'
+            : 'Adjunta el permiso de circulación legible. El supervisor cotejará la patente y tu vínculo y podrá pedir otro antecedente.',
       ),
       FotoAporte(
         foto: document,
@@ -275,7 +319,7 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
         cambiar: attach,
         ladoMaximo: 2400,
       ),
-      if (precheck)
+      if (precheck && tipo == 'padron')
         CheckboxListTile(
           contentPadding: EdgeInsets.zero,
           controlAffinity: ListTileControlAffinity.leading,
@@ -335,14 +379,14 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
                       TextButton.icon(
                         onPressed: busy ? null : () => requestReview(v),
                         icon: const Icon(Icons.fact_check_outlined),
-                        label: const Text('Adjuntar padrón'),
+                        label: const Text('Adjuntar documento'),
                       ),
                     if (v['estado_vinculo'] == 'pendiente' &&
                         v['padron_recibido_en'] != null)
                       Text(
                         v['padron_prelectura'] == 'coincide'
                             ? 'Patente cotejada. Pendiente de revisión del supervisor.'
-                            : 'Padrón enviado al supervisor',
+                            : 'Documento enviado al supervisor',
                       ),
                     if (v['vence_revision_en'] case final String fecha)
                       Text(
@@ -456,16 +500,7 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
                 },
               ),
               gap(),
-              TextFormField(
-                controller: color,
-                enabled: !busy,
-                decoration: const InputDecoration(
-                  labelText: 'Color',
-                  prefixIcon: Icon(Icons.palette_outlined),
-                ),
-                validator: (v) =>
-                    (v?.trim().length ?? 0) >= 2 ? null : 'Ingresa el color',
-              ),
+              choice('Color', color, colores, (v) => setState(() => color = v)),
               gap(),
               TextFormField(
                 controller: year,
@@ -485,7 +520,7 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
               gap(20),
               SwitchListTile.adaptive(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Adjuntar padrón y verificar vínculo'),
+                title: const Text('Adjuntar documento y verificar vínculo'),
                 subtitle: const Text(
                   'Una revisión vigente puede habilitar alertas provisionales.',
                 ),
@@ -532,6 +567,12 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
                       padron,
                       (v) => setState(() => revisionOrg = v),
                       (v) => setState(() => padron = v),
+                      tipo: tipoDocumento,
+                      elegirTipo: (v) => setState(() {
+                        tipoDocumento = v;
+                        padron = null;
+                        authorizePrecheck = false;
+                      }),
                       precheck: snapshot.data!.prelectura,
                       authorized: authorizePrecheck,
                       onAuthorize: (v) => setState(() => authorizePrecheck = v),

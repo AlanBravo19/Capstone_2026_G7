@@ -35,7 +35,7 @@ class RutaAlertaApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) => MaterialApp(
     navigatorKey: rootNavigator,
-    title: 'RutaAlerta Beta',
+    title: 'RutaAlerta',
     debugShowCheckedModeBanner: false,
     theme: appTheme(),
     home: ListenableBuilder(
