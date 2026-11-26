@@ -412,7 +412,8 @@ function bindSourceMap(field){
       map=L.map(canvas).setView(center,prior ? 14 : 11);
       sourceMaps.add(map);
       L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
-        maxZoom:19,attribution:'&copy; OpenStreetMap contributors'
+        maxZoom:19,referrerPolicy:'strict-origin-when-cross-origin',
+        attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'
       }).addTo(map);
       map.on('click',event=>select(event.latlng));
       if(prior) select(L.latLng(center));
