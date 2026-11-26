@@ -1242,7 +1242,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                           Note(
                             'Sector del reporte · a ${distancia(km)} aproximadamente.',
                           ),
-                        Note('Vigencia: ${s['vence_en']}'),
+                        Note(s['vence_en'] == null ? 'Búsqueda activa hasta el cierre o la recuperación.' : 'Vigente hasta ${s['vence_en']}'),
                         collaborationAction(ctx, widget.session, s),
                       ],
                     ),
@@ -1554,9 +1554,7 @@ class OperatorScreen extends StatelessWidget {
                                   'Sector publicable (sin dirección exacta)',
                               'texto': 'Texto aprobado (sin datos privados)',
                               'motivo': 'Motivo de autorización',
-                              'horas': 'Vigencia en horas (1 a 72)',
                             },
-                            values: {'horas': '24'},
                           );
                           if (d == null) return;
                           await session.api.request(
@@ -1564,7 +1562,6 @@ class OperatorScreen extends StatelessWidget {
                             method: 'POST',
                             body: {
                               ...d,
-                              'horas': int.tryParse(d['horas'] ?? '') ?? 24,
                             },
                           );
                         } else if (action == 'retirar') {

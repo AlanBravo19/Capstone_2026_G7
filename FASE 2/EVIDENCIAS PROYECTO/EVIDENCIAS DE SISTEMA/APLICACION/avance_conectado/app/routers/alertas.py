@@ -259,7 +259,7 @@ def registrar_encargo(cid:int,datos:Encargo,usuario=Depends(usuario_actual),conn
 def suspender(cur,cid):
     cur.execute("""UPDATE solicitud_colaboracion SET suspendida_en=CURRENT_TIMESTAMP
         WHERE id_caso=%s AND estado='publicada' AND suspendida_en IS NULL
-        AND vence_en>CURRENT_TIMESTAMP RETURNING id_solicitud_colaboracion""",(cid,))
+        AND (vence_en IS NULL OR vence_en>CURRENT_TIMESTAMP) RETURNING id_solicitud_colaboracion""",(cid,))
     return cur.fetchone()
 
 @router.post('/gestion/casos/{cid}/suspender-alerta',status_code=204)

@@ -49,6 +49,8 @@ class PublicVehicleDetails extends StatelessWidget {
                 data['foto_url'] is String &&
                 (data['foto_url'] as String).isNotEmpty),
         fotoUrl: data['foto_url'] as String?,
+        fotoVersion: data['foto_version'] as String?,
+        anio: data['anio'] as int?,
       ),
       gap(12),
       Text(

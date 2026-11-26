@@ -208,7 +208,7 @@ formulario('form-testigo',async e=>{
  intentoTestigo=null;e.target.reset();aviso('Aviso recibido. Comprobante '+r.id_aviso);await cargarTestigos();
 });
 let solicitudElegida=null, intentoAporte=null, participacion=false, consultaSolicitudes=0;
-let cargaFotos=null,fotoReporteUrl=null;
+let cargaFotos=null,fotoReporteUrl=null,ultimaLista='';
 const fotosColaboracion=new Map(),solicitudesVisibles=new Map();
 function limpiarFotoReporte(){
  if(fotoReporteUrl)URL.revokeObjectURL(fotoReporteUrl);fotoReporteUrl=null;
@@ -226,27 +226,23 @@ function actualizarConsentimientoFoto(){
 $('foto-caso').onchange=()=>{$('autoriza-foto-caso').checked=false;actualizarConsentimientoFoto();};
 $('autoriza-caso').onchange=actualizarConsentimientoFoto;
 function limpiarFotosColaboracion(){
- consultaSolicitudes++;cargaFotos?.abort();cargaFotos=null;
+ ultimaLista='';consultaSolicitudes++;cargaFotos?.abort();cargaFotos=null;
  fotosColaboracion.forEach(url=>URL.revokeObjectURL(url));fotosColaboracion.clear();solicitudesVisibles.clear();
  $('solicitudes-ciudadanas').replaceChildren();$('foto-vehiculo-aporte').replaceChildren();
 }
 function imagenColaboracion(s){
  const url=fotosColaboracion.get(Number(s.id_solicitud_colaboracion));
  if(url)return `<figure class="vehicle-visual"><img src="${esc(url)}" alt="Foto del titular · ${esc(s.patente)}"><figcaption>Foto del titular</figcaption></figure>`;
- const tipo=s.tipo_vehiculo,label=nombresTipo[tipo]||'Vehículo';
- const ruedas='<circle cx="54" cy="95" r="12"/><circle cx="147" cy="95" r="12"/>';
- const formas={automovil:'<path d="M28 90V73l25-7 18-27h61l24 27 18 8v16H28Z"/><path d="M63 65h81l-18-18H76Z"/>'+ruedas,
- camioneta:'<path d="M25 89V65h73V40h32l24 25h22v24H25Z"/><path d="M108 48h18l16 17h-34Z"/>'+ruedas,
- furgon:'<path d="M24 89V38h111l38 32v19H24Z"/><path d="M107 46h24l24 22h-48Z"/>'+ruedas,
- camion:'<path d="M18 89V30h99v59H18Zm99 0V49h31l29 27v13h-60Z"/><path d="M128 57h17l15 17h-32Z"/>'+ruedas,
- motocicleta:'<circle cx="49" cy="91" r="22"/><circle cx="151" cy="91" r="22"/><path d="m49 91 32-40 35 40H49Zm54-55h22l26 55M72 46h26M116 91l14-28"/>'};
- return `<figure class="vehicle-visual vehicle-reference"><svg viewBox="0 0 200 130" role="img" aria-label="${esc(label)} · imagen de referencia">${formas[tipo]||formas.automovil}</svg><figcaption>Imagen de referencia · ${esc(label)}</figcaption></figure>`;
+ const model=[s.marca,s.modelo].filter(Boolean).join(' ');
+ const bmw=/^BMW\s+320(?:\s?i)?$/i.test(model) && (!s.anio || (s.anio>=2012 && s.anio<=2018));
+ const ref=bmw?`<details><summary>Ver BMW 320i F30 de ejemplo</summary><img src="/bmw_320i_f30.jpg" loading="lazy" alt="Referencia de catálogo BMW 320i F30"><small><a href="https://commons.wikimedia.org/wiki/File:BMW_320i_(F30)_front.JPG">Tokumeigakarinoaoshima</a> · <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a></small></details>`:'';
+ return `<div class="vehicle-visual"><strong>${esc(model)}</strong><p>${s.foto_disponible?'Foto del titular solicitada':'Sin foto pública del titular'}</p>${s.foto_disponible?'':ref}</div>`;
 }
 function mostrarImagenColaboracion(container,s){
  if(!container)return;
  container.innerHTML=imagenColaboracion(s);
  const img=container.querySelector('img'),sid=Number(s.id_solicitud_colaboracion),url=fotosColaboracion.get(sid);
- if(img)img.onerror=()=>{
+ if(img&&url)img.onerror=()=>{
    if(fotosColaboracion.get(sid)!==url)return;
    fotosColaboracion.delete(sid);URL.revokeObjectURL(url);
    mostrarImagenColaboracion($('foto-solicitud-'+sid),s);
@@ -273,13 +269,18 @@ async function imagenPrivada(input){
  return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onerror=()=>reject(Error('No se pudo leer la imagen.'));reader.onload=()=>resolve(String(reader.result).split(',')[1]);reader.readAsDataURL(file);});
 }
 async function solicitudesCiudadanas(permitido){
- participacion=permitido;limpiarFotosColaboracion();const actual=token,turno=consultaSolicitudes;
+ participacion=permitido;const actual=token,turno=++consultaSolicitudes;
  if(!actual){cerrarAporte();return;}
- const controller=new AbortController();cargaFotos=controller;
  const d=await api('/colaboracion');
  if(actual!==token||turno!==consultaSolicitudes)return;
  $('alertas-actualizacion').textContent=(d.demo_alertas?'DEMOSTRACIÓN AISLADA · ':'')+'Actualizado '+new Date().toLocaleTimeString('es-CL');
  const items=[...d.cercanos,...d.otras_zonas];
+ const signature=JSON.stringify([permitido,items]);
+ if(ultimaLista===signature)return;
+ cargaFotos?.abort();
+ const controller=new AbortController();cargaFotos=controller;
+ fotosColaboracion.forEach(url=>URL.revokeObjectURL(url));
+ fotosColaboracion.clear();solicitudesVisibles.clear();ultimaLista=signature;
  for(const s of items)solicitudesVisibles.set(Number(s.id_solicitud_colaboracion),s);
  $('solicitudes-ciudadanas').innerHTML=items.length?items.map(s=>`<article class="item collaboration-card"><div id="foto-solicitud-${Number(s.id_solicitud_colaboracion)}">${imagenColaboracion(s)}</div><div>${estadoAlerta(s)}<b>${esc(s.patente)} · ${esc(s.marca)} ${esc(s.modelo)}</b><p>${esc(nombresTipo[s.tipo_vehiculo]||'Vehículo')} · ${esc(s.color)} · ${esc(s.zona_publicable)}</p><p>${esc(s.texto_aprobado)}</p><button type="button" data-solicitud="${Number(s.id_solicitud_colaboracion)}" data-patente="${esc(s.patente)}" ${permitido&&!s.es_mi_caso?'':'disabled'}>${s.es_mi_caso?'Tu caso · usa el seguimiento':'Aportar información y foto'}</button></div></article>`).join(''):'<p class="empty">Sin solicitudes vigentes. Aquí aparecen las alertas activas con autorización del titular.</p>';
  if(!permitido&&items.length)$('solicitudes-ciudadanas').insertAdjacentHTML('beforeend','<p>Verifica tu cuenta para enviar avistamientos.</p>');
@@ -291,12 +292,18 @@ async function solicitudesCiudadanas(permitido){
    if(!s.foto_disponible||s.foto_url!==ruta)return;
    try{
      const blob=await api(ruta,{binary:true,signal:controller.signal});
-     if(actual!==token||turno!==consultaSolicitudes||controller.signal.aborted)return;
+     if(actual!==token||controller.signal.aborted)return;
      if(!['image/jpeg','image/png','image/webp'].includes(blob.type))return;
      fotosColaboracion.set(sid,URL.createObjectURL(blob));
      mostrarImagenColaboracion($('foto-solicitud-'+sid),s);
      if(solicitudElegida===sid)mostrarImagenColaboracion($('foto-vehiculo-aporte'),s);
-   }catch(err){/* A withdrawn, unavailable or revoked photo keeps its reference illustration. */}
+    }catch(err){
+     if(actual!==token||controller.signal.aborted)return;
+     ultimaLista=''; // Reintentar la descarga en la próxima consulta.
+     const message='No se pudo cargar la foto del titular.';
+     const card=$('foto-solicitud-'+sid);if(card)card.textContent=message;
+     if(solicitudElegida===sid)$('foto-vehiculo-aporte').textContent=message;
+   }
  }));
 }
 accion('actualizar-solicitudes',()=>solicitudesCiudadanas(participacion));
@@ -307,7 +314,7 @@ setInterval(async()=>{
  try{await solicitudesCiudadanas(participacion);}
  catch(error){if(token)$('alertas-actualizacion').textContent='Conexión interrumpida · reintentando';}
  finally{actualizandoAlertas=false;}
-},20000);
+},5000);
 $('solicitudes-ciudadanas').onclick=e=>{
  const b=e.target.closest('button[data-solicitud]');if(!b)return;
  const s=solicitudesVisibles.get(Number(b.dataset.solicitud));if(!s||!participacion||s.es_mi_caso)return;

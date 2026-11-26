@@ -50,10 +50,12 @@ def test_asignar_responsable_y_registrar_derivacion(client,supervisor_org1,opera
     assert actual['responsable'] and actual['gestiones'][0]['accion']=='derivacion'
     assert client.get(base+'/equipo',headers=ciudadano['headers']).status_code==403
 
-def test_renovar_solo_solicitud_vigente_y_propia(client,supervisor_org1,operador_org2,ciudadano):
+def test_renovar_solo_solicitud_vigente_y_propia(client,db,supervisor_org1,operador_org2,ciudadano):
     from test_beta_colaborativa import caso,publicacion
     cid=caso(client,ciudadano)
     sid=publicacion(client,cid,ciudadano['headers'],supervisor_org1)
+    # Solicitudes anteriores conservan el plazo acordado.
+    db("UPDATE solicitud_colaboracion SET vence_en=inicio+interval '24 hours' WHERE id_solicitud_colaboracion=%s",(sid,))
     path=f'/gestion/casos/{cid}/renovacion'
     payload={'motivo':'Revisión de vigencia de ensayo','horas':48,'id_solicitud_colaboracion':sid}
     assert client.post(path,headers=operador_org2,json=payload).status_code==403

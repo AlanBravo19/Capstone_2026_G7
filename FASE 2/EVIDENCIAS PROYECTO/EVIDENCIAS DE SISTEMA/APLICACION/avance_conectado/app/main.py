@@ -40,7 +40,7 @@ if config.alertas_demo and (not DEMO or (os.getenv('VERCEL') and not ENSAYO_PUBL
 
 app = FastAPI(
     title="RutaAlerta API",
-    version="0.27.0",
+    version="0.28.0",
     description="Beta colaborativa: TOTP, seguimiento, publicación revisada y fotos privadas. Correo y SMS dependen de la configuración de proveedores.",
 )
 app.include_router(cuentas.router)
@@ -94,6 +94,9 @@ def codigo_operaciones():return FileResponse(BASE/'public/operaciones.js',media_
 
 @app.get('/site.css',include_in_schema=False)
 def css():return FileResponse(BASE/'public/site.css',media_type='text/css')
+
+@app.get('/bmw_320i_f30.jpg',include_in_schema=False)
+def referencia_bmw():return FileResponse(BASE/'public/bmw_320i_f30.jpg',media_type='image/jpeg')
 
 @app.get('/site.js',include_in_schema=False)
 def js():return FileResponse(BASE/'public/site.js',media_type='text/javascript')

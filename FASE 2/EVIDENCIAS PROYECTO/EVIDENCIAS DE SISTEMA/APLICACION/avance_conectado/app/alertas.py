@@ -6,7 +6,7 @@ from .config import config
 # Además del vencimiento por reloj, una publicación provisional pierde difusión
 # al perder el vínculo que la habilitó. La consulta también se usa para fotos y aportes.
 VIGENTE = """s.estado='publicada' AND s.suspendida_en IS NULL
-    AND s.inicio<=CURRENT_TIMESTAMP AND s.vence_en>CURRENT_TIMESTAMP
+    AND s.inicio<=CURRENT_TIMESTAMP AND (s.vence_en IS NULL OR s.vence_en>CURRENT_TIMESTAMP)
     AND c.estado<>'cerrado' AND c.colaboracion_consentida_en IS NOT NULL
     AND (s.id_vinculo_verificado IS NULL OR EXISTS (
         SELECT 1 FROM vinculo_vehiculo vvf JOIN usuario uf ON uf.id_usuario=vvf.id_usuario
@@ -86,16 +86,16 @@ def publicar_provisional(cur, caso, datos, usuario, ambiente):
         (id_caso,autorizada_por,zona_publicable,texto_aprobado,motivo_autorizacion,inicio,
          vence_en,centro_publico,modo_alerta,id_vinculo_verificado)
         SELECT id_caso,%s,%s,%s,%s,CURRENT_TIMESTAMP,
-        CURRENT_TIMESTAMP+(%s*interval '1 minute'),ST_SnapToGrid(ubicacion::geometry,0.02)::geography,
+        NULL,ST_SnapToGrid(ubicacion::geometry,0.02)::geography,
         'provisional',%s FROM caso WHERE id_caso=%s RETURNING id_solicitud_colaboracion""",
         (usuario,zona,'Sustracción reportada por una persona con vínculo revisado.',motivo,
-         config.alerta_minutos,vinculo,cid))
+         vinculo,cid))
     sid = cur.fetchone()[0]
     cur.execute("UPDATE caso SET prioridad='alta',revision_alerta=revision_alerta+1 WHERE id_caso=%s",(cid,))
     bitacora(cur,cid,usuario,'publicacion_provisional',motivo,'interna')
     aviso(cur,usuario,cid,'Alerta provisional publicada','La organización revisará el caso y el encargo policial.',f'provisional:{sid}')
     avisar_equipo(cur,org,cid,'Alerta provisional nueva','Revisa el expediente y registra la consulta del encargo.',f'provisional:{sid}')
-    return 'provisional', f'Alerta visible en Colaborar durante {config.alerta_minutos} minutos, sujeta a revisión. Tu expediente seguirá en Mis casos.'
+    return 'provisional', 'Alerta publicada en Colaborar hasta el cierre o la recuperación. Puedes retirar tu autorización desde Mis casos.'
 
 def avisar_equipo(cur, org, cid, titulo, mensaje, clave):
     cur.execute("""INSERT INTO notificacion(id_usuario,id_caso,tipo,titulo,mensaje,clave_deduplicacion)

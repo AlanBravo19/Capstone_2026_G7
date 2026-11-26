@@ -95,31 +95,60 @@ function showAccount(access){
   if(access.demo_alertas)el('membership').innerHTML+='<span class="membership-badge">DEMOSTRACIÓN AISLADA</span>';
   el('account-content').innerHTML=`<h2>Tu acceso institucional</h2><ul class="membership-list">${access.organizaciones.map(o=>`<li><strong>${h(o.nombre)}</strong><span>${h(roleName(o.rol))} · ${o.puede_asignar?'Puede asignar responsables':'Sin permiso para asignar responsables'}</span></li>`).join('')}</ul>${access.administrador_global?'<p>Tu cuenta también tiene el rol de administrador global. El acceso a casos depende de tu membresía en cada organización.</p>':''}<h3>Permisos de esta cuenta</h3><ul>${(access.permisos||[]).map(p=>`<li>${h(p)}</li>`).join('')}</ul><p class="consent-note">${h(access.asignacion||'Ser responsable de un caso no cambia el rol ni amplía el ámbito institucional.')}</p><p>Solo un supervisor puede asignar responsables en su organización. Para cambiar tu rol, contacta a quien administra el acceso institucional.</p>`;
 }
+function pendingCards(items){return items.length?items.map(a=>`<article class="card"><div class="row"><h2>${h(a.folio)}</h2>${badge(a.con_foto?'Con foto':'Sin foto')}</div><p>${h(a.zona)} · ${h(date(a.recibido_en))}</p><button data-case="${Number(a.id_caso)}">Revisar en la ficha</button></article>`).join(''):empty('No hay avistamientos pendientes de revisión.');}
+let lastDeskSnapshot='';
+function patchSection(draft,selector){
+  const source=draft.querySelector(selector),current=content.querySelector(selector);
+  if(source&&current&&current.innerHTML!==source.innerHTML)current.replaceChildren(...source.childNodes);
+}
 async function pollDesk(){
-  if(polling||!token||document.hidden)return;
-  const epoch=generation;
-  const session=token;
+  if(polling||!token||document.hidden||content.getAttribute('aria-busy')==='true'||
+    !['cases','dashboard','pending'].includes(view))return;
+  const epoch=generation,session=token;
   polling=true;
   try{
-    await api('/gestion/alertas/vencimiento',{});
+    const data=selected?await api(`/gestion/casos/${selected}/aportes`):
+      view==='dashboard'?await Promise.all([api('/casos'),api('/gestion/testigos')]):
+      await api(view==='pending'?'/gestion/aportes/pendientes':'/casos');
     if(epoch!==generation||session!==token)return;
+    if(content.querySelector('.load-error')){await load();return;}
+    const stamp=JSON.stringify(data);
+    if(stamp===lastDeskSnapshot)return;
     if(selected){
-      el('updated').textContent='Conexión activa · actualiza la ficha para ver cambios';
-      return;
+      const section=el('case-avistamientos');
+      if(!section)return;
+      const unseen=data.filter(a=>!section.querySelector(`[data-sighting-id="${Number(a.id_avistamiento)}"]`));
+      if(unseen.length){
+        section.querySelector('.empty')?.remove();
+        section.querySelector('h2').insertAdjacentHTML('afterend',unseen.map(a=>sightingRow(a,section.dataset.open==='true')).join(''));
+        content.querySelector('[data-case-section="case-avistamientos"]').textContent='Avistamientos · '+data.length;
+      }
+    }else if(view==='pending'){
+      const markup=pendingCards(data);
+      if(content.innerHTML!==markup)content.innerHTML=markup;
+    }else{
+      const draft=document.createElement('template');
+      draft.innerHTML=view==='cases'?queue(data):dashboard(...data);
+      if(view==='cases'){
+        patchSection(draft.content,'.queue-metrics');
+        patchSection(draft.content,'#results');
+      }else{
+        patchSection(draft.content,'.dashboard-stats');
+        patchSection(draft.content,'.dashboard-review');
+        dashboard.bind();
+        const search=el('geo-filtro');
+        if(search.value)search.oninput({target:search});
+        else patchSection(draft.content,'#attention-results');
+      }
     }
-    if(view==='cases'){
-      const items=await api('/casos');
-      if(epoch!==generation||session!==token)return;
-      records=items;const target=el('results');if(target)target.innerHTML=caseRows();
-    }else if(view==='dashboard'||view==='pending'){
-      if(!content.contains(document.activeElement))await load();
-    }else return;
+    lastDeskSnapshot=stamp;
     el('updated').textContent='Actualizado a las '+new Date().toLocaleTimeString('es-CL');
   }catch(error){
-    if(epoch===generation&&session===token)el('updated').textContent='Conexión interrumpida · reintentando';
+    if(epoch===generation&&session===token){lastDeskSnapshot='';el('updated').textContent='Conexión interrumpida · reintentando';}
   }finally{polling=false;}
 }
-if(typeof setInterval==='function')setInterval(pollDesk,20000);
+if(typeof setInterval==='function')setInterval(pollDesk,5000);
+document.addEventListener?.('visibilitychange',()=>{if(!document.hidden)pollDesk();});
 function readRoute(path=window.location.pathname){
   path=path.replace(/\/+$/,'')||'/';
   if(path==='/')return {view:'dashboard',selected:null};
@@ -236,7 +265,7 @@ function dashboard(data,witnesses){
     ['Aportes pendientes',pending,'pending','Avistamientos por evaluar','','teal','M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0'],
     ['Prioridad alta',high.length,'cases','Casos abiertos prioritarios','high','red','M12 3 2 21h20L12 3z M12 9v5 M12 17h.01'],
   ];
-  const attention=[...open].sort((a,b)=>(b.prioridad==='alta')-(a.prioridad==='alta')||Number(b.aportes_pendientes||0)-Number(a.aportes_pendientes||0)||new Date(a.creado_en)-new Date(b.creado_en)).slice(0,6);
+  const attention=[...open].sort((a,b)=>(b.prioridad==='alta')-(a.prioridad==='alta')||Number(b.aportes_pendientes||0)-Number(a.aportes_pendientes||0)||new Date(b.creado_en)-new Date(a.creado_en)).slice(0,6);
   const attentionRows=items=>items.map(c=>`<tr><td><button class="text-button" data-case="${Number(c.id_caso)}">${h(c.folio)}</button><span class="cell-note">${h(orgs.find(o=>o.id_organizacion===c.id_organizacion)?.nombre||'Organización autorizada')}</span></td><td>${badge(c.estado)}</td><td>${badge(c.prioridad)}</td><td>${Number(c.aportes_pendientes||0)}</td></tr>`).join('');
   const attentionTable=items=>items.length?`<div class="table-wrap"><table><caption class="sr-only">Casos abiertos que requieren atención</caption><thead><tr><th>Folio / organización</th><th>Estado</th><th>Prioridad</th><th>Aportes</th></tr></thead><tbody>${attentionRows(items)}</tbody></table></div>`:empty('No hay casos abiertos que coincidan con la búsqueda.');
   dashboard.bind=()=>{el('geo-filtro').oninput=e=>{const q=e.target.value.trim().toLowerCase();el('attention-results').innerHTML=attentionTable(q?open.filter(c=>c.folio.toLowerCase().includes(q)):attention);};};
@@ -281,11 +310,12 @@ function bindCaseFilters(){
   rank.onchange=()=>{priority=rank.value;results.innerHTML=caseRows();};
   alert.onchange=()=>{alertFilter=alert.value;results.innerHTML=caseRows();};
 }
-function publicPhotoField(c,emptyLabel='Sin foto real · imagen de referencia'){
+function publicPhotoField(c,emptyLabel='Automática · última foto del titular autorizada y aprobada'){
   // Seguimiento only exposes initial-report evidence from this case.
   const eligible=(c.evidencias||[]).filter(e=>e.estado_revision==='aceptada'&&e.autorizada_publicacion_en!=null);
   return '<label>Foto pública del vehículo<select name="id_foto_vehiculo"><option value="">'+h(emptyLabel)+'</option>'+eligible.map(e=>`<option value="${Number(e.id_evidencia)}">Foto del titular #${Number(e.id_evidencia)}</option>`).join('')+'</select></label><p class="consent-note">Requiere autorización explícita del titular y una foto del reporte aceptada por el operador. Las fotos de avistamientos permanecen privadas.</p>';
 }
+function sightingRow(a,open){return `<div class="record" data-sighting-id="${Number(a.id_avistamiento)}"><strong>${h(a.zona)}</strong> ${badge(a.estado_revision)}<p>${h(a.descripcion)}</p><p class="muted">${h(date(a.observado_en))}</p>${(a.fotos||[]).map(id=>`<button data-photo="${Number(id)}">Ver foto del avistamiento #${Number(id)}</button>`).join('')}${open?action('Evaluar aporte',`/gestion/aportes/${Number(a.id_avistamiento)}/revision`,selector('decision','Decisión',{aceptado:'Aceptar',requiere_aclaracion:'Pedir aclaración',rechazado:'Rechazar'})+motives+'<label>Resumen que podrá ver el afectado si se acepta<textarea name="resumen" maxlength="500"></textarea></label>'):''}</div>`;}
 function detail(c,contributions,equipo){
   const base=`/gestion/casos/${Number(c.id_caso)}`;const open=c.estado!=='cerrado';
   const status=c.estado_colaboracion||(c.colaboracion_consentida_en?'Colaboración autorizada por el afectado':'Pendiente de consentimiento del afectado');
@@ -296,14 +326,14 @@ function detail(c,contributions,equipo){
     action('Cerrar caso',base+'/cerrar',versionField(c)+selector('motivo_cierre','Resultado',{recuperado:'Recuperado',duplicado:'Duplicado',informacion_insuficiente:'Información insuficiente',otro:'Otro'})+'<label>ID de evidencia aceptada (si fue recuperado)<input type="number" min="1" name="id_evidencia"></label><label>ID del caso principal (si fue duplicado)<input type="number" min="1" name="id_caso_principal"></label>'+motives):'';
   let publication='';
   if(open&&equipo.publicacion){
-    publication=`<p class="muted">Vigente hasta ${h(date(equipo.publicacion.vence_en))}</p>`+
-      action('Renovar solicitud',base+'/renovacion',versionField(c)+'<input type="hidden" name="id_solicitud_colaboracion" value="'+Number(equipo.publicacion.id_solicitud_colaboracion)+'">'+numberField('horas','Nuevo plazo contado desde ahora (horas)',1,72)+motives)+
+    publication=(equipo.publicacion.vence_en?`<p class="muted">Vigente hasta ${h(date(equipo.publicacion.vence_en))}</p>`+
+      action('Renovar solicitud',base+'/renovacion',versionField(c)+'<input type="hidden" name="id_solicitud_colaboracion" value="'+Number(equipo.publicacion.id_solicitud_colaboracion)+'">'+numberField('horas','Nuevo plazo contado desde ahora (horas)',1,72)+motives):'<p class="muted">Visible hasta el cierre o la recuperación.</p>')+
       action('Retirar solicitud de colaboración',base+'/retirar',versionField(c)+motives);
   }else if(open&&c.colaboracion_consentida_en&&c.estado!=='reportado'){
     publication=action('Publicar solicitud de colaboración',base+'/publicacion',versionField(c)+
       '<label>Sector público<input name="zona" required minlength="3" maxlength="200"></label><label>Texto para la ciudadanía<textarea name="texto" required minlength="15" maxlength="1500"></textarea></label>'+publicPhotoField(c)+motives);
   }
-  const sightings=contributions.map(a=>`<div class="record"><strong>${h(a.zona)}</strong> ${badge(a.estado_revision)}<p>${h(a.descripcion)}</p><p class="muted">${h(date(a.observado_en))}</p>${(a.fotos||[]).map(id=>`<button data-photo="${Number(id)}">Ver foto del avistamiento #${Number(id)}</button>`).join('')}${open?action('Evaluar aporte',`/gestion/aportes/${Number(a.id_avistamiento)}/revision`,selector('decision','Decisión',{aceptado:'Aceptar',requiere_aclaracion:'Pedir aclaración',rechazado:'Rechazar'})+motives+'<label>Resumen que podrá ver el afectado si se acepta<textarea name="resumen" maxlength="500"></textarea></label>'):''}</div>`).join('');
+  const sightings=contributions.map(a=>sightingRow(a,open)).join('');
   const evidence=(c.evidencias||[]).map(e=>`<div class="record"><button data-photo="${Number(e.id_evidencia)}">Ver foto #${Number(e.id_evidencia)}</button> ${badge(e.estado_revision)}<p class="consent-note">${e.autorizada_publicacion_en!=null?'Foto pública autorizada por el titular · '+h(date(e.autorizada_publicacion_en)):'Sin autorización del titular para publicar esta foto'}</p>${open?action('Revisar evidencia',`/gestion/evidencias/${Number(e.id_evidencia)}/revision`,selector('decision','Decisión',{aceptada:'Aceptar',rechazada:'Rechazar'})+motives):''}</div>`).join('');
   const sections=[['gestion','Gestión'],['difusion','Difusión'],['avistamientos',`Avistamientos · ${contributions.length}`],['evidencias',`Evidencias · ${(c.evidencias||[]).length}`],['equipo','Equipo'],['historial','Historial']];
   return header+`
@@ -313,7 +343,7 @@ function detail(c,contributions,equipo){
     <div class="case-layout">
       <div class="case-main">
         <section id="case-gestion" class="card case-section" tabindex="-1"><h2>Gestión del caso</h2><h3>Relato recibido</h3><p class="case-statement">${h(c.relato_para_revision || 'Sin relato disponible.')}</p>${management}</section>
-        <section id="case-avistamientos" class="card case-section" tabindex="-1"><h2>Avistamientos</h2>${sightings||empty('Todavía no hay aportes para este caso.')}</section>
+        <section id="case-avistamientos" data-open="${open}" class="card case-section" tabindex="-1"><h2>Avistamientos</h2>${sightings||empty('Todavía no hay aportes para este caso.')}</section>
         <section id="case-evidencias" class="card case-section" tabindex="-1"><h2>Evidencias privadas</h2>${evidence||empty('Sin fotos adjuntas.')}</section>
       </div>
       <div class="case-side">
@@ -409,6 +439,7 @@ function statisticsRoom(data){
 }
 async function load(focus=false){
   MapaOperador.cerrar();
+  lastDeskSnapshot='';
   const epoch=++generation;clearPhotos();el('title').textContent=selected?'Ficha del caso':names[view]||'Página no encontrada';el('status').textContent='';
   el('context-path').textContent=selected?'Operación / Bandeja de casos':sectionGroups[view]||'Operaciones';
   el('page-description').textContent=selected?'Expediente privado, revisión y seguimiento institucional.':descriptions[view]||'Selecciona una sección del centro de operaciones.';
@@ -436,7 +467,7 @@ async function load(focus=false){
     else if(view==='links'){const items=await api('/gestion/vinculos');render=()=>reviewLinks(items);}
     else if(view==='pending'){
       const items=await api('/gestion/aportes/pendientes');
-      render=()=>items.length?items.map(a=>`<article class="card"><div class="row"><h2>${h(a.folio)}</h2>${badge(a.con_foto?'Con foto':'Sin foto')}</div><p>${h(a.zona)} · ${h(date(a.recibido_en))}</p><button data-case="${Number(a.id_caso)}">Revisar en la ficha</button></article>`).join(''):empty('No hay avistamientos pendientes de revisión.');
+      render=()=>pendingCards(items);
     }
     else if(view==='sources'){const items=await api('/gestion/antecedentes');render=()=>sources(items);}
     else if(view==='witness'){const [items,cases]=await Promise.all([api('/gestion/testigos'),api('/casos')]);render=()=>witnessQueue(items,cases);}

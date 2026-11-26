@@ -20,7 +20,7 @@ void main() {
   testWidgets('sin foto autorizada muestra referencia del tipo sin descargar', (tester) async {
     final api = RutaApi(client: MockClient((_) async => throw StateError('Descarga inesperada')));
     await tester.pumpWidget(MaterialApp(home: Scaffold(body: VehiclePhoto(api: api, sid: 4, tipoVehiculo: 'motocicleta'))));
-    expect(find.text('Imagen de referencia'), findsOneWidget);
+    expect(find.text('Sin foto pública del titular'), findsOneWidget);
     expect(find.text('Motocicleta'), findsOneWidget);
     expect(find.byType(Image), findsNothing);
   });
@@ -29,7 +29,7 @@ void main() {
     final api = RutaApi(client: MockClient((_) async => http.Response('{}', 404)));
     await tester.pumpWidget(MaterialApp(home: Scaffold(body: VehiclePhoto(api: api, sid: 4, fotoDisponible: true))));
     await tester.pumpAndSettle();
-    expect(find.text('Imagen de referencia'), findsOneWidget);
+    expect(find.text('Sin foto pública del titular'), findsOneWidget);
     expect(find.byType(Image), findsNothing);
   });
 

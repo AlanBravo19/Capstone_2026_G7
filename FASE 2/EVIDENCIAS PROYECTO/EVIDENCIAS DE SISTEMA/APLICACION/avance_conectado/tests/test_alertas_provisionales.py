@@ -158,6 +158,9 @@ def test_consulta_manual_separada_y_vencimiento(client,db,piloto,monkeypatch,res
     cid=r.json()['id_caso']
     ficha=datos_alerta(client,piloto,cid)
     sid=ficha['alerta']['id_solicitud_colaboracion']
+    assert ficha['alerta']['vence_en'] is None
+    db("UPDATE solicitud_colaboracion SET inicio=inicio-interval '5 days' WHERE id_solicitud_colaboracion=%s",(sid,))
+    assert client.get(f'/colaboracion/{sid}',headers=colaborador).status_code==200
     ruta=f'/gestion/casos/{cid}/encargo'
     entrada={'revision':ficha['revision_alerta'],'resultado':resultado,'motivo':'Resultado del ensayo local','referencia':'AS-ENSAYO'}
     assert client.post(ruta,headers=titular,json={**entrada,'simulada':True}).status_code==403

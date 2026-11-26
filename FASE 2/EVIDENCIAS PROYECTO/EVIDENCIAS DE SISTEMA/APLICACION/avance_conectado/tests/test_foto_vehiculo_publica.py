@@ -162,7 +162,9 @@ def test_legacy_privada_y_consentimiento_solo_titular(client, db, ciudadano, sup
     r = client.post(f'/gestion/casos/{cid}/publicacion', headers=supervisor_org1, json=PUBLICACION)
     assert r.status_code == 201, r.text
     sid = r.json()['id_solicitud_colaboracion']
-    assert fila(client, sid, ciudadano['headers'])['foto_disponible'] is False
+    assert fila(client, sid, ciudadano['headers'])['foto_disponible'] is True
+    assert client.get(f'/colaboracion/{sid}/foto-vehiculo', headers=ciudadano['headers']).status_code == 200
+    assert client.post(path, headers=ciudadano['headers'], json={'autorizada':False}).status_code == 204
     assert client.get(f'/colaboracion/{sid}/foto-vehiculo', headers=ciudadano['headers']).status_code == 404
 
 

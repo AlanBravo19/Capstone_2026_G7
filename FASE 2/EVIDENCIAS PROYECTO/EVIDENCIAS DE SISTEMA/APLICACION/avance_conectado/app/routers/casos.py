@@ -141,7 +141,7 @@ def bandeja(estado: str | None = None, prioridad: str | None = None,
         sql += " AND b.estado = %s"; params.append(estado)
     if prioridad:
         sql += " AND b.prioridad = %s"; params.append(prioridad)
-    cur.execute(sql + " ORDER BY b.creado_en ASC", params)
+    cur.execute(sql + " ORDER BY b.creado_en DESC,b.id_caso DESC", params)
     return [BandejaItem(**fila_dict(cur, f)) for f in cur.fetchall()]
 
 

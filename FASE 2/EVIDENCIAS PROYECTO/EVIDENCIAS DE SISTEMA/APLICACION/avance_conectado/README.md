@@ -1,6 +1,6 @@
 # RutaAlerta
 
-La versión 0.27.0 conecta la aplicación Android y el portal institucional con el esquema `rutaalerta` de Supabase. El esquema tiene 68 tablas. La migración 07 dejó 66, la 09 agregó `consulta_encargo` y la 10 agregó `documento_vinculo_vehiculo`. La migración 11 incorpora el tipo documental en esa última tabla. [Descargar RutaAlerta para Android](https://github.com/AlanBravo19/Capstone_2026_G7/releases/tag/v0.27.0)
+La versión 0.28.0 conecta la aplicación Android y el portal institucional con el esquema `rutaalerta` de Supabase. El esquema tiene 68 tablas. La migración 07 dejó 66, la 09 agregó `consulta_encargo` y la 10 agregó `documento_vinculo_vehiculo`. La migración 11 incorpora el tipo documental en esa última tabla. [Descargar RutaAlerta para Android](https://github.com/AlanBravo19/Capstone_2026_G7/releases/tag/v0.28.0)
 
 En **Mis vehículos** se puede adjuntar una imagen del padrón o del permiso de circulación. El supervisor revisa el documento en **Verificar vínculos**, coteja la patente y la relación con el solicitante, y pide respaldo adicional si corresponde. La lectura externa de patente se ofrece sólo para padrones con autorización expresa. Para habilitarla se configuran `GROQ_PADRON_OPERACION=1` y `GROQ_API_KEY` en las variables privadas del servidor.
 
@@ -26,7 +26,11 @@ La publicación automática requiere `ALERTAS_AUTOMATICAS=1`, una organización 
 
 [Flujo, estados, configuración y guion de demostración](evidencias/Alertas_Provisionales_0210.md)
 
-La comunidad puede ver la foto del vehículo autorizada por el titular y seleccionada por el operador, tanto en la tarjeta como al abrir el avistamiento. Cuando falta una imagen habilitada se muestra una referencia genérica del tipo de vehículo.
+Las nuevas búsquedas, automáticas y manuales, permanecen abiertas hasta el cierre, la recuperación o el retiro de la difusión, con consentimiento y vínculo habilitante vigentes. La migración [12](sql/12_Difusion_Hasta_Cierre.sql) admite búsquedas sin fecha de caducidad. Las publicaciones anteriores conservan el plazo informado.
+
+La tarjeta muestra la foto del vehículo que el titular autorizó y el operador aceptó. En las nuevas búsquedas se usa la foto elegida por el operador o, por defecto, la última elegible del propio caso. Cuando falta, se muestran marca, modelo y color. La referencia opcional del BMW 320i F30 identifica su generación y puede diferir del vehículo buscado. Fotografía de Tokumeigakarinoaoshima bajo [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). [Original](https://commons.wikimedia.org/wiki/File:BMW_320i_(F30)_front.JPG)
+
+La bandeja institucional coloca los casos más recientes arriba y comprueba las novedades cada cinco segundos mientras está visible. Conserva los filtros. La ficha incorpora los nuevos avistamientos sin reemplazar formularios abiertos.
 
 [Fotos del vehículo, consentimiento y revisión](evidencias/Fotos_vehiculos_0200.md)
 
